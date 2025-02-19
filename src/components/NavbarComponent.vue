@@ -1,6 +1,4 @@
-<script setup lang="ts">
-import ModalComponent from '@/components/ModalComponent.vue';
-</script>
+<script setup lang="ts"></script>
 
 <template>
   <div class="navbar min-h-0.5 bg-base-300 shadow-sm">
@@ -35,5 +33,4 @@ import ModalComponent from '@/components/ModalComponent.vue';
       </ul>
     </div>
   </div>
-  <ModalComponent />
 </template>
