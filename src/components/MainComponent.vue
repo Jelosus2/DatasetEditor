@@ -3,7 +3,7 @@ import { defineProps } from 'vue';
 
 defineProps({
   images: {
-    type: Map<string, object>,
+    type: Map<string, { tags: Set<string>; path: string }>,
     required: true,
   },
 });
@@ -13,7 +13,9 @@ defineProps({
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
     <input type="radio" name="dataset_tabs" class="tab" aria-label="Dataset" checked />
     <div class="tab-content !flex overflow-auto border-t-base-300 bg-base-100">
-      <div class="flex-1 overflow-auto">{{ images.size ? images.get('xd') : 'Empty' }}</div>
+      <div class="flex-1 overflow-auto">
+        {{ images.size ? images.get('0357b7292cdcfea4eb140bb27cf8e968.jpg')!.path : 'Empty' }}
+      </div>
       <div class="divider m-1 ml-0 divider-horizontal"></div>
       <div class="flex flex-1 overflow-auto">
         <div class="flex w-full flex-col">

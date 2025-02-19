@@ -12,6 +12,7 @@ function createMainWindow() {
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
+      webSecurity: !(process.env.NODE_ENV === 'debug'),
     },
   });
 

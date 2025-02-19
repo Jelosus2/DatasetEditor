@@ -1,4 +1,10 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+const emit = defineEmits(['load_dataset']);
+
+function loadDataset() {
+  emit('load_dataset');
+}
+</script>
 
 <template>
   <div class="navbar min-h-0.5 bg-base-300 shadow-sm">
@@ -11,7 +17,7 @@
         class="dropdown-content menu z-1 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
       >
         <li>
-          <a class="justify-between">Profile</a>
+          <a class="justify-between" @click="loadDataset">Load Dataset</a>
         </li>
         <li><a>Settings</a></li>
         <li><a onclick="my_modal_1.showModal()">Logout</a></li>
