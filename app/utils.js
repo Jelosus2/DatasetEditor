@@ -30,23 +30,38 @@ export async function loadDatasetDirectory(mainWindow) {
   const images = new Map();
   const globalTags = new Map();
 
-  const files = readdirSync(directoryPath);
+  const files = readdirSync(directoryPath).filter((file) =>
+    ['.jpg', '.jpeg', '.png'].includes(extname(file)),
+  );
 
   for (const file of files) {
     const ext = extname(file);
     const fileName = basename(file);
 
-    if (['.jpg', '.jpeg', '.png'].includes(ext)) {
-      const txtPath = join(directoryPath, `${fileName}.txt`);
+    images.set(fileName, { tags: new Set(), path: join(directoryPath, file) });
 
-      if (existsSync(txtPath)) {
-        const tags = new Set(
-          readFileSync(txtPath, 'utf-8')
-            .split(', ')
-            .map((t) => t.trim().replace('_', ' ')),
-        );
+    const txtPath = join(directoryPath, fileName.replace(ext, '.txt'));
+
+    if (existsSync(txtPath)) {
+      const tags = new Set(
+        readFileSync(txtPath, 'utf-8')
+          .split(',')
+          .map((tag) =>
+            tag.trim().replaceAll('_', ' ').replaceAll('\\(', '(').replaceAll('\\)', ')'),
+          )
+          .filter((tag) => tag),
+      );
+
+      images.get(fileName).tags = tags;
+
+      for (const tag of tags) {
+        if (!globalTags.has(tag)) globalTags.set(tag, new Set());
+        globalTags.get(tag).add(fileName);
       }
     }
   }
-  //return null;
+
+  console.log(images, globalTags);
+
+  return { images, globalTags };
 }

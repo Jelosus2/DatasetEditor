@@ -11,11 +11,11 @@ async function handleShortcuts(e: KeyboardEvent) {
   e.preventDefault();
 
   if (e.ctrlKey && e.key === 's') {
-    const directoryPath = (await window.ipcRenderer.invoke('load_dataset')) as Map<
-      string,
-      object
-    > | null;
-    if (directoryPath) files.value = directoryPath;
+    const { images, globalTags } = (await window.ipcRenderer.invoke('load_dataset')) as {
+      images: Map<string, object>;
+      globalTags: Map<string, Set<string>>;
+    };
+    console.dir(images, globalTags);
   }
   if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'i')
     window.ipcRenderer.invoke('open_dev_tools');

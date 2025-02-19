@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "electron": "electron .",
-    "e-dev": "set NODE_ENV=debug&& run-p electron dev",
+    "e-dev": "set NODE_ENV=debug&& run-p dev electron",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
@@ -39,5 +39,10 @@
     "vite": "^6.0.11",
     "vite-plugin-vue-devtools": "^7.7.1",
     "vue-tsc": "^2.2.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron"
+    ]
   }
 }
