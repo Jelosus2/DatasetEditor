@@ -17,10 +17,17 @@ function loadDataset() {
         class="dropdown-content menu z-1 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
       >
         <li>
-          <a class="justify-between" @click="loadDataset">Load Dataset</a>
+          <a class="justify-between" @click="loadDataset">
+            Load Dataset
+            <div>
+              <kbd class="kbd kbd-xs">Ctrl</kbd>
+              +
+              <kbd class="kbd kbd-xs">S</kbd>
+            </div>
+          </a>
         </li>
         <li><a>Settings</a></li>
-        <li><a onclick="my_modal_1.showModal()">Logout</a></li>
+        <li><a>Logout</a></li>
       </ul>
     </div>
     <div class="dropdown">

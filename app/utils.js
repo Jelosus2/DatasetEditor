@@ -61,7 +61,5 @@ export async function loadDatasetDirectory(mainWindow) {
     }
   }
 
-  console.log(images, globalTags);
-
   return { images, globalTags };
 }
