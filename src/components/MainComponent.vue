@@ -17,6 +17,7 @@ const props = defineProps({
 const selectedImages = ref<Set<string>>(new Set());
 const lastSelectedIndex = ref<number | null>(null);
 const displayedTags = ref<Set<string>>(new Set());
+const displayedGlobalTags = ref<Set<string>>(new Set());
 const modalHtml = ref('');
 
 const imageKeys = computed(() => Array.from(props.images.keys()));
@@ -30,6 +31,7 @@ watch(
       if (!selectedImages.value.has(firstImage)) {
         selectedImages.value.add(firstImage);
         updateDisplayedTags();
+        loadGlobalTags();
       }
     }
   },
@@ -81,6 +83,15 @@ function updateDisplayedTags() {
 
   displayedTags.value = allTags;
 }
+
+function loadGlobalTags() {
+  const allTags: string[] = [];
+  for (const image of props.images.values()) {
+    if (image?.tags.size > 0) image.tags.forEach((tag) => allTags.push(tag));
+  }
+
+  displayedGlobalTags.value = new Set(allTags.sort());
+}
 </script>
 
 <template>
@@ -107,6 +118,7 @@ function updateDisplayedTags() {
                 :alt="name"
                 class="h-full object-contain"
                 draggable="false"
+                loading="lazy"
               />
             </div>
             <div>
@@ -125,7 +137,7 @@ function updateDisplayedTags() {
             :key="tag"
             type="text"
             :value="tag"
-            class="border-1 border-gray-400"
+            class="border-1 border-gray-400 pl-2"
           />
         </div>
         <ul class="menu bg-base-200 px-0">
@@ -188,8 +200,16 @@ function updateDisplayedTags() {
       <div class="divider m-1 ml-0 divider-horizontal"></div>
       <div class="flex flex-1 overflow-auto">
         <div class="flex w-full flex-col">
-          <div>c</div>
-          <div>d</div>
+          <input
+            v-for="tag in displayedGlobalTags"
+            :key="tag"
+            type="text"
+            :value="tag"
+            class="border-1 border-gray-400 pl-2"
+            :class="{
+              'bg-[#323841]': globalTags.get(tag)?.has([...selectedImages][0]),
+            }"
+          />
         </div>
         <ul class="menu bg-base-200 px-0">
           <li>
