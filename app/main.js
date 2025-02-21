@@ -23,6 +23,8 @@ function createMainWindow() {
   mainWindow.on('closed', () => (mainWindow = null));
 }
 
+app.disableHardwareAcceleration();
+
 app.whenReady().then(createMainWindow);
 
 app.on('window-all-closed', () => {
