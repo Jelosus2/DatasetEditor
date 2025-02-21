@@ -8,10 +8,15 @@ const props = defineProps({
     type: Map<string, { tags: Set<string>; path: string }>,
     required: true,
   },
+  globalTags: {
+    type: Map<string, Set<string>>,
+    required: true,
+  },
 });
 
-const selectedImages = ref(new Set());
+const selectedImages = ref<Set<string>>(new Set());
 const lastSelectedIndex = ref<number | null>(null);
+const displayedTags = ref<Set<string>>(new Set());
 const modalHtml = ref('');
 
 const imageKeys = computed(() => Array.from(props.images.keys()));
@@ -19,9 +24,13 @@ const imageKeys = computed(() => Array.from(props.images.keys()));
 watch(
   imageKeys,
   (newKeys) => {
+    console.log(newKeys);
     if (newKeys.length > 0) {
       const firstImage = newKeys[0];
-      if (!selectedImages.value.has(firstImage)) selectedImages.value.add(firstImage);
+      if (!selectedImages.value.has(firstImage)) {
+        selectedImages.value.add(firstImage);
+        updateDisplayedTags();
+      }
     }
   },
   { immediate: true },
@@ -44,14 +53,33 @@ function toggleSelection(id: string, event: MouseEvent) {
   }
 
   lastSelectedIndex.value = index;
+  updateDisplayedTags();
 }
 
 function displayFullImage(id: string) {
-  modalHtml.value = `
-    <div class="flex justify-center">
-      <img src="file://${props.images.get(id)?.path}" />
-    </div>
-  `;
+  const modal = document.getElementById('my_modal_1') as HTMLDialogElement;
+
+  if (modal) {
+    modalHtml.value = `
+      <div class="flex justify-center">
+        <img src="file://${props.images.get(id)?.path}" />
+      </div>
+    `;
+    modal.showModal();
+  }
+}
+
+function updateDisplayedTags() {
+  displayedTags.value.clear();
+
+  const allTags = new Set<string>();
+  for (const imageName of selectedImages.value) {
+    const image = props.images.get(imageName);
+    console.log(image);
+    if (image && image.tags) image.tags.forEach((tag) => allTags.add(tag));
+  }
+
+  displayedTags.value = allTags;
 }
 </script>
 
@@ -72,8 +100,7 @@ function displayFullImage(id: string) {
           >
             <div
               class="relative h-full w-60 border-r-1 border-r-red-500"
-              @click="displayFullImage(name)"
-              onclick="my_modal_1.showModal()"
+              @dblclick="displayFullImage(name)"
             >
               <img
                 :src="'file://' + image.path"
@@ -86,14 +113,20 @@ function displayFullImage(id: string) {
               <p class="mx-4 text-sm whitespace-nowrap">{{ name }}</p>
             </div>
           </div>
-          <p class="mt-4 h-20">Selected images: {{ selectedImages }}</p>
+          <p class="mt-4">Selected images: {{ selectedImages }}</p>
+          <p class="mt-4">Selected tags: {{ displayedTags }}</p>
         </div>
       </div>
       <div class="divider m-1 ml-0 divider-horizontal"></div>
       <div class="flex flex-1 overflow-auto">
         <div class="flex w-full flex-col">
-          <div>c</div>
-          <div>d</div>
+          <input
+            v-for="tag in displayedTags"
+            :key="tag"
+            type="text"
+            :value="tag"
+            class="border-1 border-gray-400"
+          />
         </div>
         <ul class="menu bg-base-200 px-0">
           <li>

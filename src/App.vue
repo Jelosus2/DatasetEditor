@@ -4,7 +4,8 @@ import MainComponent from '@/components/MainComponent.vue';
 
 import { ref, onMounted, onUnmounted } from 'vue';
 
-const files = ref<Map<string, { tags: Set<string>; path: string }>>(new Map());
+const imagesRef = ref<Map<string, { tags: Set<string>; path: string }>>(new Map());
+const globalTagsRef = ref<Map<string, Set<string>>>(new Map());
 
 async function loadDataset() {
   const { images, globalTags } = (await window.ipcRenderer.invoke('load_dataset')) as {
@@ -14,18 +15,17 @@ async function loadDataset() {
 
   console.log(images, globalTags);
 
-  files.value = images;
+  imagesRef.value = images;
+  globalTagsRef.value = globalTags;
 }
 
 async function handleShortcuts(e: KeyboardEvent) {
-  e.preventDefault();
   if (e.repeat) return;
 
   if (e.ctrlKey && e.key === 's') {
+    e.preventDefault();
     await loadDataset();
   }
-  if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'i')
-    window.ipcRenderer.invoke('open_dev_tools');
 }
 
 onMounted(() => {
@@ -39,5 +39,5 @@ onUnmounted(() => {
 
 <template>
   <NavbarComponent @load_dataset="loadDataset" />
-  <MainComponent :images="files" />
+  <MainComponent :images="imagesRef" :global-tags="globalTagsRef" />
 </template>

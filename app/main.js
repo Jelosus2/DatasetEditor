@@ -1,6 +1,6 @@
 import { app, ipcMain, BrowserWindow } from 'electron';
 import { join } from 'node:path';
-import { _dirname, openDevTools, loadDatasetDirectory } from './utils.js';
+import { _dirname, loadDatasetDirectory } from './utils.js';
 
 const __dirname = _dirname(import.meta.url);
 let mainWindow;
@@ -13,6 +13,7 @@ function createMainWindow() {
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       webSecurity: !(process.env.NODE_ENV === 'debug'),
+      devTools: process.env.NODE_ENV === 'debug',
     },
   });
 
@@ -31,5 +32,4 @@ app.on('activate', () => {
   if (!mainWindow) createMainWindow();
 });
 
-ipcMain.handle('open_dev_tools', openDevTools);
 ipcMain.handle('load_dataset', async () => await loadDatasetDirectory(mainWindow));

@@ -1,18 +1,9 @@
-import { BrowserWindow, dialog } from 'electron';
+import { dialog } from 'electron';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, extname, basename, join } from 'node:path';
 
 export const _dirname = (url) => dirname(fileURLToPath(url));
-
-export function openDevTools() {
-  if (process.env.NODE_ENV === 'debug') {
-    const window = BrowserWindow.getFocusedWindow();
-
-    if (window && !window.webContents.isDevToolsOpened()) window.webContents.openDevTools();
-    else if (window) window.webContents.closeDevTools();
-  }
-}
 
 export async function loadDatasetDirectory(mainWindow) {
   let directoryPath;
