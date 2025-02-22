@@ -1,15 +1,14 @@
-import { app, ipcMain, BrowserWindow } from 'electron';
+import { app, ipcMain, BrowserWindow, Menu } from 'electron';
 import { join } from 'node:path';
 import { _dirname, loadDatasetDirectory } from './utils.js';
 
 const __dirname = _dirname(import.meta.url);
 let mainWindow;
 
-function createMainWindow() {
+async function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       webSecurity: !(process.env.NODE_ENV === 'debug'),
@@ -23,6 +22,7 @@ function createMainWindow() {
   mainWindow.on('closed', () => (mainWindow = null));
 }
 
+Menu.setApplicationMenu(null);
 app.disableHardwareAcceleration();
 
 app.whenReady().then(createMainWindow);
@@ -30,7 +30,7 @@ app.whenReady().then(createMainWindow);
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
-app.on('activate', () => {
+app.on('activate', async () => {
   if (!mainWindow) createMainWindow();
 });
 
