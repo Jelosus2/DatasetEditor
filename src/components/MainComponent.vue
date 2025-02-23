@@ -19,6 +19,7 @@ const lastSelectedIndex = ref<number | null>(null);
 const displayedTags = ref<Set<string>>(new Set());
 const displayedGlobalTags = ref<Set<string>>(new Set());
 const modalHtml = ref('');
+const imageModal = ref(false);
 
 const imageKeys = computed(() => Array.from(props.images.keys()));
 
@@ -62,9 +63,10 @@ function displayFullImage(id: string) {
   const modal = document.getElementById('my_modal_1') as HTMLDialogElement;
 
   if (modal) {
+    imageModal.value = true;
     modalHtml.value = `
       <div class="flex justify-center">
-        <img src="file://${props.images.get(id)?.path}" />
+        <img src="file://${props.images.get(id)?.path}" class="h-screen" />
       </div>
     `;
     modal.showModal();
@@ -98,7 +100,7 @@ function loadGlobalTags() {
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
     <input type="radio" name="dataset_tabs" class="tab" aria-label="Dataset" checked />
     <div class="tab-content !flex overflow-auto border-t-base-300 bg-base-100">
-      <div class="flex flex-1 flex-col flex-nowrap overflow-auto">
+      <div class="flex flex-1 flex-col flex-nowrap overflow-auto scroll-smooth">
         <div class="w-fit">
           <div
             v-for="[name, image] in images"
@@ -270,5 +272,5 @@ function loadGlobalTags() {
       </div>
     </div>
   </div>
-  <ModalComponent :html="modalHtml" />
+  <ModalComponent :html="modalHtml" :is-image="imageModal" />
 </template>
