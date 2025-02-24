@@ -1,28 +1,31 @@
 import { app, ipcMain, BrowserWindow, Menu } from 'electron';
 import { join } from 'node:path';
-import { _dirname, loadDatasetDirectory } from './utils.js';
+import { _dirname, getOS, loadDatasetDirectory } from './utils.js';
 
 const __dirname = _dirname(import.meta.url);
 let mainWindow;
+
+const IS_DEBUG = process.env.NODE_ENV === 'debug';
 
 async function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
-      webSecurity: !(process.env.NODE_ENV === 'debug'),
-      devTools: process.env.NODE_ENV === 'debug',
+      webSecurity: !IS_DEBUG,
+      devTools: IS_DEBUG,
     },
   });
 
-  if (process.env.NODE_ENV === 'debug') mainWindow.loadURL('http://localhost:5173/');
+  if (IS_DEBUG) mainWindow.loadURL('http://localhost:5173/');
   else mainWindow.loadFile(join(__dirname, '..', 'dist', 'index.html'));
 
   mainWindow.on('closed', () => (mainWindow = null));
 }
 
-Menu.setApplicationMenu(null);
+if (!IS_DEBUG) Menu.setApplicationMenu(null);
 app.disableHardwareAcceleration();
 
 app.whenReady().then(createMainWindow);
@@ -35,3 +38,4 @@ app.on('activate', async () => {
 });
 
 ipcMain.handle('load_dataset', async () => await loadDatasetDirectory(mainWindow));
+ipcMain.handle('get_os_type', getOS);

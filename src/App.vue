@@ -6,17 +6,20 @@ import { ref, onMounted, onUnmounted } from 'vue';
 
 const imagesRef = ref<Map<string, { tags: Set<string>; path: string }>>(new Map());
 const globalTagsRef = ref<Map<string, Set<string>>>(new Map());
+const os = ref('');
 
 async function loadDataset() {
-  const { images, globalTags } = (await window.ipcRenderer.invoke('load_dataset')) as {
+  const dataset = (await window.ipcRenderer.invoke('load_dataset')) as {
     images: Map<string, { tags: Set<string>; path: string }>;
     globalTags: Map<string, Set<string>>;
   };
 
-  console.log(images, globalTags);
+  if (!dataset) return;
 
-  imagesRef.value = images;
-  globalTagsRef.value = globalTags;
+  console.log(dataset.images, dataset.globalTags);
+
+  imagesRef.value = dataset.images;
+  globalTagsRef.value = dataset.globalTags;
 }
 
 async function handleShortcuts(e: KeyboardEvent) {
@@ -28,8 +31,17 @@ async function handleShortcuts(e: KeyboardEvent) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('keydown', handleShortcuts);
+
+  let osType = localStorage.getItem('os');
+  if (osType) {
+    os.value = osType;
+  } else {
+    osType = (await window.ipcRenderer.invoke('get_os_type')) as string;
+    localStorage.setItem('os', osType);
+    os.value = osType;
+  }
 });
 
 onUnmounted(() => {
@@ -38,6 +50,6 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <NavbarComponent @load_dataset="loadDataset" />
-  <MainComponent :images="imagesRef" :global-tags="globalTagsRef" />
+  <NavbarComponent @load_dataset="loadDataset" :os="os" />
+  <MainComponent :images="imagesRef" :global-tags="globalTagsRef" :os="os" />
 </template>

@@ -1,4 +1,11 @@
 <script setup lang="ts">
+defineProps({
+  os: {
+    type: String,
+    required: true,
+  },
+});
+
 const emit = defineEmits(['load_dataset']);
 
 function loadDataset() {
@@ -20,7 +27,8 @@ function loadDataset() {
           <a class="justify-between" @click="loadDataset">
             Load Dataset
             <div>
-              <kbd class="kbd kbd-xs">Ctrl</kbd>
+              <kbd v-if="os === 'mac'" class="kbd kbd-xs">&#8984;</kbd>
+              <kbd v-else class="kbd kbd-xs">Ctrl</kbd>
               +
               <kbd class="kbd kbd-xs">S</kbd>
             </div>

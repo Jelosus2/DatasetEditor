@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import ModalComponent from '@/components/ModalComponent.vue';
 
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, shallowRef } from 'vue';
 
 const props = defineProps({
   images: {
@@ -10,6 +10,10 @@ const props = defineProps({
   },
   globalTags: {
     type: Map<string, Set<string>>,
+    required: true,
+  },
+  os: {
+    type: String,
     required: true,
   },
 });
@@ -47,7 +51,7 @@ function toggleSelection(id: string, event: MouseEvent) {
     const end = Math.max(lastSelectedIndex.value, index);
     const range = imageKeys.value.slice(start, end + 1);
     range.forEach((img) => selectedImages.value.add(img));
-  } else if (event.ctrlKey || event.metaKey) {
+  } else if (event.ctrlKey || (props.os === 'mac' && event.metaKey)) {
     if (selectedImages.value.has(id) && selectedImages.value.size > 1)
       selectedImages.value.delete(id);
     else selectedImages.value.add(id);
@@ -66,7 +70,7 @@ function displayFullImage(id: string) {
     imageModal.value = true;
     modalHtml.value = `
       <div class="flex justify-center">
-        <img src="file://${props.images.get(id)?.path}" class="h-screen" />
+        <img src="file://${props.images.get(id)?.path}" class="max-h-screen" />
       </div>
     `;
     modal.showModal();
@@ -94,45 +98,59 @@ function loadGlobalTags() {
 
   displayedGlobalTags.value = new Set(allTags.sort());
 }
+
+const container = shallowRef<HTMLDivElement | null>(null);
+const width = ref(0);
+
+function startResize(event: MouseEvent) {
+  event.preventDefault();
+  const startX = event.clientX;
+  const startWidth = container.value?.offsetWidth || 0;
+
+  function onMouseMove(moveEvent: MouseEvent) {
+    const newWidth = startWidth + (moveEvent.clientX - startX);
+    width.value = Math.max(100, newWidth);
+  }
+
+  function onMouseUp() {
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
+  }
+
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+}
 </script>
 
 <template>
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
     <input type="radio" name="dataset_tabs" class="tab" aria-label="Dataset" checked />
     <div class="tab-content !flex overflow-auto border-t-base-300 bg-base-100">
-      <div class="flex flex-1 flex-col flex-nowrap overflow-auto scroll-smooth">
-        <div class="w-fit">
-          <div
-            v-for="[name, image] in images"
-            :key="name"
-            @click="toggleSelection(name, $event)"
-            class="flex h-60 cursor-pointer items-center justify-start border-1 border-red-500 select-none"
-            :class="{
-              'bg-[#323841]': selectedImages.has(name),
-            }"
-          >
-            <div
-              class="relative h-full w-60 border-r-1 border-r-red-500"
-              @dblclick="displayFullImage(name)"
-            >
-              <img
-                :src="'file://' + image.path"
-                :alt="name"
-                class="h-full object-contain"
-                draggable="false"
-                loading="lazy"
-              />
-            </div>
-            <div>
-              <p class="mx-4 text-sm whitespace-nowrap">{{ name }}</p>
-            </div>
-          </div>
-          <p class="mt-4">Selected images: {{ selectedImages }}</p>
-          <p class="mt-4">Selected tags: {{ displayedTags }}</p>
+      <div
+        class="grid h-fit w-[20%] max-w-[80%] min-w-[20%] grid-cols-[repeat(auto-fit,_minmax(150px,_1fr))] gap-0.5"
+        :style="{ width: width + 'px' }"
+        ref="container"
+      >
+        <div
+          v-for="[name, image] in images"
+          :key="name"
+          @click="toggleSelection(name, $event)"
+          class="flex cursor-pointer items-center justify-center border-1 border-red-500 select-none"
+          :class="{
+            'bg-[#323841]': selectedImages.has(name),
+          }"
+        >
+          <img
+            :src="'file://' + image.path"
+            :alt="name"
+            @dblclick="displayFullImage(name)"
+            draggable="false"
+            class="h-full w-full object-scale-down"
+          />
         </div>
       </div>
-      <div class="divider m-1 ml-0 divider-horizontal"></div>
       <div class="flex flex-1 overflow-auto">
+        <div class="divider m-0 divider-horizontal cursor-ew-resize" @mousedown="startResize"></div>
         <div class="flex w-full flex-col">
           <input
             v-for="tag in displayedTags"
@@ -199,8 +217,8 @@ function loadGlobalTags() {
           </li>
         </ul>
       </div>
-      <div class="divider m-1 ml-0 divider-horizontal"></div>
-      <div class="flex flex-1 overflow-auto">
+      <!--<div class="divider m-1 ml-0 divider-horizontal"></div>
+      <div class="flex flex-2 overflow-auto">
         <div class="flex w-full flex-col">
           <input
             v-for="tag in displayedGlobalTags"
@@ -269,7 +287,7 @@ function loadGlobalTags() {
             </a>
           </li>
         </ul>
-      </div>
+      </div>-->
     </div>
   </div>
   <ModalComponent :html="modalHtml" :is-image="imageModal" />

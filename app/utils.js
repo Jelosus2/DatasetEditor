@@ -54,3 +54,13 @@ export async function loadDatasetDirectory(mainWindow) {
 
   return { images, globalTags };
 }
+
+export function getOS() {
+  const osTypes = {
+    darwin: 'mac',
+    win32: 'windows',
+    linux: 'linux',
+  };
+
+  return osTypes[process.platform];
+}
