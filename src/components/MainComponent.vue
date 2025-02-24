@@ -125,9 +125,9 @@ function startResize(event: MouseEvent) {
 <template>
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
     <input type="radio" name="dataset_tabs" class="tab" aria-label="Dataset" checked />
-    <div class="tab-content !flex overflow-auto border-t-base-300 bg-base-100">
+    <div class="tab-content !flex border-t-base-300 bg-base-100">
       <div
-        class="grid h-fit w-[20%] max-w-[80%] min-w-[20%] grid-cols-[repeat(auto-fit,_minmax(150px,_1fr))] gap-0.5"
+        class="grid h-fit max-h-[calc(100vh_-_90px)] w-[20%] max-w-[80%] min-w-[20%] grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-0.5 overflow-auto"
         :style="{ width: width + 'px' }"
         ref="container"
       >
