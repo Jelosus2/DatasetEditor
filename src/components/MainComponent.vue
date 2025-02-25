@@ -127,7 +127,7 @@ function startResize(event: MouseEvent) {
     <input type="radio" name="dataset_tabs" class="tab" aria-label="Dataset" checked />
     <div class="tab-content !flex border-t-base-300 bg-base-100">
       <div
-        class="grid h-fit max-h-[calc(100vh_-_90px)] w-[20%] max-w-[80%] min-w-[20%] grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-0.5 overflow-auto"
+        class="grid h-fit max-h-[calc(100vh_-_90px)] w-[20%] max-w-[80%] min-w-[20%] grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-auto"
         :style="{ width: width + 'px' }"
         ref="container"
       >
@@ -135,9 +135,9 @@ function startResize(event: MouseEvent) {
           v-for="[name, image] in images"
           :key="name"
           @click="toggleSelection(name, $event)"
-          class="flex cursor-pointer items-center justify-center border-1 border-red-500 select-none"
+          class="flex cursor-pointer items-center justify-center rounded-md border-1 border-black bg-base-200 select-none dark:border-white"
           :class="{
-            'bg-[#323841]': selectedImages.has(name),
+            'border-3 !border-blue-600 bg-blue-400': selectedImages.has(name),
           }"
         >
           <img
@@ -145,7 +145,7 @@ function startResize(event: MouseEvent) {
             :alt="name"
             @dblclick="displayFullImage(name)"
             draggable="false"
-            class="h-full w-full object-scale-down"
+            class="h-full w-full rounded-md object-scale-down"
           />
         </div>
       </div>

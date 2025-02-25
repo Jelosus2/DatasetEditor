@@ -1,6 +1,12 @@
 @import 'tailwindcss';
-@plugin 'daisyui';
+@plugin 'daisyui' {
+  themes:
+    dark --prefersdark,
+    winter --default;
+}
 
 :root:has(:is(.modal-open, .modal:target, .modal-toggle:checked + .modal, .modal[open])) {
   scrollbar-gutter: auto;
 }
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));

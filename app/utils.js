@@ -62,5 +62,5 @@ export function getOS() {
     linux: 'linux',
   };
 
-  return osTypes[process.platform];
+  return osTypes[process.platform] ?? 'linux';
 }

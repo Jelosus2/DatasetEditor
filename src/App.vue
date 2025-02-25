@@ -7,6 +7,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 const imagesRef = ref<Map<string, { tags: Set<string>; path: string }>>(new Map());
 const globalTagsRef = ref<Map<string, Set<string>>>(new Map());
 const os = ref('');
+const theme = ref('');
 
 async function loadDataset() {
   const dataset = (await window.ipcRenderer.invoke('load_dataset')) as {
@@ -31,8 +32,19 @@ async function handleShortcuts(e: KeyboardEvent) {
   }
 }
 
+function loadTheme() {
+  const app = document.querySelector('#app') as HTMLElement;
+  const storagedTheme = localStorage.getItem('theme');
+
+  if (storagedTheme) {
+    app.dataset.theme = storagedTheme;
+    theme.value = storagedTheme;
+  }
+}
+
 onMounted(async () => {
   document.addEventListener('keydown', handleShortcuts);
+  loadTheme();
 
   let osType = localStorage.getItem('os');
   if (osType) {
@@ -50,6 +62,6 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <NavbarComponent @load_dataset="loadDataset" :os="os" />
+  <NavbarComponent @load_dataset="loadDataset" :os="os" :theme="theme" />
   <MainComponent :images="imagesRef" :global-tags="globalTagsRef" :os="os" />
 </template>
