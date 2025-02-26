@@ -34,9 +34,17 @@ async function handleShortcuts(e: KeyboardEvent) {
 
 function loadTheme() {
   const app = document.querySelector('#app') as HTMLElement;
-  const storagedTheme = localStorage.getItem('theme');
+  let storagedTheme = localStorage.getItem('theme');
 
   if (storagedTheme) {
+    app.dataset.theme = storagedTheme;
+    theme.value = storagedTheme;
+  } else {
+    localStorage.setItem(
+      'theme',
+      window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'winter',
+    );
+    storagedTheme = localStorage.getItem('theme')!;
     app.dataset.theme = storagedTheme;
     theme.value = storagedTheme;
   }
