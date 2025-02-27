@@ -100,7 +100,7 @@ function loadGlobalTags() {
 }
 
 const container = shallowRef<HTMLDivElement | null>(null);
-const width = ref(0);
+const containerWidth = ref(0);
 
 function startResize(event: MouseEvent) {
   event.preventDefault();
@@ -109,7 +109,7 @@ function startResize(event: MouseEvent) {
 
   function onMouseMove(moveEvent: MouseEvent) {
     const newWidth = startWidth + (moveEvent.clientX - startX);
-    width.value = Math.max(100, newWidth);
+    containerWidth.value = Math.max(100, newWidth);
   }
 
   function onMouseUp() {
@@ -128,7 +128,7 @@ function startResize(event: MouseEvent) {
     <div class="tab-content !flex border-t-base-300 bg-base-100">
       <div
         class="grid h-fit max-h-[calc(100vh_-_90px)] w-[20%] max-w-[80%] min-w-[20%] grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-auto pt-1"
-        :style="{ width: width + 'px' }"
+        :style="{ width: containerWidth + 'px' }"
         ref="container"
       >
         <div
@@ -151,9 +151,17 @@ function startResize(event: MouseEvent) {
       </div>
       <div class="flex flex-1 overflow-auto">
         <div class="divider m-0 divider-horizontal cursor-ew-resize" @mousedown="startResize"></div>
-        <div class="w-[70%]">
+        <div class="flex w-[30%] items-center justify-center">
+          <img
+            v-if="selectedImages.size"
+            :src="images.get([...selectedImages][0])?.path"
+            class="max-h-[100%]"
+          />
+        </div>
+        <div class="divider m-0 divider-horizontal"></div>
+        <div class="w-[50%]">
           <div class="flex h-[48%]">
-            <div class="w-[50%]">
+            <div class="w-[50%] text-center">
               <div
                 class="flex items-center justify-center border-2 border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);] text-sm font-light xl:text-base"
               >
@@ -161,20 +169,22 @@ function startResize(event: MouseEvent) {
               </div>
             </div>
             <div class="divider m-0 divider-horizontal"></div>
-            <div class="w-[50%]">
+            <div class="w-[50%] text-center">
               <div
                 class="flex items-center justify-center border-2 border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);] text-sm font-light xl:text-base"
               >
-                <p>Tags in the captions but not detected by the autotagger</p>
+                <p>Tags in captions but not detected by the autotagger</p>
               </div>
             </div>
           </div>
           <div class="divider m-0"></div>
-          <div class="h-[48%]"></div>
+          <div class="h-[38%]"></div>
         </div>
         <div class="divider m-0 divider-horizontal"></div>
-        <div class="w-[30%]">
-          <input type="text" class="w-full" />
+        <div class="w-[20%]">
+          <div class="flex h-[54%]"></div>
+          <div class="divider m-0"></div>
+          <div class="h-[42%]"></div>
         </div>
         <!--<div class="flex w-full flex-col">
           <input
