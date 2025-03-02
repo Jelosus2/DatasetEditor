@@ -158,13 +158,13 @@ function startResize(event: MouseEvent) {
           <img
             v-if="selectedImages.size"
             :src="images.get([...selectedImages][0])?.path"
-            class="max-h-[100%]"
+            class="max-h-full"
           />
         </div>
         <div
           class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
         ></div>
-        <div class="w-[50%]">
+        <div class="w-[45%]">
           <div class="flex h-[48%]">
             <div class="w-[50%] text-center">
               <div
@@ -185,27 +185,31 @@ function startResize(event: MouseEvent) {
             </div>
           </div>
           <div class="divider m-0 not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"></div>
-          <div class="flex h-fit max-h-[48%] flex-wrap gap-2 overflow-auto scroll-smooth">
+          <div class="flex h-fit max-h-[49%] flex-wrap gap-2 overflow-auto scroll-smooth">
             <div
               v-for="tag in displayedTags"
               :key="tag"
-              class="flex h-fit w-fit items-center rounded-md bg-[#a6d9e2] px-2 dark:bg-[#b84f98]"
+              class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
             >
-              <span class="text-md">{{ tag }}</span>
-              <div
-                class="divider m-0 divider-horizontal before:bg-gray-400 after:bg-gray-400 dark:before:bg-white dark:after:bg-white"
-              ></div>
-              <span class="cursor-pointer">&#x2715;</span>
+              {{ tag }}
             </div>
           </div>
         </div>
         <div
           class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
         ></div>
-        <div class="w-[20%]">
+        <div class="w-[25%]">
           <div class="flex h-[54%]"></div>
           <div class="divider m-0 not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"></div>
-          <div class="h-[42%]"></div>
+          <div class="flex h-fit max-h-[43%] flex-wrap gap-2 overflow-auto scroll-smooth">
+            <div
+              v-for="tag in displayedGlobalTags"
+              :key="tag"
+              class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
+            >
+              {{ tag }}
+            </div>
+          </div>
         </div>
       </div>
       <!--<div class="divider m-1 ml-0 divider-horizontal"></div>
