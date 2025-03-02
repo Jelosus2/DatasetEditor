@@ -127,7 +127,7 @@ function startResize(event: MouseEvent) {
     <input type="radio" name="dataset_tabs" class="tab" aria-label="Dataset" checked />
     <div class="tab-content !flex border-t-base-300 bg-base-100">
       <div
-        class="grid h-fit max-h-[calc(100vh_-_90px)] w-[20%] max-w-[80%] min-w-[20%] grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-auto pt-1"
+        class="grid h-fit max-h-[calc(100vh_-_90px)] w-[20%] max-w-[80%] min-w-[20%] grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-auto scroll-smooth pt-1"
         :style="{ width: containerWidth + 'px' }"
         ref="container"
       >
@@ -150,7 +150,10 @@ function startResize(event: MouseEvent) {
         </div>
       </div>
       <div class="flex flex-1 overflow-auto">
-        <div class="divider m-0 divider-horizontal cursor-ew-resize" @mousedown="startResize"></div>
+        <div
+          class="divider m-0 divider-horizontal cursor-ew-resize not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
+          @mousedown="startResize"
+        ></div>
         <div class="flex w-[30%] items-center justify-center">
           <img
             v-if="selectedImages.size"
@@ -158,43 +161,52 @@ function startResize(event: MouseEvent) {
             class="max-h-[100%]"
           />
         </div>
-        <div class="divider m-0 divider-horizontal"></div>
+        <div
+          class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
+        ></div>
         <div class="w-[50%]">
           <div class="flex h-[48%]">
             <div class="w-[50%] text-center">
               <div
-                class="flex items-center justify-center border-2 border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);] text-sm font-light xl:text-base"
+                class="flex items-center justify-center border-b-2 border-gray-400 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
               >
                 <p>Tags detected by autotagger but not in the captions</p>
               </div>
             </div>
-            <div class="divider m-0 divider-horizontal"></div>
+            <div
+              class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
+            ></div>
             <div class="w-[50%] text-center">
               <div
-                class="flex items-center justify-center border-2 border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);] text-sm font-light xl:text-base"
+                class="flex items-center justify-center border-b-2 border-gray-400 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
               >
                 <p>Tags in captions but not detected by the autotagger</p>
               </div>
             </div>
           </div>
-          <div class="divider m-0"></div>
-          <div class="h-[38%]"></div>
+          <div class="divider m-0 not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"></div>
+          <div class="flex h-fit max-h-[48%] flex-wrap gap-2 overflow-auto scroll-smooth">
+            <div
+              v-for="tag in displayedTags"
+              :key="tag"
+              class="flex h-fit w-fit items-center rounded-md bg-[#a6d9e2] px-2 dark:bg-[#b84f98]"
+            >
+              <span class="text-md">{{ tag }}</span>
+              <div
+                class="divider m-0 divider-horizontal before:bg-gray-400 after:bg-gray-400 dark:before:bg-white dark:after:bg-white"
+              ></div>
+              <span class="cursor-pointer">&#x2715;</span>
+            </div>
+          </div>
         </div>
-        <div class="divider m-0 divider-horizontal"></div>
+        <div
+          class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
+        ></div>
         <div class="w-[20%]">
           <div class="flex h-[54%]"></div>
-          <div class="divider m-0"></div>
+          <div class="divider m-0 not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"></div>
           <div class="h-[42%]"></div>
         </div>
-        <!--<div class="flex w-full flex-col">
-          <input
-            v-for="tag in displayedTags"
-            :key="tag"
-            type="text"
-            :value="tag"
-            class="border-1 border-gray-400 pl-2"
-          />
-        </div>-->
       </div>
       <!--<div class="divider m-1 ml-0 divider-horizontal"></div>
       <div class="flex flex-2 overflow-auto">
