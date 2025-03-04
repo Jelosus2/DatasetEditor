@@ -24,6 +24,9 @@ const displayedTags = ref<Set<string>>(new Set());
 const displayedGlobalTags = ref<Set<string>>(new Set());
 const modalHtml = ref('');
 const imageModal = ref(false);
+const tagInput = ref('');
+const filterMode = ref('or');
+const filterInput = ref('');
 
 const imageKeys = computed(() => Array.from(props.images.keys()));
 
@@ -33,11 +36,9 @@ watch(
     console.log(newKeys);
     if (newKeys.length > 0) {
       const firstImage = newKeys[0];
-      if (!selectedImages.value.has(firstImage)) {
-        selectedImages.value.add(firstImage);
-        updateDisplayedTags();
-        loadGlobalTags();
-      }
+      selectedImages.value = new Set<string>().add(firstImage);
+      updateDisplayedTags();
+      updateGlobalTags();
     }
   },
   { immediate: true },
@@ -83,14 +84,13 @@ function updateDisplayedTags() {
   const allTags = new Set<string>();
   for (const imageName of selectedImages.value) {
     const image = props.images.get(imageName);
-    console.log(image);
     if (image && image.tags) image.tags.forEach((tag) => allTags.add(tag));
   }
 
   displayedTags.value = allTags;
 }
 
-function loadGlobalTags() {
+function updateGlobalTags() {
   const allTags: string[] = [];
   for (const image of props.images.values()) {
     if (image?.tags.size > 0) image.tags.forEach((tag) => allTags.push(tag));
@@ -120,6 +120,29 @@ function startResize(event: MouseEvent) {
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', onMouseUp);
 }
+
+function addTag() {
+  if (!tagInput.value) return;
+
+  for (const image of selectedImages.value.values())
+    props.images.get(image)?.tags.add(tagInput.value);
+
+  tagInput.value = '';
+
+  updateDisplayedTags();
+  updateGlobalTags();
+}
+
+function removeTag(tag: string) {
+  for (const image of selectedImages.value.values()) props.images.get(image)?.tags.delete(tag);
+
+  updateDisplayedTags();
+  updateGlobalTags();
+}
+
+function filterImages() {
+  console.log(tagInput.value, filterMode.value);
+}
 </script>
 
 <template>
@@ -127,26 +150,47 @@ function startResize(event: MouseEvent) {
     <input type="radio" name="dataset_tabs" class="tab" aria-label="Dataset" checked />
     <div class="tab-content !flex border-t-base-300 bg-base-100">
       <div
-        class="grid h-fit max-h-[calc(100vh_-_90px)] w-[20%] max-w-[80%] min-w-[20%] grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-auto scroll-smooth pt-1"
+        class="flex max-h-[calc(100vh_-_90px)] w-[20%] max-w-[80%] min-w-[20%] flex-col pt-1 pl-1"
         :style="{ width: containerWidth + 'px' }"
         ref="container"
       >
         <div
-          v-for="[name, image] in images"
-          :key="name"
-          @click="toggleSelection(name, $event)"
-          class="flex cursor-pointer items-center justify-center rounded-md border-1 border-black bg-base-200 select-none dark:border-white"
-          :class="{
-            'border-3 !border-blue-600 bg-blue-400': selectedImages.has(name),
-          }"
+          class="grid h-fit grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-auto scroll-smooth"
         >
-          <img
-            :src="'file://' + image.path"
-            :alt="name"
-            @dblclick="displayFullImage(name)"
-            draggable="false"
-            class="h-full w-full rounded-md object-scale-down"
-          />
+          <div
+            v-for="[name, image] in images"
+            :key="name"
+            @click="toggleSelection(name, $event)"
+            class="flex cursor-pointer items-center justify-center rounded-md border-1 border-black bg-base-200 select-none dark:border-white"
+            :class="{
+              'border-3 !border-blue-600 bg-blue-400': selectedImages.has(name),
+            }"
+          >
+            <img
+              :src="'file://' + image.path"
+              :alt="name"
+              @dblclick="displayFullImage(name)"
+              draggable="false"
+              class="h-full w-full rounded-md object-scale-down"
+            />
+          </div>
+        </div>
+        <div
+          class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
+        >
+          <label class="input input-xs w-full border-r-0 px-1 pr-0 !outline-none">
+            <input
+              v-model="filterInput"
+              type="text"
+              placeholder="Type a tag to filter the images..."
+              @keyup.enter="filterImages"
+            />
+            <select v-model.lazy="filterMode" class="select w-fit select-xs !outline-none">
+              <option value="or" selected>OR</option>
+              <option value="nor">NOR</option>
+              <option value="and">AND</option>
+            </select>
+          </label>
         </div>
       </div>
       <div class="flex flex-1 overflow-auto">
@@ -165,7 +209,7 @@ function startResize(event: MouseEvent) {
           class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
         ></div>
         <div class="w-[45%]">
-          <div class="flex h-[48%]">
+          <div class="flex h-[48%] xl:h-[49%]">
             <div class="w-[50%] text-center">
               <div
                 class="flex items-center justify-center border-b-2 border-gray-400 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
@@ -185,20 +229,35 @@ function startResize(event: MouseEvent) {
             </div>
           </div>
           <div class="divider m-0 not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"></div>
-          <div class="flex h-fit max-h-[49%] flex-wrap gap-2 overflow-auto scroll-smooth">
+          <div class="flex h-[49%] flex-col">
+            <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth">
+              <div
+                v-for="tag in displayedTags"
+                :key="tag"
+                class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
+                @click="removeTag(tag)"
+              >
+                {{ tag }}
+              </div>
+            </div>
             <div
-              v-for="tag in displayedTags"
-              :key="tag"
-              class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
+              class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
             >
-              {{ tag }}
+              <label class="input input-xs px-1 !outline-none">
+                <input
+                  v-model.trim="tagInput"
+                  type="text"
+                  placeholder="Type to add a tag..."
+                  @keyup.enter="addTag"
+                />
+              </label>
             </div>
           </div>
         </div>
         <div
           class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
         ></div>
-        <div class="w-[25%]">
+        <div class="w-[25%] pr-1">
           <div class="flex h-[54%]"></div>
           <div class="divider m-0 not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"></div>
           <div class="flex h-fit max-h-[43%] flex-wrap gap-2 overflow-auto scroll-smooth">
