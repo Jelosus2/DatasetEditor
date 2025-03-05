@@ -161,7 +161,7 @@ function removeTag(tag: string) {
 let isFiltering = false;
 
 function filterImages() {
-  filteredImages.value = new Set<string>();
+  filteredImages.value.clear();
   isFiltering = false;
   if (!filterInput.value) return;
 
@@ -179,7 +179,7 @@ function filterImages() {
       const imagesWithTag = props.globalTags.get(tag);
       if (!imagesWithTag) {
         isFiltering = true;
-        selectedImages.value = new Set();
+        selectedImages.value.clear();
         filteredImages.value.clear();
         updateDisplayedTags();
         return;
@@ -216,7 +216,7 @@ function clearImageFilter() {
   if (filterInput.value) return;
 
   isFiltering = false;
-  filteredImages.value = new Set();
+  filteredImages.value.clear();
 }
 </script>
 
@@ -292,7 +292,7 @@ function clearImageFilter() {
           class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
         ></div>
         <div class="w-[45%]">
-          <div class="flex h-[48%] xl:h-[49%]">
+          <div class="flex h-[48%]">
             <div class="w-[50%] text-center">
               <div
                 class="flex items-center justify-center border-b-2 border-gray-400 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
@@ -326,7 +326,7 @@ function clearImageFilter() {
             <div
               class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
             >
-              <label class="input input-xs px-1 !outline-none">
+              <label class="input input-xs w-[50%] px-1 !outline-none">
                 <input
                   v-model.trim="tagInput"
                   type="text"
