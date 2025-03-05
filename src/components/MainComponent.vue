@@ -27,6 +27,7 @@ const imageModal = ref(false);
 const tagInput = ref('');
 const filterMode = ref('or');
 const filterInput = ref('');
+const filteredImages = ref<Set<string>>(new Set());
 
 const imageKeys = computed(() => Array.from(props.images.keys()));
 
@@ -36,7 +37,7 @@ watch(
     console.log(newKeys);
     if (newKeys.length > 0) {
       const firstImage = newKeys[0];
-      selectedImages.value = new Set<string>().add(firstImage);
+      selectedImages.value = new Set<string>([firstImage]);
       updateDisplayedTags();
       updateGlobalTags();
     }
@@ -91,6 +92,7 @@ function updateDisplayedTags() {
 }
 
 function updateGlobalTags() {
+  console.log('Global tags updated!');
   const allTags: string[] = [];
   for (const image of props.images.values()) {
     if (image?.tags.size > 0) image.tags.forEach((tag) => allTags.push(tag));
@@ -124,24 +126,97 @@ function startResize(event: MouseEvent) {
 function addTag() {
   if (!tagInput.value) return;
 
-  for (const image of selectedImages.value.values())
+  const tagExists = props.globalTags.has(tagInput.value);
+  if (!tagExists) props.globalTags.set(tagInput.value, new Set<string>());
+
+  for (const image of selectedImages.value.values()) {
     props.images.get(image)?.tags.add(tagInput.value);
+    props.globalTags.get(tagInput.value)?.add(image);
+  }
+
+  console.dir(props.globalTags);
 
   tagInput.value = '';
 
   updateDisplayedTags();
-  updateGlobalTags();
+  if (!tagExists) updateGlobalTags();
 }
 
 function removeTag(tag: string) {
-  for (const image of selectedImages.value.values()) props.images.get(image)?.tags.delete(tag);
+  const images = props.globalTags.get(tag);
+
+  for (const image of selectedImages.value.values()) {
+    props.images.get(image)?.tags.delete(tag);
+    images?.delete(image);
+  }
 
   updateDisplayedTags();
-  updateGlobalTags();
+
+  if (!images?.size) {
+    props.globalTags.delete(tag);
+    updateGlobalTags();
+  }
 }
 
+let isFiltering = false;
+
 function filterImages() {
-  console.log(tagInput.value, filterMode.value);
+  filteredImages.value = new Set<string>();
+  isFiltering = false;
+  if (!filterInput.value) return;
+
+  const tags = filterInput.value.split(',').map((tag) => tag.trim());
+
+  if (filterMode.value === 'or') {
+    tags.forEach((tag) => {
+      props.globalTags.get(tag)?.forEach((image) => filteredImages.value.add(image));
+    });
+  } else if (filterMode.value === 'and') {
+    const imageCount = new Map();
+    const requiredTagCount = tags.length;
+
+    for (const tag of tags) {
+      const imagesWithTag = props.globalTags.get(tag);
+      if (!imagesWithTag) {
+        isFiltering = true;
+        selectedImages.value = new Set();
+        filteredImages.value.clear();
+        updateDisplayedTags();
+        return;
+      }
+
+      imagesWithTag.forEach((image) => {
+        imageCount.set(image, (imageCount.get(image) || 0) + 1);
+      });
+    }
+
+    filteredImages.value = new Set(
+      [...imageCount.entries()]
+        .filter(([, count]) => count === requiredTagCount)
+        .map(([image]) => image),
+    );
+  } else if (filterMode.value === 'no') {
+    const excludedImages = new Set();
+
+    tags.forEach((tag) => {
+      props.globalTags.get(tag)?.forEach((image) => excludedImages.add(image));
+    });
+
+    filteredImages.value = new Set(
+      [...props.images.keys()].filter((image) => !excludedImages.has(image)),
+    );
+  }
+
+  isFiltering = true;
+  selectedImages.value = new Set([[...filteredImages.value][0]]);
+  updateDisplayedTags();
+}
+
+function clearImageFilter() {
+  if (filterInput.value) return;
+
+  isFiltering = false;
+  filteredImages.value = new Set();
 }
 </script>
 
@@ -164,6 +239,7 @@ function filterImages() {
             class="flex cursor-pointer items-center justify-center rounded-md border-1 border-black bg-base-200 select-none dark:border-white"
             :class="{
               'border-3 !border-blue-600 bg-blue-400': selectedImages.has(name),
+              hidden: !filteredImages.has(name) && isFiltering,
             }"
           >
             <img
@@ -184,10 +260,17 @@ function filterImages() {
               type="text"
               placeholder="Type a tag to filter the images..."
               @keyup.enter="filterImages"
+              @input="clearImageFilter"
             />
+            <span
+              v-if="filterInput"
+              class="cursor-pointer"
+              @click="((filterInput = ''), clearImageFilter())"
+              >X</span
+            >
             <select v-model.lazy="filterMode" class="select w-fit select-xs !outline-none">
               <option value="or" selected>OR</option>
-              <option value="nor">NOR</option>
+              <option value="no">NO</option>
               <option value="and">AND</option>
             </select>
           </label>
