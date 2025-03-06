@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ModalComponent from '@/components/ModalComponent.vue';
+import TagGroupEditorComponent from '@/components/TagGroupEditorComponent.vue';
 
 import { ref, watch, computed, shallowRef } from 'vue';
 
@@ -29,13 +30,16 @@ const globalTagInput = ref('');
 const filterMode = ref('or');
 const filterInput = ref('');
 const filteredImages = ref<Set<string>>(new Set());
+const container = shallowRef<HTMLDivElement | null>(null);
+const containerWidth = ref(0);
+const tagGroupSectionTopHeight = ref(55);
+const tagGroupSectionBottomHeight = ref(45);
 
 const imageKeys = computed(() => Array.from(props.images.keys()));
 
 watch(
   imageKeys,
   (newKeys) => {
-    console.log(newKeys);
     if (newKeys.length > 0) {
       const firstImage = newKeys[0];
       selectedImages.value = new Set<string>([firstImage]);
@@ -93,7 +97,6 @@ function updateDisplayedTags() {
 }
 
 function updateGlobalTags() {
-  console.log('Global tags updated!');
   const allTags: string[] = [];
   for (const image of props.images.values()) {
     if (image?.tags.size > 0) image.tags.forEach((tag) => allTags.push(tag));
@@ -102,17 +105,36 @@ function updateGlobalTags() {
   displayedGlobalTags.value = new Set(allTags.sort());
 }
 
-const container = shallowRef<HTMLDivElement | null>(null);
-const containerWidth = ref(0);
-
-function startResize(event: MouseEvent) {
-  event.preventDefault();
+function resizeContainer(event: MouseEvent) {
   const startX = event.clientX;
   const startWidth = container.value?.offsetWidth || 0;
 
   function onMouseMove(moveEvent: MouseEvent) {
     const newWidth = startWidth + (moveEvent.clientX - startX);
     containerWidth.value = Math.max(100, newWidth);
+  }
+
+  function onMouseUp() {
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
+  }
+
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+}
+
+function resizeTagGroupSection(moveEvent: MouseEvent) {
+  const startY = moveEvent.clientY;
+  const maxHeight = window.innerHeight - 90;
+  const startTopHeightPx = (tagGroupSectionTopHeight.value / 100) * maxHeight;
+
+  function onMouseMove(event: MouseEvent) {
+    const delta = event.clientY - startY;
+    const newTopHeightPx = startTopHeightPx + delta;
+    let newTopHeight = (newTopHeightPx / maxHeight) * 100;
+    newTopHeight = Math.max(20, Math.min(90, newTopHeight));
+    tagGroupSectionTopHeight.value = newTopHeight;
+    tagGroupSectionBottomHeight.value = 100 - newTopHeight;
   }
 
   function onMouseUp() {
@@ -247,155 +269,160 @@ function clearImageFilter() {
 <template>
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
     <input type="radio" name="dataset_tabs" class="tab" aria-label="Dataset" checked />
-    <div class="tab-content !flex border-t-base-300 bg-base-100">
-      <div
-        class="flex max-h-[calc(100vh_-_90px)] w-[20%] max-w-[80%] min-w-[20%] flex-col pt-1 pl-1"
-        :style="{ width: containerWidth + 'px' }"
-        ref="container"
-      >
+    <div class="tab-content border-t-base-300 bg-base-100">
+      <div class="flex h-full">
         <div
-          class="grid h-fit grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-auto scroll-smooth"
+          class="flex max-h-[calc(100vh_-_90px)] w-[20%] max-w-[80%] min-w-[20%] flex-col pt-1 pl-1"
+          :style="{ width: containerWidth + 'px' }"
+          ref="container"
         >
           <div
-            v-for="[name, image] in images"
-            :key="name"
-            @click="toggleSelection(name, $event)"
-            class="flex cursor-pointer items-center justify-center rounded-md border-1 border-black bg-base-200 select-none dark:border-white"
-            :class="{
-              'border-3 !border-blue-600 bg-blue-400': selectedImages.has(name),
-              hidden: !filteredImages.has(name) && isFiltering,
-            }"
+            class="grid h-fit grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-auto scroll-smooth"
           >
+            <div
+              v-for="[name, image] in images"
+              :key="name"
+              @click="toggleSelection(name, $event)"
+              class="flex cursor-pointer items-center justify-center rounded-md border-1 border-black bg-base-200 select-none dark:border-white"
+              :class="{
+                'border-3 !border-blue-600 bg-blue-400': selectedImages.has(name),
+                hidden: !filteredImages.has(name) && isFiltering,
+              }"
+            >
+              <img
+                :src="'file://' + image.path"
+                :alt="name"
+                @dblclick="displayFullImage(name)"
+                draggable="false"
+                class="h-full w-full rounded-md object-scale-down"
+              />
+            </div>
+          </div>
+          <div
+            class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+          >
+            <label class="input input-xs w-full border-r-0 px-1 pr-0 !outline-none">
+              <input
+                v-model="filterInput"
+                type="text"
+                placeholder="Type a tag to filter the images..."
+                @keyup.enter="filterImages"
+                @input="clearImageFilter"
+              />
+              <span
+                v-if="filterInput"
+                class="cursor-pointer"
+                @click="((filterInput = ''), clearImageFilter())"
+                >X</span
+              >
+              <select v-model.lazy="filterMode" class="select w-fit select-xs !outline-none">
+                <option value="or" selected>OR</option>
+                <option value="no">NO</option>
+                <option value="and">AND</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="flex flex-1 overflow-auto">
+          <div
+            class="divider m-0 divider-horizontal cursor-ew-resize not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
+            @mousedown.prevent="resizeContainer"
+          ></div>
+          <div class="flex w-[30%] items-center justify-center">
             <img
-              :src="'file://' + image.path"
-              :alt="name"
-              @dblclick="displayFullImage(name)"
-              draggable="false"
-              class="h-full w-full rounded-md object-scale-down"
+              v-if="selectedImages.size"
+              :src="images.get([...selectedImages][0])?.path"
+              class="max-h-full"
             />
           </div>
-        </div>
-        <div
-          class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
-        >
-          <label class="input input-xs w-full border-r-0 px-1 pr-0 !outline-none">
-            <input
-              v-model="filterInput"
-              type="text"
-              placeholder="Type a tag to filter the images..."
-              @keyup.enter="filterImages"
-              @input="clearImageFilter"
-            />
-            <span
-              v-if="filterInput"
-              class="cursor-pointer"
-              @click="((filterInput = ''), clearImageFilter())"
-              >X</span
-            >
-            <select v-model.lazy="filterMode" class="select w-fit select-xs !outline-none">
-              <option value="or" selected>OR</option>
-              <option value="no">NO</option>
-              <option value="and">AND</option>
-            </select>
-          </label>
-        </div>
-      </div>
-      <div class="flex flex-1 overflow-auto">
-        <div
-          class="divider m-0 divider-horizontal cursor-ew-resize not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
-          @mousedown="startResize"
-        ></div>
-        <div class="flex w-[30%] items-center justify-center">
-          <img
-            v-if="selectedImages.size"
-            :src="images.get([...selectedImages][0])?.path"
-            class="max-h-full"
-          />
-        </div>
-        <div
-          class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
-        ></div>
-        <div class="w-[45%]">
-          <div class="flex h-[50%]">
-            <div class="w-[50%] text-center">
+          <div
+            class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
+          ></div>
+          <div class="w-[45%]">
+            <div class="flex h-[50%]">
+              <div class="w-[50%] text-center">
+                <div
+                  class="flex items-center justify-center border-b-2 border-gray-400 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+                >
+                  <p>Tags detected by autotagger but not in the captions</p>
+                </div>
+              </div>
               <div
-                class="flex items-center justify-center border-b-2 border-gray-400 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
-              >
-                <p>Tags detected by autotagger but not in the captions</p>
+                class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
+              ></div>
+              <div class="w-[50%] text-center">
+                <div
+                  class="flex items-center justify-center border-b-2 border-gray-400 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+                >
+                  <p>Tags in captions but not detected by the autotagger</p>
+                </div>
               </div>
             </div>
             <div
-              class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
-            ></div>
-            <div class="w-[50%] text-center">
+              class="flex h-[50%] flex-col border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+            >
+              <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth">
+                <div
+                  v-for="tag in displayedTags"
+                  :key="tag"
+                  class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
+                  @click="removeTag(tag)"
+                >
+                  {{ tag }}
+                </div>
+              </div>
               <div
-                class="flex items-center justify-center border-b-2 border-gray-400 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+                class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
               >
-                <p>Tags in captions but not detected by the autotagger</p>
+                <label class="input input-xs w-[50%] px-1 !outline-none">
+                  <input
+                    v-model.trim="tagInput"
+                    type="text"
+                    placeholder="Type to add a tag..."
+                    @keyup.enter="addTag"
+                  />
+                </label>
               </div>
             </div>
           </div>
           <div
-            class="flex h-[50%] flex-col border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
-          >
-            <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth">
+            class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
+          ></div>
+          <div class="w-[25%] pr-1">
+            <div class="flex" :style="{ height: tagGroupSectionTopHeight + '%' }"></div>
+            <div class="flex flex-col" :style="{ height: tagGroupSectionBottomHeight + '%' }">
               <div
-                v-for="tag in displayedTags"
-                :key="tag"
-                class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
-                @click="removeTag(tag)"
-              >
-                {{ tag }}
+                class="divider m-0 cursor-ns-resize not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
+                @mousedown.prevent="resizeTagGroupSection"
+              ></div>
+              <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth pt-1">
+                <div
+                  v-for="tag in displayedGlobalTags"
+                  :key="tag"
+                  class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
+                  @click="removeGlobalTag(tag)"
+                >
+                  {{ tag }}
+                </div>
               </div>
-            </div>
-            <div
-              class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
-            >
-              <label class="input input-xs w-[50%] px-1 !outline-none">
-                <input
-                  v-model.trim="tagInput"
-                  type="text"
-                  placeholder="Type to add a tag..."
-                  @keyup.enter="addTag"
-                />
-              </label>
-            </div>
-          </div>
-        </div>
-        <div
-          class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
-        ></div>
-        <div class="w-[25%] pr-1">
-          <div class="flex h-[55%]"></div>
-          <div
-            class="flex h-[45%] flex-col border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
-          >
-            <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth">
               <div
-                v-for="tag in displayedGlobalTags"
-                :key="tag"
-                class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
-                @click="removeGlobalTag(tag)"
+                class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
               >
-                {{ tag }}
+                <label class="input input-xs w-[50%] px-1 !outline-none">
+                  <input
+                    v-model.trim="globalTagInput"
+                    type="text"
+                    placeholder="Type to add a tag..."
+                    @keyup.enter="addGlobalTag"
+                  />
+                </label>
               </div>
-            </div>
-            <div
-              class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
-            >
-              <label class="input input-xs w-[50%] px-1 !outline-none">
-                <input
-                  v-model.trim="globalTagInput"
-                  type="text"
-                  placeholder="Type to add a tag..."
-                  @keyup.enter="addGlobalTag"
-                />
-              </label>
             </div>
           </div>
         </div>
       </div>
     </div>
+    <TagGroupEditorComponent />
   </div>
   <ModalComponent :html="modalHtml" :is-image="imageModal" />
 </template>
