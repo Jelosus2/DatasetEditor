@@ -25,6 +25,7 @@ const displayedGlobalTags = ref<Set<string>>(new Set());
 const modalHtml = ref('');
 const imageModal = ref(false);
 const tagInput = ref('');
+const globalTagInput = ref('');
 const filterMode = ref('or');
 const filterInput = ref('');
 const filteredImages = ref<Set<string>>(new Set());
@@ -126,20 +127,33 @@ function startResize(event: MouseEvent) {
 function addTag() {
   if (!tagInput.value) return;
 
-  const tagExists = props.globalTags.has(tagInput.value);
-  if (!tagExists) props.globalTags.set(tagInput.value, new Set<string>());
-
   for (const image of selectedImages.value.values()) {
     props.images.get(image)?.tags.add(tagInput.value);
-    props.globalTags.get(tagInput.value)?.add(image);
   }
 
-  console.dir(props.globalTags);
+  updateDisplayedTags();
+  if (!props.globalTags.has(tagInput.value)) {
+    props.globalTags.set(tagInput.value, new Set([...selectedImages.value.values()]));
+    updateGlobalTags();
+  }
 
   tagInput.value = '';
+}
+
+function addGlobalTag() {
+  if (!globalTagInput.value) return;
+
+  for (const image of props.images.keys()) {
+    props.images.get(image)?.tags.add(globalTagInput.value);
+  }
 
   updateDisplayedTags();
-  if (!tagExists) updateGlobalTags();
+  if (!props.globalTags.has(globalTagInput.value)) {
+    props.globalTags.set(globalTagInput.value, new Set([...props.images.keys()]));
+    updateGlobalTags();
+  }
+
+  globalTagInput.value = '';
 }
 
 function removeTag(tag: string) {
@@ -156,6 +170,16 @@ function removeTag(tag: string) {
     props.globalTags.delete(tag);
     updateGlobalTags();
   }
+}
+
+function removeGlobalTag(tag: string) {
+  for (const image of props.images.keys()) {
+    props.images.get(image)?.tags.delete(tag);
+  }
+
+  updateDisplayedTags();
+  props.globalTags.delete(tag);
+  updateGlobalTags();
 }
 
 let isFiltering = false;
@@ -252,7 +276,7 @@ function clearImageFilter() {
           </div>
         </div>
         <div
-          class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
+          class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
         >
           <label class="input input-xs w-full border-r-0 px-1 pr-0 !outline-none">
             <input
@@ -292,10 +316,10 @@ function clearImageFilter() {
           class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
         ></div>
         <div class="w-[45%]">
-          <div class="flex h-[48%]">
+          <div class="flex h-[50%]">
             <div class="w-[50%] text-center">
               <div
-                class="flex items-center justify-center border-b-2 border-gray-400 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
+                class="flex items-center justify-center border-b-2 border-gray-400 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
               >
                 <p>Tags detected by autotagger but not in the captions</p>
               </div>
@@ -305,14 +329,15 @@ function clearImageFilter() {
             ></div>
             <div class="w-[50%] text-center">
               <div
-                class="flex items-center justify-center border-b-2 border-gray-400 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
+                class="flex items-center justify-center border-b-2 border-gray-400 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
               >
                 <p>Tags in captions but not detected by the autotagger</p>
               </div>
             </div>
           </div>
-          <div class="divider m-0 not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"></div>
-          <div class="flex h-[49%] flex-col">
+          <div
+            class="flex h-[50%] flex-col border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+          >
             <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth">
               <div
                 v-for="tag in displayedTags"
@@ -324,7 +349,7 @@ function clearImageFilter() {
               </div>
             </div>
             <div
-              class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
+              class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
             >
               <label class="input input-xs w-[50%] px-1 !outline-none">
                 <input
@@ -341,90 +366,35 @@ function clearImageFilter() {
           class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
         ></div>
         <div class="w-[25%] pr-1">
-          <div class="flex h-[54%]"></div>
-          <div class="divider m-0 not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"></div>
-          <div class="flex h-fit max-h-[43%] flex-wrap gap-2 overflow-auto scroll-smooth">
+          <div class="flex h-[55%]"></div>
+          <div
+            class="flex h-[45%] flex-col border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+          >
+            <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth">
+              <div
+                v-for="tag in displayedGlobalTags"
+                :key="tag"
+                class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
+                @click="removeGlobalTag(tag)"
+              >
+                {{ tag }}
+              </div>
+            </div>
             <div
-              v-for="tag in displayedGlobalTags"
-              :key="tag"
-              class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
+              class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
             >
-              {{ tag }}
+              <label class="input input-xs w-[50%] px-1 !outline-none">
+                <input
+                  v-model.trim="globalTagInput"
+                  type="text"
+                  placeholder="Type to add a tag..."
+                  @keyup.enter="addGlobalTag"
+                />
+              </label>
             </div>
           </div>
         </div>
       </div>
-      <!--<div class="divider m-1 ml-0 divider-horizontal"></div>
-      <div class="flex flex-2 overflow-auto">
-        <div class="flex w-full flex-col">
-          <input
-            v-for="tag in displayedGlobalTags"
-            :key="tag"
-            type="text"
-            :value="tag"
-            class="border-1 border-gray-400 pl-2"
-            :class="{
-              'bg-[#323841]': globalTags.get(tag)?.has([...selectedImages][0]),
-            }"
-          />
-        </div>
-        <ul class="menu bg-base-200 px-0">
-          <li>
-            <a>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                />
-              </svg>
-            </a>
-          </li>
-          <li>
-            <a>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </a>
-          </li>
-          <li>
-            <a>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-              </svg>
-            </a>
-          </li>
-        </ul>
-      </div>-->
     </div>
   </div>
   <ModalComponent :html="modalHtml" :is-image="imageModal" />
