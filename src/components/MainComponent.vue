@@ -32,6 +32,7 @@ const filterInput = ref('');
 const filteredImages = ref<Set<string>>(new Set());
 const container = shallowRef<HTMLDivElement | null>(null);
 const containerWidth = ref(0);
+const tagGroups = ref<Map<string, Set<string>>>(new Map());
 const tagGroupSectionTopHeight = ref(55);
 const tagGroupSectionBottomHeight = ref(45);
 
@@ -272,7 +273,7 @@ function clearImageFilter() {
     <div class="tab-content border-t-base-300 bg-base-100">
       <div class="flex h-full">
         <div
-          class="flex max-h-[calc(100vh_-_90px)] w-[20%] max-w-[80%] min-w-[20%] flex-col pt-1 pl-1"
+          class="flex w-[20%] max-w-[80%] min-w-[20%] flex-col pt-1 pl-1"
           :style="{ width: containerWidth + 'px' }"
           ref="container"
         >
@@ -294,6 +295,7 @@ function clearImageFilter() {
                 :alt="name"
                 @dblclick="displayFullImage(name)"
                 draggable="false"
+                loading="lazy"
                 class="h-full w-full rounded-md object-scale-down"
               />
             </div>
@@ -303,7 +305,7 @@ function clearImageFilter() {
           >
             <label class="input input-xs w-full border-r-0 px-1 pr-0 !outline-none">
               <input
-                v-model="filterInput"
+                v-model.trim="filterInput"
                 type="text"
                 placeholder="Type a tag to filter the images..."
                 @keyup.enter="filterImages"
@@ -323,7 +325,7 @@ function clearImageFilter() {
             </label>
           </div>
         </div>
-        <div class="flex flex-1 overflow-auto">
+        <div class="flex flex-1">
           <div
             class="divider m-0 divider-horizontal cursor-ew-resize not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
             @mousedown.prevent="resizeContainer"
@@ -389,7 +391,14 @@ function clearImageFilter() {
             class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
           ></div>
           <div class="w-[25%] pr-1">
-            <div class="flex" :style="{ height: tagGroupSectionTopHeight + '%' }"></div>
+            <div class="flex" :style="{ height: tagGroupSectionTopHeight + '%' }">
+              <div v-for="[name, tags] in tagGroups" :key="name">
+                <span>{{ name }}</span>
+                <div v-for="tag in tags" :key="tag">
+                  {{ tag }}
+                </div>
+              </div>
+            </div>
             <div class="flex flex-col" :style="{ height: tagGroupSectionBottomHeight + '%' }">
               <div
                 class="divider m-0 cursor-ns-resize not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
@@ -422,7 +431,7 @@ function clearImageFilter() {
         </div>
       </div>
     </div>
-    <TagGroupEditorComponent />
+    <TagGroupEditorComponent :tag-groups="tagGroups" />
   </div>
   <ModalComponent :html="modalHtml" :is-image="imageModal" />
 </template>
