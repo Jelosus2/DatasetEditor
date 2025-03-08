@@ -342,9 +342,9 @@ function clearImageFilter() {
           ></div>
           <div class="w-[45%]">
             <div class="flex h-[50%]">
-              <div class="w-[50%] text-center">
+              <div class="w-[50%]">
                 <div
-                  class="flex items-center justify-center border-b-2 border-gray-400 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+                  class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
                 >
                   <p>Tags detected by autotagger but not in the captions</p>
                 </div>
@@ -352,9 +352,9 @@ function clearImageFilter() {
               <div
                 class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
               ></div>
-              <div class="w-[50%] text-center">
+              <div class="w-[50%]">
                 <div
-                  class="flex items-center justify-center border-b-2 border-gray-400 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+                  class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
                 >
                   <p>Tags in captions but not detected by the autotagger</p>
                 </div>
