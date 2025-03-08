@@ -196,7 +196,14 @@ async function importGroup() {
                   </svg>
                   Export All Groups to JSON
                 </button>
-                <button class="btn btn-error btn-outline">Delete Group</button>
+                <button class="btn btn-error btn-outline">Delete This Group</button>
+                <button
+                  class="btn btn-error btn-outline"
+                  type="button"
+                  @click="(tagGroups.clear(), (selectedGroup = ''), (isUserSelection = false))"
+                >
+                  Delete All Groups
+                </button>
               </form>
             </div>
             <div
@@ -266,7 +273,7 @@ async function importGroup() {
           class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
         ></div>
         <div class="w-[35%] pr-1">
-          <div class="flex h-[29%]">
+          <div class="flex h-[30%]">
             <div class="flex w-full flex-col gap-2">
               <div
                 class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
@@ -298,7 +305,7 @@ async function importGroup() {
               <button class="btn btn-error btn-outline">Override Current Groups</button>
             </div>
           </div>
-          <div class="flex h-[71%] w-full flex-col gap-2">
+          <div class="flex h-[70%] w-full flex-col gap-2">
             <div
               class="flex items-center justify-center border-y-2 border-gray-400 text-center dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
             >
