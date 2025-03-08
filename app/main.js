@@ -1,6 +1,6 @@
 import { app, ipcMain, BrowserWindow, Menu } from 'electron';
 import { join } from 'node:path';
-import { _dirname, getOS, loadDatasetDirectory } from './utils.js';
+import { _dirname, getOS, loadDatasetDirectory, saveTagGroupFile } from './utils.js';
 
 const __dirname = _dirname(import.meta.url);
 let mainWindow;
@@ -39,3 +39,7 @@ app.on('activate', async () => {
 
 ipcMain.handle('load_dataset', async () => await loadDatasetDirectory(mainWindow));
 ipcMain.handle('get_os_type', getOS);
+ipcMain.handle(
+  'save_tag_group_file',
+  async (_, tagGroups) => await saveTagGroupFile(mainWindow, tagGroups),
+);

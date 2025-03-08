@@ -1,13 +1,11 @@
 import { dialog } from 'electron';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, extname, basename, join } from 'node:path';
 
 export const _dirname = (url) => dirname(fileURLToPath(url));
 
 export async function loadDatasetDirectory(mainWindow) {
-  let directoryPath;
-
   const result = await dialog.showOpenDialog(mainWindow, {
     title: 'Select the dataset directory',
     buttonLabel: 'Load Dataset',
@@ -16,7 +14,7 @@ export async function loadDatasetDirectory(mainWindow) {
 
   if (result.canceled) return null;
 
-  directoryPath = result.filePaths[0];
+  const directoryPath = result.filePaths[0];
 
   const images = new Map();
   const globalTags = new Map();
@@ -63,4 +61,28 @@ export function getOS() {
   };
 
   return osTypes[process.platform] ?? 'linux';
+}
+
+export async function saveTagGroupFile(mainWindow, tagGroups) {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Save Tag Group File',
+    defaultPath: `tag_group.json`,
+    filters: [
+      {
+        name: 'JSON File',
+        extensions: ['json'],
+      },
+    ],
+  });
+
+  if (result.canceled) return null;
+
+  const obj = {};
+  for (const name in tagGroups) {
+    obj[name] = [...tagGroups[name]];
+  }
+
+  writeFileSync(result.filePath, JSON.stringify(obj, null, 2));
+
+  return true;
 }

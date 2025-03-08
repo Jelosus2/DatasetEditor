@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, toRaw } from 'vue';
 
 const props = defineProps({
   tagGroups: {
@@ -127,6 +127,25 @@ function addTag() {
   }
   tagInput.value = '';
 }
+
+async function exportGroupToJSON(mode: 'one' | 'all') {
+  if (!props.tagGroups.size || (mode === 'one' && !selectedGroup.value)) return;
+
+  const obj: { [key: string]: string[] } = {};
+
+  if (mode === 'all') {
+    for (const [name, tags] of props.tagGroups.entries()) {
+      obj[name] = [...tags];
+    }
+
+    await window.ipcRenderer.invoke('save_tag_group_file', toRaw());
+  } else {
+    await window.ipcRenderer.invoke(
+      'save_tag_group_file',
+      toRaw(new Map([[selectedGroup.value, props.tagGroups.get(selectedGroup.value)]])),
+    );
+  }
+}
 </script>
 
 <template>
@@ -173,7 +192,7 @@ function addTag() {
               >
                 <select
                   v-model.lazy="selectedGroup"
-                  class="select text-center select-sm !outline-none"
+                  class="select w-full text-center select-sm !outline-none"
                   :class="{
                     validator: isUserSelection,
                   }"
@@ -186,7 +205,11 @@ function addTag() {
                   </option>
                 </select>
                 <p class="validator-hint mt-0 hidden">You must select a group to edit.</p>
-                <button class="btn btn-info btn-outline" type="button">
+                <button
+                  class="btn btn-info btn-outline"
+                  type="button"
+                  @click="exportGroupToJSON('one')"
+                >
                   <svg
                     class="h-5 w-5 fill-none"
                     viewBox="0 0 24 24"
@@ -205,7 +228,32 @@ function addTag() {
                       stroke-linejoin="round"
                     />
                   </svg>
-                  Export to JSON
+                  Export This Group to JSON
+                </button>
+                <button
+                  class="btn btn-info btn-outline"
+                  type="button"
+                  @click="exportGroupToJSON('all')"
+                >
+                  <svg
+                    class="h-5 w-5 fill-none"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M13.5 3H12H7C5.89543 3 5 3.89543 5 5V19C5 20.1046 5.89543 21 7 21H7.5M13.5 3L19 8.625M13.5 3V7.625C13.5 8.17728 13.9477 8.625 14.5 8.625H19M19 8.625V9.75V12V19C19 20.1046 18.1046 21 17 21H16.5"
+                      class="stroke-current stroke-2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M12 12V20M12 20L9.5 17.5M12 20L14.5 17.5"
+                      class="stroke-current stroke-2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  Export All Groups to JSON
                 </button>
                 <button class="btn btn-error btn-outline">Delete Group</button>
               </form>
@@ -221,26 +269,25 @@ function addTag() {
               </div>
               <form class="flex h-full flex-col gap-2" @submit.prevent="createGroup">
                 <label
-                  class="input input-sm px-2 !outline-none"
+                  class="input input-sm w-full px-2 !outline-none"
                   :class="{
                     validator: isUserInput,
                   }"
                 >
                   Group Name
                   <input
-                    :key="'groupName'"
                     v-model.trim="groupNameInput"
                     type="text"
-                    @input="isUserInput = true"
                     placeholder="Name for the tag group..."
                     required
+                    @input="isUserInput = true"
                   />
                 </label>
                 <p class="validator-hint mt-0 hidden">The name for the group is required.</p>
                 <textarea
                   v-model.trim="groupTags"
-                  class="textarea flex-1 resize-none !outline-none"
-                  placeholder="Tags to be added to the group..."
+                  class="textarea w-full flex-1 resize-none !outline-none"
+                  placeholder="Tags separated by comma to be added to the group..."
                 ></textarea>
                 <button class="btn btn-outline btn-success" type="submit">Create Group</button>
               </form>
@@ -266,7 +313,7 @@ function addTag() {
                 <input
                   v-model.trim="tagInput"
                   type="text"
-                  placeholder="Type to add a tag..."
+                  placeholder="Type to add tags separated by comma..."
                   @keyup.enter="addTag"
                 />
               </label>
