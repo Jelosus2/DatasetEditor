@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRaw } from 'vue';
+import { ref } from 'vue';
 
 const props = defineProps({
   tagGroups: {
@@ -14,82 +14,7 @@ const groupTags = ref('');
 const isUserInput = ref(true);
 const isUserSelection = ref(true);
 const tagInput = ref('');
-
-function test() {
-  props.tagGroups.set('General tags', new Set(['test', 'works']));
-  props.tagGroups.set(
-    'Character tags',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    'Character tags',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '1',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '2',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '3',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '4',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '5',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '6',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '7',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '8',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '9',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '10',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '11',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '12',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '14',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '15',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '16',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-  props.tagGroups.set(
-    '17aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-    new Set(['fubuki', 'cinderella', 'privaty', 'naga', 'helm', 'crown', 'scarlet: black shadow']),
-  );
-}
+const importedGroups = ref<Map<string, Set<string>>>(new Map());
 
 function createGroup() {
   if (!groupNameInput.value) return;
@@ -138,13 +63,26 @@ async function exportGroupToJSON(mode: 'one' | 'all') {
       obj[name] = [...tags];
     }
 
-    await window.ipcRenderer.invoke('save_tag_group_file', toRaw());
+    await window.ipcRenderer.invoke('save_tag_group_file', obj);
   } else {
-    await window.ipcRenderer.invoke(
-      'save_tag_group_file',
-      toRaw(new Map([[selectedGroup.value, props.tagGroups.get(selectedGroup.value)]])),
-    );
+    obj[selectedGroup.value] = [...props.tagGroups.get(selectedGroup.value)!];
+
+    await window.ipcRenderer.invoke('save_tag_group_file', obj);
   }
+}
+
+async function importGroup() {
+  const result = (await window.ipcRenderer.invoke('import_group')) as
+    | Map<string, Set<string>>
+    | null
+    | false;
+  if (result === null) return;
+  if (!result) {
+    console.log('Incorrect JSON format');
+    return;
+  }
+
+  importedGroups.value = result;
 }
 </script>
 
@@ -188,7 +126,10 @@ async function exportGroupToJSON(mode: 'one' | 'all') {
               </div>
               <form
                 class="flex h-full flex-col gap-2"
-                @submit.prevent="(tagGroups.delete(selectedGroup), (isUserSelection = false))"
+                @submit.prevent="
+                  (tagGroups.delete(selectedGroup),
+                  ((selectedGroup = ''), (isUserSelection = false)))
+                "
               >
                 <select
                   v-model.lazy="selectedGroup"
@@ -274,7 +215,7 @@ async function exportGroupToJSON(mode: 'one' | 'all') {
                     validator: isUserInput,
                   }"
                 >
-                  Group Name
+                  <span class="label">Group Name</span>
                   <input
                     v-model.trim="groupNameInput"
                     type="text"
@@ -314,6 +255,7 @@ async function exportGroupToJSON(mode: 'one' | 'all') {
                   v-model.trim="tagInput"
                   type="text"
                   placeholder="Type to add tags separated by comma..."
+                  :disabled="!selectedGroup"
                   @keyup.enter="addTag"
                 />
               </label>
@@ -323,8 +265,69 @@ async function exportGroupToJSON(mode: 'one' | 'all') {
         <div
           class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
         ></div>
-        <div class="w-[35%]">
-          <div @click="test">Test</div>
+        <div class="w-[35%] pr-1">
+          <div class="flex h-[29%]">
+            <div class="flex w-full flex-col gap-2">
+              <div
+                class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+              >
+                <p>Import tag groups</p>
+              </div>
+              <button class="btn btn-info btn-outline" @click="importGroup">
+                <svg
+                  class="h-5 w-5 fill-none"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M13.5 3H12H8C6.34315 3 5 4.34315 5 6V18C5 19.6569 6.34315 21 8 21H12M13.5 3L19 8.625M13.5 3V7.625C13.5 8.17728 13.9477 8.625 14.5 8.625H19M19 8.625V11.8125"
+                    class="stroke-current stroke-2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M17.5 21L17.5 15M17.5 15L20 17.5M17.5 15L15 17.5"
+                    class="stroke-current stroke-2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                Import Groups from JSON File
+              </button>
+              <button class="btn btn-outline btn-success">Add to Current Groups</button>
+              <button class="btn btn-error btn-outline">Override Current Groups</button>
+            </div>
+          </div>
+          <div class="flex h-[71%] w-full flex-col gap-2">
+            <div
+              class="flex items-center justify-center border-y-2 border-gray-400 text-center dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+            >
+              <p>Import Preview</p>
+            </div>
+            <div class="flex flex-col gap-2 overflow-auto">
+              <div
+                v-for="[name, tags] in importedGroups"
+                :key="name"
+                class="collapse shrink-0 rounded-none border border-base-300 bg-base-100"
+              >
+                <input type="checkbox" />
+                <div class="collapse-title pr-[16px] text-center font-semibold break-all">
+                  {{ name }}
+                </div>
+                <div
+                  class="collapse-content flex flex-wrap gap-2 overflow-auto scroll-smooth text-sm"
+                >
+                  <div
+                    v-for="tag in tags"
+                    :key="tag"
+                    class="h-fit w-fit bg-[#a6d9e2] px-1.5 dark:bg-gray-700"
+                  >
+                    {{ tag }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

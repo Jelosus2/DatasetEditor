@@ -1,6 +1,12 @@
 import { app, ipcMain, BrowserWindow, Menu } from 'electron';
 import { join } from 'node:path';
-import { _dirname, getOS, loadDatasetDirectory, saveTagGroupFile } from './utils.js';
+import {
+  _dirname,
+  getOS,
+  importTagGroup,
+  loadDatasetDirectory,
+  saveTagGroupFile,
+} from './utils.js';
 
 const __dirname = _dirname(import.meta.url);
 let mainWindow;
@@ -43,3 +49,4 @@ ipcMain.handle(
   'save_tag_group_file',
   async (_, tagGroups) => await saveTagGroupFile(mainWindow, tagGroups),
 );
+ipcMain.handle('import_group', async () => await importTagGroup(mainWindow));

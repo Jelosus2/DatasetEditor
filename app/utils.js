@@ -66,7 +66,7 @@ export function getOS() {
 export async function saveTagGroupFile(mainWindow, tagGroups) {
   const result = await dialog.showSaveDialog(mainWindow, {
     title: 'Save Tag Group File',
-    defaultPath: `tag_group.json`,
+    defaultPath: 'tag_group.json',
     filters: [
       {
         name: 'JSON File',
@@ -77,12 +77,39 @@ export async function saveTagGroupFile(mainWindow, tagGroups) {
 
   if (result.canceled) return null;
 
-  const obj = {};
-  for (const name in tagGroups) {
-    obj[name] = [...tagGroups[name]];
-  }
-
-  writeFileSync(result.filePath, JSON.stringify(obj, null, 2));
+  writeFileSync(result.filePath, JSON.stringify(tagGroups, null, 2));
 
   return true;
+}
+
+export async function importTagGroup(mainWindow) {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select the tag group JSON file to load',
+    properties: ['openFile'],
+    filters: [
+      {
+        name: 'JSON File',
+        extensions: ['json'],
+      },
+    ],
+  });
+
+  if (result.canceled) return null;
+
+  const filePath = result.filePaths[0];
+  const obj = JSON.parse(readFileSync(filePath, 'utf-8'));
+
+  console.log(obj);
+
+  if (Array.isArray(obj)) return false;
+  for (const key in obj) {
+    console.log(Array.isArray(obj[key]));
+    if (!Array.isArray(obj[key])) return false;
+    for (const value of obj[key]) {
+      console.log(typeof value === 'string');
+      if (typeof value !== 'string') return false;
+    }
+  }
+
+  return new Map(Object.entries(obj).map(([name, tags]) => [name, new Set(tags)]));
 }
