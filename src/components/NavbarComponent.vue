@@ -42,7 +42,7 @@ function changeTheme() {
               <kbd v-if="os === 'mac'" class="kbd kbd-xs">&#8984;</kbd>
               <kbd v-else class="kbd kbd-xs">Ctrl</kbd>
               +
-              <kbd class="kbd kbd-xs">S</kbd>
+              <kbd class="kbd kbd-xs">O</kbd>
             </div>
           </a>
         </li>

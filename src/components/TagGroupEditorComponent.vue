@@ -6,6 +6,10 @@ const props = defineProps({
     type: Map<string, Set<string>>,
     required: true,
   },
+  os: {
+    type: String,
+    required: true,
+  },
 });
 
 const selectedGroup = ref('');
@@ -72,7 +76,7 @@ async function exportGroupToJSON(mode: 'one' | 'all') {
 }
 
 async function importGroup() {
-  const result = (await window.ipcRenderer.invoke('import_group')) as
+  const result = (await window.ipcRenderer.invoke('import_tag_group')) as
     | Map<string, Set<string>>
     | null
     | false;
@@ -84,11 +88,37 @@ async function importGroup() {
 
   importedGroups.value = result;
 }
+
+function addImportedGroupToCurrent(override: boolean) {
+  if (override) props.tagGroups.clear();
+
+  for (const [name, tags] of importedGroups.value) {
+    props.tagGroups.set(name, tags);
+  }
+
+  importedGroups.value.clear();
+}
+
+function saveTagGroups(e: KeyboardEvent | MouseEvent) {
+  if (e instanceof KeyboardEvent && e.metaKey && props.os !== 'mac') return;
+
+  const obj: { [key: string]: string[] } = {};
+  for (const [name, tags] of props.tagGroups.entries()) {
+    obj[name] = [...tags];
+  }
+
+  if (Object.keys(obj).length) window.ipcRenderer.invoke('save_tag_group', obj);
+}
 </script>
 
 <template>
   <input type="radio" name="dataset_tabs" class="tab" aria-label="Tag Groups" />
-  <div class="tab-content border-t-base-300 bg-base-100">
+  <div
+    tabindex="0"
+    @keydown.ctrl.s.exact="saveTagGroups"
+    @keydown.meta.s.exact="saveTagGroups"
+    class="tab-content border-t-base-300 bg-base-100 focus:outline-none"
+  >
     <div class="flex h-full">
       <div class="flex w-[25%] flex-col gap-2 overflow-auto pt-1 pl-1">
         <div
@@ -204,6 +234,9 @@ async function importGroup() {
                 >
                   Delete All Groups
                 </button>
+                <button class="btn btn-outline btn-success" type="button" @click="saveTagGroups">
+                  Save Tag Groups
+                </button>
               </form>
             </div>
             <div
@@ -301,8 +334,12 @@ async function importGroup() {
                 </svg>
                 Import Groups from JSON File
               </button>
-              <button class="btn btn-outline btn-success">Add to Current Groups</button>
-              <button class="btn btn-error btn-outline">Override Current Groups</button>
+              <button class="btn btn-outline btn-success" @click="addImportedGroupToCurrent(false)">
+                Add to Current Groups
+              </button>
+              <button class="btn btn-error btn-outline" @click="addImportedGroupToCurrent(true)">
+                Override Current Groups
+              </button>
             </div>
           </div>
           <div class="flex h-[70%] w-full flex-col gap-2">

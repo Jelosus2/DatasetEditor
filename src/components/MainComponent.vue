@@ -2,7 +2,7 @@
 import ModalComponent from '@/components/ModalComponent.vue';
 import TagGroupEditorComponent from '@/components/TagGroupEditorComponent.vue';
 
-import { ref, watch, computed, shallowRef } from 'vue';
+import { ref, watch, computed, shallowRef, onMounted } from 'vue';
 
 const props = defineProps({
   images: {
@@ -43,7 +43,7 @@ watch(
   (newKeys) => {
     if (newKeys.length > 0) {
       const firstImage = newKeys[0];
-      selectedImages.value = new Set<string>([firstImage]);
+      selectedImages.value = new Set([firstImage]);
       updateDisplayedTags();
       updateGlobalTags();
     }
@@ -147,16 +147,19 @@ function resizeTagGroupSection(moveEvent: MouseEvent) {
   window.addEventListener('mouseup', onMouseUp);
 }
 
-function addTag() {
-  if (!tagInput.value) return;
+function addTag(tag?: string, image?: string) {
+  const newTag = tag || tagInput.value;
+  if (!newTag) return;
 
-  for (const image of selectedImages.value.values()) {
-    props.images.get(image)?.tags.add(tagInput.value);
+  const images = image ? new Set([image]) : selectedImages.value;
+
+  for (const image of images.values()) {
+    props.images.get(image)?.tags.add(newTag);
   }
 
   updateDisplayedTags();
-  if (!props.globalTags.has(tagInput.value)) {
-    props.globalTags.set(tagInput.value, new Set([...selectedImages.value.values()]));
+  if (!props.globalTags.has(newTag)) {
+    props.globalTags.set(newTag, new Set([...images]));
     updateGlobalTags();
   }
 
@@ -179,17 +182,18 @@ function addGlobalTag() {
   globalTagInput.value = '';
 }
 
-function removeTag(tag: string) {
-  const images = props.globalTags.get(tag);
+function removeTag(tag: string, image?: string) {
+  const globalImages = props.globalTags.get(tag);
+  const images = image ? new Set([image]) : selectedImages.value;
 
-  for (const image of selectedImages.value.values()) {
+  for (const image of images.values()) {
     props.images.get(image)?.tags.delete(tag);
-    images?.delete(image);
+    globalImages?.delete(image);
   }
 
   updateDisplayedTags();
 
-  if (!images?.size) {
+  if (!globalImages?.size) {
     props.globalTags.delete(tag);
     updateGlobalTags();
   }
@@ -265,6 +269,23 @@ function clearImageFilter() {
   isFiltering = false;
   filteredImages.value.clear();
 }
+
+function addOrRemoveTag(tag: string) {
+  for (const image of selectedImages.value.values()) {
+    if (props.images.get(image)?.tags.has(tag)) removeTag(tag, image);
+    else addTag(tag, image);
+  }
+}
+
+onMounted(async () => {
+  const result = (await window.ipcRenderer.invoke('load_tag_group')) as Map<
+    string,
+    Set<string>
+  > | null;
+  if (!result) return;
+
+  tagGroups.value = result;
+});
 </script>
 
 <template>
@@ -308,6 +329,7 @@ function clearImageFilter() {
                 v-model.trim="filterInput"
                 type="text"
                 placeholder="Type a tag to filter the images..."
+                :disabled="!images.size"
                 @keyup.enter="filterImages"
                 @input="clearImageFilter"
               />
@@ -381,7 +403,8 @@ function clearImageFilter() {
                     v-model.trim="tagInput"
                     type="text"
                     placeholder="Type to add a tag..."
-                    @keyup.enter="addTag"
+                    :disabled="!selectedImages.size"
+                    @keyup.enter="addTag()"
                   />
                 </label>
               </div>
@@ -391,11 +414,25 @@ function clearImageFilter() {
             class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
           ></div>
           <div class="w-[25%] pr-1">
-            <div class="flex" :style="{ height: tagGroupSectionTopHeight + '%' }">
+            <div
+              class="flex flex-col gap-2 overflow-auto"
+              :style="{ height: tagGroupSectionTopHeight + '%' }"
+            >
               <div v-for="[name, tags] in tagGroups" :key="name">
                 <span>{{ name }}</span>
-                <div v-for="tag in tags" :key="tag">
-                  {{ tag }}
+                <div class="flex h-fit flex-wrap gap-2">
+                  <div
+                    v-for="tag in tags"
+                    :key="tag"
+                    class="h-fit w-fit px-1.5 text-sm hover:cursor-pointer"
+                    :class="{
+                      'bg-rose-900': displayedTags.has(tag),
+                      'bg-[#a6d9e2] dark:bg-gray-700': !displayedTags.has(tag),
+                    }"
+                    @click="addOrRemoveTag(tag)"
+                  >
+                    {{ tag }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -422,6 +459,7 @@ function clearImageFilter() {
                     v-model.trim="globalTagInput"
                     type="text"
                     placeholder="Type to add a tag..."
+                    :disabled="!images.size"
                     @keyup.enter="addGlobalTag"
                   />
                 </label>
@@ -431,7 +469,7 @@ function clearImageFilter() {
         </div>
       </div>
     </div>
-    <TagGroupEditorComponent :tag-groups="tagGroups" />
+    <TagGroupEditorComponent :tag-groups="tagGroups" :os="os" />
   </div>
   <ModalComponent :html="modalHtml" :is-image="imageModal" />
 </template>

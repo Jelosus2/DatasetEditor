@@ -23,10 +23,10 @@ async function loadDataset() {
   globalTagsRef.value = dataset.globalTags;
 }
 
-async function handleShortcuts(e: KeyboardEvent) {
+async function handleGlobalShortcuts(e: KeyboardEvent) {
   if (e.repeat) return;
 
-  if (e.ctrlKey && e.key === 's') {
+  if ((e.ctrlKey || (os.value === 'mac' && e.metaKey)) && e.key === 'o') {
     e.preventDefault();
     await loadDataset();
   }
@@ -51,7 +51,7 @@ function loadTheme() {
 }
 
 onMounted(async () => {
-  document.addEventListener('keydown', handleShortcuts);
+  document.addEventListener('keydown', handleGlobalShortcuts);
   loadTheme();
 
   let osType = localStorage.getItem('os');
@@ -65,7 +65,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  document.removeEventListener('keydown', handleShortcuts);
+  document.removeEventListener('keydown', handleGlobalShortcuts);
 });
 </script>
 

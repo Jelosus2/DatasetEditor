@@ -5,6 +5,8 @@ import {
   getOS,
   importTagGroup,
   loadDatasetDirectory,
+  loadTagGroups,
+  saveTagGroup,
   saveTagGroupFile,
 } from './utils.js';
 
@@ -49,4 +51,6 @@ ipcMain.handle(
   'save_tag_group_file',
   async (_, tagGroups) => await saveTagGroupFile(mainWindow, tagGroups),
 );
-ipcMain.handle('import_group', async () => await importTagGroup(mainWindow));
+ipcMain.handle('import_tag_group', async () => await importTagGroup(mainWindow));
+ipcMain.handle('save_tag_group', (_, tagGroups) => saveTagGroup(app.getAppPath(), tagGroups));
+ipcMain.handle('load_tag_group', () => loadTagGroups(app.getAppPath()));

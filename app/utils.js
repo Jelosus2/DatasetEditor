@@ -1,5 +1,5 @@
 import { dialog } from 'electron';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, extname, basename, join } from 'node:path';
 
@@ -97,19 +97,33 @@ export async function importTagGroup(mainWindow) {
   if (result.canceled) return null;
 
   const filePath = result.filePaths[0];
-  const obj = JSON.parse(readFileSync(filePath, 'utf-8'));
+  const data = JSON.parse(readFileSync(filePath, 'utf-8'));
 
-  console.log(obj);
-
-  if (Array.isArray(obj)) return false;
-  for (const key in obj) {
-    console.log(Array.isArray(obj[key]));
-    if (!Array.isArray(obj[key])) return false;
-    for (const value of obj[key]) {
-      console.log(typeof value === 'string');
+  if (Array.isArray(data)) return false;
+  for (const key in data) {
+    if (!Array.isArray(data[key])) return false;
+    for (const value of data[key]) {
       if (typeof value !== 'string') return false;
     }
   }
 
-  return new Map(Object.entries(obj).map(([name, tags]) => [name, new Set(tags)]));
+  return new Map(Object.entries(data).map(([name, tags]) => [name, new Set(tags)]));
+}
+
+export function saveTagGroup(appPath, tagGroups) {
+  const dataDirPath = join(appPath, 'Data', 'TagGroups');
+  const tagGroupFilePath = join(dataDirPath, 'tag_groups.json');
+
+  if (!existsSync(dataDirPath)) mkdirSync(dataDirPath, { recursive: true });
+
+  writeFileSync(tagGroupFilePath, JSON.stringify(tagGroups, null, 2));
+}
+
+export function loadTagGroups(appPath) {
+  const tagGroupFilePath = join(appPath, 'Data', 'TagGroups', 'tag_groups.json');
+
+  if (!existsSync(tagGroupFilePath)) return null;
+  const data = JSON.parse(readFileSync(tagGroupFilePath, 'utf-8'));
+
+  return new Map(Object.entries(data).map(([name, tags]) => [name, new Set(tags)]));
 }
