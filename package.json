@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "electron": "electron .",
+    "build-bsql3": "electron-rebuild -f -w better-sqlite3",
     "e-dev": "set NODE_ENV=debug&& run-p dev electron",
     "e-prod": "run-p dev electron",
     "build": "run-p type-check \"build-only {@}\" --",

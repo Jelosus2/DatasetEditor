@@ -418,14 +418,14 @@ onMounted(async () => {
                     @input="showSuggestions"
                     @keyup.enter="addTag()"
                   />
+                  <datalist id="tag-completions">
+                    <option
+                      v-for="completion in completions"
+                      :key="completion"
+                      :value="completion"
+                    ></option>
+                  </datalist>
                 </label>
-                <datalist id="tag-completions">
-                  <option
-                    v-for="completion in completions"
-                    :key="completion"
-                    :value="completion"
-                  ></option>
-                </datalist>
               </div>
             </div>
           </div>
