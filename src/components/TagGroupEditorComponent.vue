@@ -15,8 +15,6 @@ const props = defineProps({
 const selectedGroup = ref('');
 const groupNameInput = ref('');
 const groupTags = ref('');
-const isUserInput = ref(true);
-const isUserSelection = ref(true);
 const tagInput = ref('');
 const importedGroups = ref<Map<string, Set<string>>>(new Map());
 
@@ -29,11 +27,8 @@ function createGroup() {
     .map((tag) => tag.trim())
     .filter((tag) => tag);
 
-  if (props.tagGroups.has(groupNameInput.value)) return;
-
   props.tagGroups.set(groupNameInput.value, new Set(tags));
 
-  isUserInput.value = false;
   groupNameInput.value = '';
   groupTags.value = '';
 }
@@ -154,90 +149,88 @@ function saveTagGroups(e: KeyboardEvent | MouseEvent) {
               >
                 <p>Edit tag group</p>
               </div>
-              <form
-                class="flex h-full flex-col gap-2"
-                @submit.prevent="
-                  (tagGroups.delete(selectedGroup),
-                  ((selectedGroup = ''), (isUserSelection = false)))
-                "
+              <select
+                v-model.lazy="selectedGroup"
+                class="select w-full text-center select-sm !outline-none"
               >
-                <select
-                  v-model.lazy="selectedGroup"
-                  class="select w-full text-center select-sm !outline-none"
-                  :class="{
-                    validator: isUserSelection,
-                  }"
-                  required
-                  @change="isUserSelection = true"
+                <option value="" selected></option>
+                <option v-for="name in tagGroups.keys()" :key="name" :value="name">
+                  {{ name }}
+                </option>
+              </select>
+              <button
+                class="btn btn-info btn-outline"
+                :disabled="!selectedGroup"
+                @click="exportGroupToJSON('one')"
+              >
+                <svg
+                  class="h-5 w-5 fill-none"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  <option value="" selected></option>
-                  <option v-for="name in tagGroups.keys()" :key="name" :value="name">
-                    {{ name }}
-                  </option>
-                </select>
-                <p class="validator-hint mt-0 hidden">You must select a group to edit.</p>
-                <button
-                  class="btn btn-info btn-outline"
-                  type="button"
-                  @click="exportGroupToJSON('one')"
+                  <path
+                    d="M13.5 3H12H7C5.89543 3 5 3.89543 5 5V19C5 20.1046 5.89543 21 7 21H7.5M13.5 3L19 8.625M13.5 3V7.625C13.5 8.17728 13.9477 8.625 14.5 8.625H19M19 8.625V9.75V12V19C19 20.1046 18.1046 21 17 21H16.5"
+                    class="stroke-current stroke-2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M12 12V20M12 20L9.5 17.5M12 20L14.5 17.5"
+                    class="stroke-current stroke-2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                Export This Group to JSON
+              </button>
+              <button
+                class="btn btn-info btn-outline"
+                :disabled="!tagGroups.size"
+                @click="exportGroupToJSON('all')"
+              >
+                <svg
+                  class="h-5 w-5 fill-none"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  <svg
-                    class="h-5 w-5 fill-none"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M13.5 3H12H7C5.89543 3 5 3.89543 5 5V19C5 20.1046 5.89543 21 7 21H7.5M13.5 3L19 8.625M13.5 3V7.625C13.5 8.17728 13.9477 8.625 14.5 8.625H19M19 8.625V9.75V12V19C19 20.1046 18.1046 21 17 21H16.5"
-                      class="stroke-current stroke-2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M12 12V20M12 20L9.5 17.5M12 20L14.5 17.5"
-                      class="stroke-current stroke-2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  Export This Group to JSON
-                </button>
-                <button
-                  class="btn btn-info btn-outline"
-                  type="button"
-                  @click="exportGroupToJSON('all')"
-                >
-                  <svg
-                    class="h-5 w-5 fill-none"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M13.5 3H12H7C5.89543 3 5 3.89543 5 5V19C5 20.1046 5.89543 21 7 21H7.5M13.5 3L19 8.625M13.5 3V7.625C13.5 8.17728 13.9477 8.625 14.5 8.625H19M19 8.625V9.75V12V19C19 20.1046 18.1046 21 17 21H16.5"
-                      class="stroke-current stroke-2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M12 12V20M12 20L9.5 17.5M12 20L14.5 17.5"
-                      class="stroke-current stroke-2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  Export All Groups to JSON
-                </button>
-                <button class="btn btn-error btn-outline">Delete This Group</button>
-                <button
-                  class="btn btn-error btn-outline"
-                  type="button"
-                  @click="(tagGroups.clear(), (selectedGroup = ''), (isUserSelection = false))"
-                >
-                  Delete All Groups
-                </button>
-                <button class="btn btn-outline btn-success" type="button" @click="saveTagGroups">
-                  Save Tag Groups
-                </button>
-              </form>
+                  <path
+                    d="M13.5 3H12H7C5.89543 3 5 3.89543 5 5V19C5 20.1046 5.89543 21 7 21H7.5M13.5 3L19 8.625M13.5 3V7.625C13.5 8.17728 13.9477 8.625 14.5 8.625H19M19 8.625V9.75V12V19C19 20.1046 18.1046 21 17 21H16.5"
+                    class="stroke-current stroke-2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M12 12V20M12 20L9.5 17.5M12 20L14.5 17.5"
+                    class="stroke-current stroke-2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                Export All Groups to JSON
+              </button>
+              <button
+                class="btn btn-error btn-outline"
+                :disabled="!selectedGroup"
+                @click="(tagGroups.delete(selectedGroup), (selectedGroup = ''))"
+              >
+                Delete This Group
+              </button>
+              <button
+                class="btn btn-error btn-outline"
+                type="button"
+                :disabled="!tagGroups.size"
+                @click="(tagGroups.clear(), (selectedGroup = ''))"
+              >
+                Delete All Groups
+              </button>
+              <button
+                class="btn btn-outline btn-success"
+                type="button"
+                :disabled="!tagGroups.size"
+                @click="saveTagGroups"
+              >
+                Save Tag Groups
+              </button>
             </div>
             <div
               class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
@@ -248,30 +241,26 @@ function saveTagGroups(e: KeyboardEvent | MouseEvent) {
               >
                 <p>Create tag group</p>
               </div>
-              <form class="flex h-full flex-col gap-2" @submit.prevent="createGroup">
-                <label
-                  class="input input-sm w-full px-2 !outline-none"
-                  :class="{
-                    validator: isUserInput,
-                  }"
-                >
-                  <span class="label">Group Name</span>
-                  <input
-                    v-model.trim="groupNameInput"
-                    type="text"
-                    placeholder="Name for the tag group..."
-                    required
-                    @input="isUserInput = true"
-                  />
-                </label>
-                <p class="validator-hint mt-0 hidden">The name for the group is required.</p>
-                <textarea
-                  v-model.trim="groupTags"
-                  class="textarea w-full flex-1 resize-none !outline-none"
-                  placeholder="Tags separated by comma to be added to the group..."
-                ></textarea>
-                <button class="btn btn-outline btn-success" type="submit">Create Group</button>
-              </form>
+              <label class="input input-sm w-full px-2 !outline-none">
+                <span class="label">Group Name</span>
+                <input
+                  v-model.trim="groupNameInput"
+                  type="text"
+                  placeholder="Name for the tag group..."
+                />
+              </label>
+              <textarea
+                v-model.trim="groupTags"
+                class="textarea w-full flex-1 resize-none !outline-none"
+                placeholder="Tags separated by comma to be added to the group..."
+              ></textarea>
+              <button
+                class="btn btn-outline btn-success"
+                :disabled="!groupNameInput || tagGroups.has(groupNameInput)"
+                @click="createGroup"
+              >
+                Create Group
+              </button>
             </div>
           </div>
           <div
@@ -334,10 +323,18 @@ function saveTagGroups(e: KeyboardEvent | MouseEvent) {
                 </svg>
                 Import Groups from JSON File
               </button>
-              <button class="btn btn-outline btn-success" @click="addImportedGroupToCurrent(false)">
+              <button
+                class="btn btn-outline btn-success"
+                :disabled="!importedGroups.size"
+                @click="addImportedGroupToCurrent(false)"
+              >
                 Add to Current Groups
               </button>
-              <button class="btn btn-error btn-outline" @click="addImportedGroupToCurrent(true)">
+              <button
+                class="btn btn-error btn-outline"
+                :disabled="!importedGroups.size"
+                @click="addImportedGroupToCurrent(true)"
+              >
                 Override Current Groups
               </button>
             </div>

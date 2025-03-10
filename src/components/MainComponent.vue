@@ -35,6 +35,7 @@ const containerWidth = ref(0);
 const tagGroups = ref<Map<string, Set<string>>>(new Map());
 const tagGroupSectionTopHeight = ref(55);
 const tagGroupSectionBottomHeight = ref(45);
+const completions = ref<string[]>([]);
 
 const imageKeys = computed(() => Array.from(props.images.keys()));
 
@@ -277,6 +278,15 @@ function addOrRemoveTag(tag: string) {
   }
 }
 
+async function showSuggestions() {
+  const results = (await window.ipcRenderer.invoke(
+    'load_tag_suggestions',
+    tagInput.value,
+  )) as string[];
+
+  completions.value = results;
+}
+
 onMounted(async () => {
   const result = (await window.ipcRenderer.invoke('load_tag_group')) as Map<
     string,
@@ -403,10 +413,19 @@ onMounted(async () => {
                     v-model.trim="tagInput"
                     type="text"
                     placeholder="Type to add a tag..."
+                    list="tag-completions"
                     :disabled="!selectedImages.size"
+                    @input="showSuggestions"
                     @keyup.enter="addTag()"
                   />
                 </label>
+                <datalist id="tag-completions">
+                  <option
+                    v-for="completion in completions"
+                    :key="completion"
+                    :value="completion"
+                  ></option>
+                </datalist>
               </div>
             </div>
           </div>

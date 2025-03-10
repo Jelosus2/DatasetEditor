@@ -1,9 +1,60 @@
 import { dialog } from 'electron';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, extname, basename, join } from 'node:path';
+import { createInterface } from 'node:readline';
 
 export const _dirname = (url) => dirname(fileURLToPath(url));
+
+export function loadCSVIntoDatabase(autocompletionsPath, database) {
+  const rowCount = database.prepare('SELECT COUNT(*) as count FROM tags').get().count;
+  if (rowCount === 0) {
+    const csvFile = readdirSync(autocompletionsPath).filter((f) => f.endsWith('.csv'))?.[0];
+    if (!csvFile) return;
+
+    const batchSize = 5000;
+    const stmt = database.prepare(
+      'INSERT INTO tags (tag, type, results, alias) VALUES (?, ?, ?, ?)',
+    );
+    const insertMany = database.transaction((rows) => {
+      for (const row of rows) stmt.run(row.tag, row.type, row.results, row.alias);
+    });
+
+    const csvPath = join(autocompletionsPath, csvFile);
+    const stream = createReadStream(csvPath);
+    const rl = createInterface({ input: stream });
+
+    let batch = [];
+
+    rl.on('line', (line) => {
+      const [tag, type, results, ...alias] = line.replaceAll('"', '').split(',');
+      if (tag && type && results) {
+        batch.push({
+          tag,
+          type: parseInt(type, 10),
+          results: parseInt(results, 10),
+          alias: alias.join(',') || null,
+        });
+        if (batch.length >= batchSize) {
+          insertMany(batch);
+          batch = [];
+        }
+      }
+    });
+
+    rl.on('close', () => {
+      if (batch.length) insertMany(batch);
+      console.log('Completed!');
+    });
+  }
+}
 
 export async function loadDatasetDirectory(mainWindow) {
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -126,4 +177,16 @@ export function loadTagGroups(appPath) {
   const data = JSON.parse(readFileSync(tagGroupFilePath, 'utf-8'));
 
   return new Map(Object.entries(data).map(([name, tags]) => [name, new Set(tags)]));
+}
+
+export function loadTagCompletions(database, query) {
+  if (!query) return [];
+
+  const stmt = database.prepare(`
+    SELECT tag FROM tags
+    WHERE tag LIKE ?
+    LIMIT 10
+  `);
+
+  return stmt.all(`%${query}%`).map((row) => row.tag);
 }
