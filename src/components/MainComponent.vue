@@ -29,6 +29,7 @@ const tagInput = ref('');
 const globalTagInput = ref('');
 const filterMode = ref('or');
 const filterInput = ref('');
+const isFiltering = ref(false);
 const filteredImages = ref<Set<string>>(new Set());
 const container = shallowRef<HTMLDivElement | null>(null);
 const containerWidth = ref(0);
@@ -220,11 +221,9 @@ function removeGlobalTag(tag: string) {
   updateGlobalTags();
 }
 
-let isFiltering = false;
-
 function filterImages() {
   filteredImages.value.clear();
-  isFiltering = false;
+  isFiltering.value = false;
   if (!filterInput.value) return;
 
   const tags = filterInput.value.split(',').map((tag) => tag.trim());
@@ -240,7 +239,7 @@ function filterImages() {
     for (const tag of tags) {
       const imagesWithTag = props.globalTags.get(tag);
       if (!imagesWithTag) {
-        isFiltering = true;
+        isFiltering.value = true;
         selectedImages.value.clear();
         filteredImages.value.clear();
         updateDisplayedTags();
@@ -269,15 +268,19 @@ function filterImages() {
     );
   }
 
-  isFiltering = true;
-  selectedImages.value = new Set([[...filteredImages.value][0]]);
+  isFiltering.value = true;
+  selectedImages.value = new Set(filteredImages.value.size ? [[...filteredImages.value][0]] : []);
   updateDisplayedTags();
 }
 
 function clearImageFilter() {
   if (filterInput.value) return;
 
-  isFiltering = false;
+  if (!filteredImages.value.size) {
+    selectedImages.value.add(props.images.keys().next().value!);
+    updateDisplayedTags();
+  }
+  isFiltering.value = false;
   filteredImages.value.clear();
 }
 
@@ -449,7 +452,7 @@ onMounted(async () => {
                 </div>
               </div>
               <div
-                class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+                class="mt-auto flex gap-2 border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
               >
                 <label class="input relative input-xs w-full px-1 !outline-none">
                   <input
@@ -458,22 +461,22 @@ onMounted(async () => {
                     placeholder="Type to add a tag..."
                     :disabled="!selectedImages.size"
                     @input="showSuggestions"
-                    @blur="completions = []"
+                    @blur="((completions = []), (selectedIndex = -1))"
                     @keyup.enter="addTag()"
                     @keydown.prevent.arrow-up="onArrowUp"
                     @keydown.prevent.arrow-down="onArrowDown"
                   />
                   <ul
-                    class="absolute bottom-full left-0 max-h-60 w-full overflow-y-auto dark:bg-[#1e1f2c]"
+                    class="absolute bottom-full left-0 max-h-60 w-full overflow-y-auto text-xs dark:bg-[#1e1f2c]"
                     id="completion-list"
                   >
                     <li
                       v-for="(completion, index) in completions"
                       :key="completion.tag"
-                      class="cursor-pointer p-2 hover:bg-[#292a3b]"
+                      class="cursor-pointer p-2 dark:hover:bg-[#292a3b]"
                       :data-tag="completion.tag"
                       :class="{
-                        'bg-[#292a3b]': index === selectedIndex,
+                        'dark:bg-[#292a3b]': index === selectedIndex,
                         'text-[#0a95d9]': completion.type === 0,
                         'text-[#e6888a]': completion.type === 1,
                         'text-[#b58fe2]': completion.type === 3,
@@ -486,6 +489,22 @@ onMounted(async () => {
                     </li>
                   </ul>
                 </label>
+                <button
+                  class="btn btn-circle border-current btn-xs btn-ghost dark:hover:bg-[#323841]"
+                >
+                  <svg
+                    class="h-5 w-5 fill-none"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      clip-rule="evenodd"
+                      d="M9.29289 3.29289C9.48043 3.10536 9.73478 3 10 3H14C15.6569 3 17 4.34315 17 6V15C17 16.6569 15.6569 18 14 18H7C5.34315 18 4 16.6569 4 15V9C4 8.73478 4.10536 8.48043 4.29289 8.29289L9.29289 3.29289ZM14 5H11V9C11 9.55228 10.5523 10 10 10H6V15C6 15.5523 6.44772 16 7 16H14C14.5523 16 15 15.5523 15 15V6C15 5.44772 14.5523 5 14 5ZM7.41421 8H9V6.41421L7.41421 8ZM19 5C19.5523 5 20 5.44772 20 6V18C20 19.6569 18.6569 21 17 21H7C6.44772 21 6 20.5523 6 20C6 19.4477 6.44772 19 7 19H17C17.5523 19 18 18.5523 18 18V6C18 5.44772 18.4477 5 19 5Z"
+                      class="fill-current"
+                    />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
