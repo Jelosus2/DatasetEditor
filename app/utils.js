@@ -183,7 +183,7 @@ export function loadTagCompletions(database, query) {
   if (!query) return [];
 
   const stmt = database.prepare(`
-    SELECT tag, results FROM tags
+    SELECT tag, results, type FROM tags
     WHERE tag LIKE ?
     LIMIT 20
   `);
@@ -192,12 +192,14 @@ export function loadTagCompletions(database, query) {
     results = parseInt(results, 10);
     let text = tag;
 
-    if (results >= 1_000_000) text += ` - (${(results / 1_000_000).toFixed(1).replace('.0', '')}m)`;
-    else if (results >= 1000) text += ` - (${(results / 1000).toFixed(1).replace('.0', '')}k)`;
+    if (results >= 1_000_000) text += ` (${(results / 1_000_000).toFixed(1).replace('.0', '')}m)`;
+    else if (results >= 1000) text += ` (${(results / 1000).toFixed(1).replace('.0', '')}k)`;
     else text += ` (${results})`;
 
     return text;
   };
 
-  return stmt.all(`${query}%`).map((row) => formatOutput(row.tag, row.results));
+  return stmt
+    .all(`${query}%`)
+    .map((row) => ({ tag: row.tag, type: row.type, output: formatOutput(row.tag, row.results) }));
 }
