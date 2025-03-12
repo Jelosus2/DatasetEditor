@@ -28,7 +28,7 @@ db.exec(`
     results INTEGER NOT NULL,
     alias TEXT
   );
-  CREATE INDEX IF NOT EXISTS idx_name ON tags(tag);
+  CREATE INDEX IF NOT EXISTS idx_tag ON tags(tag);
 `);
 
 let mainWindow;
@@ -37,9 +37,12 @@ const IS_DEBUG = process.env.NODE_ENV === 'debug';
 
 async function createMainWindow() {
   mainWindow = new BrowserWindow({
+    backgroundColor: '#1d232a',
+    autoHideMenuBar: true,
+    title: 'Dataset Editor',
     width: 1280,
     height: 800,
-    autoHideMenuBar: true,
+    show: false,
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       webSecurity: !IS_DEBUG,
@@ -47,6 +50,7 @@ async function createMainWindow() {
     },
   });
 
+  mainWindow.maximize();
   if (IS_DEBUG) mainWindow.loadURL('http://localhost:5173/');
   else mainWindow.loadFile(join(__dirname, '..', 'dist', 'index.html'));
 

@@ -39,6 +39,9 @@ const tagGroupSectionBottomHeight = ref(45);
 const completions = ref<{ tag: string; type: number; output: string }[]>([]);
 const selectedIndex = ref(-1);
 const completionList = shallowRef<HTMLLIElement[]>([]);
+const areTagsCopied = ref(false);
+const sortMode = ref('none');
+const sortOrder = ref('asc');
 
 const imageKeys = computed(() => Array.from(props.images.keys()));
 
@@ -98,7 +101,14 @@ function updateDisplayedTags() {
     if (image && image.tags) image.tags.forEach((tag) => allTags.add(tag));
   }
 
-  displayedTags.value = allTags;
+  if (sortMode.value === 'alphabetical') {
+    const sorted = new Set(
+      [...allTags].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())),
+    );
+    displayedTags.value = sortOrder.value === 'asc' ? sorted : new Set([...sorted].reverse());
+  } else {
+    displayedTags.value = sortOrder.value === 'asc' ? allTags : new Set([...allTags].reverse());
+  }
 }
 
 function updateGlobalTags() {
@@ -107,7 +117,9 @@ function updateGlobalTags() {
     if (image?.tags.size > 0) image.tags.forEach((tag) => allTags.push(tag));
   }
 
-  displayedGlobalTags.value = new Set(allTags.sort());
+  displayedGlobalTags.value = new Set(
+    allTags.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())),
+  );
 }
 
 function resizeContainer(event: MouseEvent) {
@@ -333,6 +345,15 @@ async function onArrowDown() {
   }
 }
 
+function copyTextToClipboard(tags: Set<string>) {
+  navigator.clipboard.writeText([...tags].join(', '));
+  areTagsCopied.value = true;
+
+  setTimeout(() => {
+    areTagsCopied.value = false;
+  }, 1000);
+}
+
 onMounted(async () => {
   const result = (await window.ipcRenderer.invoke('load_tag_group')) as Map<
     string,
@@ -380,7 +401,7 @@ onMounted(async () => {
           <div
             class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
           >
-            <label class="input input-xs w-full border-r-0 px-1 pr-0 !outline-none">
+            <label class="input input-sm w-full border-r-0 px-1 pr-0 !outline-none">
               <input
                 v-model.trim="filterInput"
                 type="text"
@@ -395,7 +416,7 @@ onMounted(async () => {
                 @click="((filterInput = ''), clearImageFilter())"
                 >X</span
               >
-              <select v-model.lazy="filterMode" class="select w-fit select-xs !outline-none">
+              <select v-model.lazy="filterMode" class="select w-fit select-sm !outline-none">
                 <option value="or" selected>OR</option>
                 <option value="no">NO</option>
                 <option value="and">AND</option>
@@ -454,7 +475,31 @@ onMounted(async () => {
               <div
                 class="mt-auto flex gap-2 border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
               >
-                <label class="input relative input-xs w-full px-1 !outline-none">
+                <div
+                  class="tooltip"
+                  :class="{ 'tooltip-success': areTagsCopied }"
+                  :data-tip="areTagsCopied ? 'Tags copied!' : 'Click to copy the tags'"
+                >
+                  <button
+                    class="btn btn-circle border-none p-0.5 btn-sm btn-ghost dark:hover:bg-[#323841]"
+                    :disabled="!selectedImages.size"
+                    @click="copyTextToClipboard(displayedTags)"
+                  >
+                    <svg
+                      class="h-full w-full fill-none"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                        d="M9.29289 3.29289C9.48043 3.10536 9.73478 3 10 3H14C15.6569 3 17 4.34315 17 6V15C17 16.6569 15.6569 18 14 18H7C5.34315 18 4 16.6569 4 15V9C4 8.73478 4.10536 8.48043 4.29289 8.29289L9.29289 3.29289ZM14 5H11V9C11 9.55228 10.5523 10 10 10H6V15C6 15.5523 6.44772 16 7 16H14C14.5523 16 15 15.5523 15 15V6C15 5.44772 14.5523 5 14 5ZM7.41421 8H9V6.41421L7.41421 8ZM19 5C19.5523 5 20 5.44772 20 6V18C20 19.6569 18.6569 21 17 21H7C6.44772 21 6 20.5523 6 20C6 19.4477 6.44772 19 7 19H17C17.5523 19 18 18.5523 18 18V6C18 5.44772 18.4477 5 19 5Z"
+                        class="fill-current"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <label class="input relative input-sm w-full px-1 !outline-none">
                   <input
                     v-model.trim="tagInput"
                     type="text"
@@ -489,19 +534,43 @@ onMounted(async () => {
                     </li>
                   </ul>
                 </label>
+                <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
+                  <select
+                    v-model.lazy="sortMode"
+                    class="select relative w-fit select-sm !outline-none"
+                    :disabled="!selectedImages.size"
+                    @change="updateDisplayedTags"
+                  >
+                    <option value="none" selected>None</option>
+                    <option value="alphabetical">Alphabetical</option>
+                  </select>
+                </div>
                 <button
-                  class="btn btn-circle border-current btn-xs btn-ghost dark:hover:bg-[#323841]"
+                  class="btn btn-circle overflow-hidden border-none btn-sm dark:bg-[#323841]"
+                  :disabled="!selectedImages.size"
+                  @click="
+                    ((sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'), updateDisplayedTags())
+                  "
                 >
                   <svg
-                    class="h-5 w-5 fill-none"
+                    class="swap-off h-full w-full fill-none transition-[transform] duration-[0.5s]"
                     viewBox="0 0 24 24"
+                    :class="{
+                      'transform-[rotate(180deg)]': sortOrder === 'desc',
+                    }"
                     xmlns="http://www.w3.org/2000/svg"
                   >
                     <path
-                      fill-rule="evenodd"
-                      clip-rule="evenodd"
-                      d="M9.29289 3.29289C9.48043 3.10536 9.73478 3 10 3H14C15.6569 3 17 4.34315 17 6V15C17 16.6569 15.6569 18 14 18H7C5.34315 18 4 16.6569 4 15V9C4 8.73478 4.10536 8.48043 4.29289 8.29289L9.29289 3.29289ZM14 5H11V9C11 9.55228 10.5523 10 10 10H6V15C6 15.5523 6.44772 16 7 16H14C14.5523 16 15 15.5523 15 15V6C15 5.44772 14.5523 5 14 5ZM7.41421 8H9V6.41421L7.41421 8ZM19 5C19.5523 5 20 5.44772 20 6V18C20 19.6569 18.6569 21 17 21H7C6.44772 21 6 20.5523 6 20C6 19.4477 6.44772 19 7 19H17C17.5523 19 18 18.5523 18 18V6C18 5.44772 18.4477 5 19 5Z"
-                      class="fill-current"
+                      d="M12 4L12 20"
+                      class="stroke-current stroke-2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M18 10L12.0625 4.0625V4.0625C12.028 4.02798 11.972 4.02798 11.9375 4.0625V4.0625L6 10"
+                      class="stroke-current stroke-2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
                     />
                   </svg>
                 </button>
@@ -550,9 +619,32 @@ onMounted(async () => {
                 </div>
               </div>
               <div
-                class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
+                class="mt-auto flex gap-2 border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
               >
-                <label class="input input-xs w-[50%] px-1 !outline-none">
+                <div
+                  class="tooltip"
+                  :class="{ 'tooltip-success': areTagsCopied }"
+                  :data-tip="areTagsCopied ? 'Tags copied!' : 'Click to copy the global tags'"
+                >
+                  <button
+                    class="btn btn-circle border-none p-0.5 btn-sm btn-ghost dark:hover:bg-[#323841]"
+                    @click="copyTextToClipboard(displayedGlobalTags)"
+                  >
+                    <svg
+                      class="h-full w-full fill-none"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                        d="M9.29289 3.29289C9.48043 3.10536 9.73478 3 10 3H14C15.6569 3 17 4.34315 17 6V15C17 16.6569 15.6569 18 14 18H7C5.34315 18 4 16.6569 4 15V9C4 8.73478 4.10536 8.48043 4.29289 8.29289L9.29289 3.29289ZM14 5H11V9C11 9.55228 10.5523 10 10 10H6V15C6 15.5523 6.44772 16 7 16H14C14.5523 16 15 15.5523 15 15V6C15 5.44772 14.5523 5 14 5ZM7.41421 8H9V6.41421L7.41421 8ZM19 5C19.5523 5 20 5.44772 20 6V18C20 19.6569 18.6569 21 17 21H7C6.44772 21 6 20.5523 6 20C6 19.4477 6.44772 19 7 19H17C17.5523 19 18 18.5523 18 18V6C18 5.44772 18.4477 5 19 5Z"
+                        class="fill-current"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <label class="input input-sm w-full px-1 !outline-none">
                   <input
                     v-model.trim="globalTagInput"
                     type="text"
