@@ -42,6 +42,8 @@ const completionList = shallowRef<HTMLLIElement[]>([]);
 const areTagsCopied = ref(false);
 const sortMode = ref('none');
 const sortOrder = ref('asc');
+const globalSortMode = ref('alphabetical');
+const globalSortOrder = ref('asc');
 
 const imageKeys = computed(() => Array.from(props.images.keys()));
 
@@ -101,25 +103,49 @@ function updateDisplayedTags() {
     if (image && image.tags) image.tags.forEach((tag) => allTags.add(tag));
   }
 
-  if (sortMode.value === 'alphabetical') {
-    const sorted = new Set(
-      [...allTags].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())),
-    );
-    displayedTags.value = sortOrder.value === 'asc' ? sorted : new Set([...sorted].reverse());
-  } else {
-    displayedTags.value = sortOrder.value === 'asc' ? allTags : new Set([...allTags].reverse());
+  if (allTags.size === 0) {
+    displayedTags.value.clear();
+    return;
   }
+
+  const [firstTag, ...remainingTags] = allTags;
+
+  if (remainingTags.length === 0) {
+    displayedTags.value = new Set([firstTag]);
+    return;
+  }
+
+  if (sortMode.value === 'alphabetical') {
+    remainingTags.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  }
+
+  const sortedTags = [
+    firstTag,
+    ...(sortOrder.value === 'desc' ? remainingTags.reverse() : remainingTags),
+  ];
+  displayedTags.value = new Set(sortedTags);
 }
 
 function updateGlobalTags() {
   const allTags: string[] = [];
   for (const image of props.images.values()) {
-    if (image?.tags.size > 0) image.tags.forEach((tag) => allTags.push(tag));
+    if (image?.tags.size > 0)
+      image.tags.forEach((tag) => {
+        if (!allTags.includes(tag)) allTags.push(tag);
+      });
   }
 
-  displayedGlobalTags.value = new Set(
-    allTags.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())),
-  );
+  if (allTags.length === 0) return;
+
+  if (globalSortMode.value === 'alphabetical') {
+    allTags.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  } else {
+    allTags.sort((a, b) => props.globalTags.get(b)!.size - props.globalTags.get(a)!.size);
+  }
+
+  if (globalSortOrder.value === 'desc') allTags.reverse();
+
+  displayedGlobalTags.value = new Set(allTags);
 }
 
 function resizeContainer(event: MouseEvent) {
@@ -439,7 +465,7 @@ onMounted(async () => {
           <div
             class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
           ></div>
-          <div class="w-[45%]">
+          <div class="w-[40%]">
             <div class="flex h-[50%]">
               <div class="w-[50%]">
                 <div
@@ -482,7 +508,7 @@ onMounted(async () => {
                 >
                   <button
                     class="btn btn-circle border-none p-0.5 btn-sm btn-ghost dark:hover:bg-[#323841]"
-                    :disabled="!selectedImages.size"
+                    :disabled="!displayedTags.size"
                     @click="copyTextToClipboard(displayedTags)"
                   >
                     <svg
@@ -538,7 +564,7 @@ onMounted(async () => {
                   <select
                     v-model.lazy="sortMode"
                     class="select relative w-fit select-sm !outline-none"
-                    :disabled="!selectedImages.size"
+                    :disabled="!displayedTags.size"
                     @change="updateDisplayedTags"
                   >
                     <option value="none" selected>None</option>
@@ -547,7 +573,7 @@ onMounted(async () => {
                 </div>
                 <button
                   class="btn btn-circle overflow-hidden border-none btn-sm dark:bg-[#323841]"
-                  :disabled="!selectedImages.size"
+                  :disabled="!displayedTags.size"
                   @click="
                     ((sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'), updateDisplayedTags())
                   "
@@ -580,7 +606,7 @@ onMounted(async () => {
           <div
             class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
           ></div>
-          <div class="w-[25%] pr-1">
+          <div class="w-[30%] pr-1">
             <div
               class="flex flex-col gap-2 overflow-auto"
               :style="{ height: tagGroupSectionTopHeight + '%' }"
@@ -615,7 +641,7 @@ onMounted(async () => {
                   class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
                   @click="removeGlobalTag(tag)"
                 >
-                  {{ tag }}
+                  {{ tag }} | {{ props.globalTags.get(tag)!.size }}
                 </div>
               </div>
               <div
@@ -628,6 +654,7 @@ onMounted(async () => {
                 >
                   <button
                     class="btn btn-circle border-none p-0.5 btn-sm btn-ghost dark:hover:bg-[#323841]"
+                    :disabled="!displayedGlobalTags.size"
                     @click="copyTextToClipboard(displayedGlobalTags)"
                   >
                     <svg
@@ -648,11 +675,52 @@ onMounted(async () => {
                   <input
                     v-model.trim="globalTagInput"
                     type="text"
-                    placeholder="Type to add a tag..."
+                    placeholder="Type to add a global tag..."
                     :disabled="!images.size"
                     @keyup.enter="addGlobalTag"
                   />
                 </label>
+                <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
+                  <select
+                    v-model.lazy="globalSortMode"
+                    class="select relative w-fit select-sm !outline-none"
+                    :disabled="!displayedGlobalTags.size"
+                    @change="updateGlobalTags"
+                  >
+                    <option value="alphabetical" selected>Alphabetical</option>
+                    <option value="tag_count">Tag Count</option>
+                  </select>
+                </div>
+                <button
+                  class="btn btn-circle overflow-hidden border-none btn-sm dark:bg-[#323841]"
+                  :disabled="!displayedGlobalTags.size"
+                  @click="
+                    ((globalSortOrder = globalSortOrder === 'asc' ? 'desc' : 'asc'),
+                    updateGlobalTags())
+                  "
+                >
+                  <svg
+                    class="swap-off h-full w-full fill-none transition-[transform] duration-[0.5s]"
+                    viewBox="0 0 24 24"
+                    :class="{
+                      'transform-[rotate(180deg)]': globalSortOrder === 'desc',
+                    }"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M12 4L12 20"
+                      class="stroke-current stroke-2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M18 10L12.0625 4.0625V4.0625C12.028 4.02798 11.972 4.02798 11.9375 4.0625V4.0625L6 10"
+                      class="stroke-current stroke-2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
