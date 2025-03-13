@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import ModalComponent from '@/components/ModalComponent.vue';
 import TagGroupEditorComponent from '@/components/TagGroupEditorComponent.vue';
+import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
-import { ref, watch, computed, shallowRef, onMounted, nextTick } from 'vue';
+import { ref, watch, computed, shallowRef, onMounted } from 'vue';
 
 const props = defineProps({
   images: {
@@ -36,9 +37,6 @@ const containerWidth = ref(0);
 const tagGroups = ref<Map<string, Set<string>>>(new Map());
 const tagGroupSectionTopHeight = ref(55);
 const tagGroupSectionBottomHeight = ref(45);
-const completions = ref<{ tag: string; type: number; output: string }[]>([]);
-const selectedIndex = ref(-1);
-const completionList = shallowRef<HTMLLIElement[]>([]);
 const areTagsCopied = ref(false);
 const sortMode = ref('none');
 const sortOrder = ref('asc');
@@ -193,13 +191,6 @@ function addTag(tag?: string, image?: string) {
   const newTag = tag || tagInput.value;
   if (!newTag) return;
 
-  if (selectedIndex.value !== -1) {
-    tagInput.value = completionList.value[selectedIndex.value].dataset.tag || '';
-    completions.value = [];
-    selectedIndex.value = -1;
-    return;
-  }
-
   const images = image ? new Set([image]) : selectedImages.value;
 
   for (const image of images.values()) {
@@ -213,12 +204,9 @@ function addTag(tag?: string, image?: string) {
   }
 
   tagInput.value = '';
-  completions.value = [];
 }
 
 function addGlobalTag() {
-  if (!globalTagInput.value) return;
-
   for (const image of props.images.keys()) {
     props.images.get(image)?.tags.add(globalTagInput.value);
   }
@@ -326,48 +314,6 @@ function addOrRemoveTag(tag: string) {
   for (const image of selectedImages.value.values()) {
     if (props.images.get(image)?.tags.has(tag)) removeTag(tag, image);
     else addTag(tag, image);
-  }
-}
-
-async function showSuggestions() {
-  const results = (await window.ipcRenderer.invoke(
-    'load_tag_suggestions',
-    tagInput.value.split(',').pop()?.trim(),
-  )) as {
-    tag: string;
-    type: number;
-    output: string;
-  }[];
-  completions.value = results;
-  selectedIndex.value = -1;
-
-  await nextTick();
-  completionList.value = document.querySelectorAll(
-    '#completion-list li',
-  ) as unknown as HTMLLIElement[];
-}
-
-function scrollToSelected() {
-  const selectedItem = completionList.value[selectedIndex.value];
-  if (selectedItem) {
-    selectedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }
-}
-
-async function onArrowUp() {
-  if (tagInput.value) {
-    selectedIndex.value =
-      (selectedIndex.value - 1 + completions.value.length) % completions.value.length;
-    await nextTick();
-    scrollToSelected();
-  }
-}
-
-async function onArrowDown() {
-  if (tagInput.value) {
-    selectedIndex.value = (selectedIndex.value + 1) % completions.value.length;
-    await nextTick();
-    scrollToSelected();
   }
 }
 
@@ -526,39 +472,13 @@ onMounted(async () => {
                   </button>
                 </div>
                 <label class="input relative input-sm w-full px-1 !outline-none">
-                  <input
-                    v-model.trim="tagInput"
-                    type="text"
-                    placeholder="Type to add a tag..."
+                  <AutocompletionComponent
+                    v-model="tagInput"
                     :disabled="!selectedImages.size"
-                    @input="showSuggestions"
-                    @blur="((completions = []), (selectedIndex = -1))"
-                    @keyup.enter="addTag()"
-                    @keydown.prevent.arrow-up="onArrowUp"
-                    @keydown.prevent.arrow-down="onArrowDown"
+                    :id="'completion-list'"
+                    :placeholder="'Type to add a tag...'"
+                    @complete="addTag()"
                   />
-                  <ul
-                    class="absolute bottom-full left-0 max-h-60 w-full overflow-y-auto text-xs dark:bg-[#1e1f2c]"
-                    id="completion-list"
-                  >
-                    <li
-                      v-for="(completion, index) in completions"
-                      :key="completion.tag"
-                      class="cursor-pointer p-2 dark:hover:bg-[#292a3b]"
-                      :data-tag="completion.tag"
-                      :class="{
-                        'dark:bg-[#292a3b]': index === selectedIndex,
-                        'text-[#0a95d9]': completion.type === 0,
-                        'text-[#e6888a]': completion.type === 1,
-                        'text-[#b58fe2]': completion.type === 3,
-                        'text-[#318842]': completion.type === 4,
-                        'text-[#dac68a]': completion.type === 5,
-                      }"
-                      @mousedown="tagInput = completion.tag"
-                    >
-                      {{ completion.output }}
-                    </li>
-                  </ul>
                 </label>
                 <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
                   <select
@@ -671,13 +591,13 @@ onMounted(async () => {
                     </svg>
                   </button>
                 </div>
-                <label class="input input-sm w-full px-1 !outline-none">
-                  <input
-                    v-model.trim="globalTagInput"
-                    type="text"
-                    placeholder="Type to add a global tag..."
+                <label class="input relative input-sm w-full px-1 !outline-none">
+                  <AutocompletionComponent
+                    v-model="globalTagInput"
                     :disabled="!images.size"
-                    @keyup.enter="addGlobalTag"
+                    :id="'global-completion-list'"
+                    :placeholder="'Type to add a global tag...'"
+                    @complete="addGlobalTag"
                   />
                 </label>
                 <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
