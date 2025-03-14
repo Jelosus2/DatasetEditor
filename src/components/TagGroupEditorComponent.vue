@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
+
 import { ref } from 'vue';
 
 const props = defineProps({
@@ -159,7 +161,7 @@ function saveTagGroups(e: KeyboardEvent | MouseEvent) {
                 </option>
               </select>
               <button
-                class="btn btn-info btn-outline"
+                class="btn btn-outline btn-info"
                 :disabled="!selectedGroup"
                 @click="exportGroupToJSON('one')"
               >
@@ -184,7 +186,7 @@ function saveTagGroups(e: KeyboardEvent | MouseEvent) {
                 Export This Group to JSON
               </button>
               <button
-                class="btn btn-info btn-outline"
+                class="btn btn-outline btn-info"
                 :disabled="!tagGroups.size"
                 @click="exportGroupToJSON('all')"
               >
@@ -209,14 +211,14 @@ function saveTagGroups(e: KeyboardEvent | MouseEvent) {
                 Export All Groups to JSON
               </button>
               <button
-                class="btn btn-error btn-outline"
+                class="btn btn-outline btn-error"
                 :disabled="!selectedGroup"
                 @click="(tagGroups.delete(selectedGroup), (selectedGroup = ''))"
               >
                 Delete This Group
               </button>
               <button
-                class="btn btn-error btn-outline"
+                class="btn btn-outline btn-error"
                 type="button"
                 :disabled="!tagGroups.size"
                 @click="(tagGroups.clear(), (selectedGroup = ''))"
@@ -279,13 +281,14 @@ function saveTagGroups(e: KeyboardEvent | MouseEvent) {
             <div
               class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
             >
-              <label class="input input-xs w-full px-1 !outline-none">
-                <input
-                  v-model.trim="tagInput"
-                  type="text"
-                  placeholder="Type to add tags separated by comma..."
+              <label class="input input-sm w-full px-1 !outline-none">
+                <AutocompletionComponent
+                  v-model="tagInput"
                   :disabled="!selectedGroup"
-                  @keyup.enter="addTag"
+                  :id="'group-completion-list'"
+                  :placeholder="'Type to add a global tag...'"
+                  :multiple="true"
+                  @on-complete="addTag"
                 />
               </label>
             </div>
@@ -302,7 +305,7 @@ function saveTagGroups(e: KeyboardEvent | MouseEvent) {
               >
                 <p>Import tag groups</p>
               </div>
-              <button class="btn btn-info btn-outline" @click="importGroup">
+              <button class="btn btn-outline btn-info" @click="importGroup">
                 <svg
                   class="h-5 w-5 fill-none"
                   viewBox="0 0 24 24"
@@ -331,7 +334,7 @@ function saveTagGroups(e: KeyboardEvent | MouseEvent) {
                 Add to Current Groups
               </button>
               <button
-                class="btn btn-error btn-outline"
+                class="btn btn-outline btn-error"
                 :disabled="!importedGroups.size"
                 @click="addImportedGroupToCurrent(true)"
               >

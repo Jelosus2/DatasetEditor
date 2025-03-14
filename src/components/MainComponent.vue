@@ -21,7 +21,7 @@ const props = defineProps({
 });
 
 const selectedImages = ref<Set<string>>(new Set());
-const lastSelectedIndex = ref<number | null>(null);
+const lastSelectedIndex = ref<number>(0);
 const displayedTags = ref<Set<string>>(new Set());
 const displayedGlobalTags = ref<Set<string>>(new Set());
 const modalHtml = ref('');
@@ -61,11 +61,13 @@ watch(
 function toggleSelection(id: string, event: MouseEvent) {
   const index = imageKeys.value.indexOf(id);
 
-  if (event.shiftKey && lastSelectedIndex.value != null) {
+  if (event.shiftKey) {
     const start = Math.min(lastSelectedIndex.value, index);
     const end = Math.max(lastSelectedIndex.value, index);
     const range = imageKeys.value.slice(start, end + 1);
-    range.forEach((img) => selectedImages.value.add(img));
+    range.forEach((img) => {
+      if (!isFiltering.value || filteredImages.value.has(img)) selectedImages.value.add(img);
+    });
   } else if (event.ctrlKey || (props.os === 'mac' && event.metaKey)) {
     if (selectedImages.value.has(id) && selectedImages.value.size > 1)
       selectedImages.value.delete(id);
@@ -201,6 +203,9 @@ function addTag(tag?: string, image?: string) {
   if (!props.globalTags.has(newTag)) {
     props.globalTags.set(newTag, new Set([...images]));
     updateGlobalTags();
+  } else {
+    const imagesWithTag = props.globalTags.get(newTag)!;
+    props.globalTags.set(newTag, new Set([...imagesWithTag, ...images]));
   }
 
   tagInput.value = '';
@@ -212,26 +217,24 @@ function addGlobalTag() {
   }
 
   updateDisplayedTags();
-  if (!props.globalTags.has(globalTagInput.value)) {
-    props.globalTags.set(globalTagInput.value, new Set([...props.images.keys()]));
-    updateGlobalTags();
-  }
+  props.globalTags.set(globalTagInput.value, new Set([...props.images.keys()]));
+  updateGlobalTags();
 
   globalTagInput.value = '';
 }
 
 function removeTag(tag: string, image?: string) {
-  const globalImages = props.globalTags.get(tag);
+  const imagesWithTag = props.globalTags.get(tag);
   const images = image ? new Set([image]) : selectedImages.value;
 
   for (const image of images.values()) {
     props.images.get(image)?.tags.delete(tag);
-    globalImages?.delete(image);
+    imagesWithTag?.delete(image);
   }
 
   updateDisplayedTags();
 
-  if (!globalImages?.size) {
+  if (!imagesWithTag?.size) {
     props.globalTags.delete(tag);
     updateGlobalTags();
   }
@@ -296,13 +299,16 @@ function filterImages() {
 
   isFiltering.value = true;
   selectedImages.value = new Set(filteredImages.value.size ? [[...filteredImages.value][0]] : []);
+  lastSelectedIndex.value = !filteredImages.value.has(imageKeys.value[lastSelectedIndex.value])
+    ? 0
+    : lastSelectedIndex.value;
   updateDisplayedTags();
 }
 
 function clearImageFilter() {
   if (filterInput.value) return;
 
-  if (!filteredImages.value.size) {
+  if (!filteredImages.value.size && !selectedImages.value.size) {
     selectedImages.value.add(props.images.keys().next().value!);
     updateDisplayedTags();
   }
@@ -374,13 +380,14 @@ onMounted(async () => {
             class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
           >
             <label class="input input-sm w-full border-r-0 px-1 pr-0 !outline-none">
-              <input
-                v-model.trim="filterInput"
-                type="text"
-                placeholder="Type a tag to filter the images..."
+              <AutocompletionComponent
+                v-model="filterInput"
                 :disabled="!images.size"
-                @keyup.enter="filterImages"
-                @input="clearImageFilter"
+                :id="'filter-completion-list'"
+                :placeholder="'Type a tag to filter the images...'"
+                :multiple="true"
+                @on-complete="filterImages"
+                @on-input="clearImageFilter"
               />
               <span
                 v-if="filterInput"
@@ -477,7 +484,7 @@ onMounted(async () => {
                     :disabled="!selectedImages.size"
                     :id="'completion-list'"
                     :placeholder="'Type to add a tag...'"
-                    @complete="addTag()"
+                    @on-complete="addTag()"
                   />
                 </label>
                 <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
@@ -597,7 +604,7 @@ onMounted(async () => {
                     :disabled="!images.size"
                     :id="'global-completion-list'"
                     :placeholder="'Type to add a global tag...'"
-                    @complete="addGlobalTag"
+                    @on-complete="addGlobalTag"
                   />
                 </label>
                 <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">

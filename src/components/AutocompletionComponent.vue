@@ -2,12 +2,13 @@
 import { ref, shallowRef, nextTick } from 'vue';
 
 const tagInput = defineModel<string>({ required: true });
-const emit = defineEmits(['complete']);
+const emit = defineEmits(['on-complete', 'on-input']);
 const props = defineProps({
   disabled: { type: Boolean },
   id: { type: String },
   placeholder: { type: String },
   multiple: { type: Boolean },
+  onInput: { type: Function },
 });
 
 const completions = ref<{ tag: string; type: number; output: string }[]>([]);
@@ -16,7 +17,7 @@ const selectedIndex = ref(-1);
 const active = ref(false);
 
 async function showSuggestions() {
-  const value = props.multiple ? tagInput.value.split(',').pop() : tagInput.value;
+  const value = props.multiple ? tagInput.value.split(',').pop()?.trim() : tagInput.value;
 
   const results = (await window.ipcRenderer.invoke('load_tag_suggestions', value)) as {
     tag: string;
@@ -28,6 +29,8 @@ async function showSuggestions() {
 
   await nextTick();
   completionList.value = document.querySelectorAll(`#${props.id} li`) as unknown as HTMLLIElement[];
+
+  emit('on-input');
 }
 
 function scrollToSelected() {
@@ -57,17 +60,18 @@ async function onArrowDown() {
 function onKeyEnter() {
   if (!tagInput.value) return;
 
-  // TODO: Handle multiple tags
-
   if (selectedIndex.value !== -1) {
-    tagInput.value = completionList.value[selectedIndex.value].dataset.tag || '';
+    const parts = tagInput.value.split(',').map((part) => part.trim());
+    parts[parts.length - 1] = completionList.value[selectedIndex.value].dataset.tag || '';
+
+    tagInput.value = parts.join(', ');
     completions.value = [];
     selectedIndex.value = -1;
     return;
   }
 
   completions.value = [];
-  emit('complete');
+  emit('on-complete');
 }
 </script>
 
