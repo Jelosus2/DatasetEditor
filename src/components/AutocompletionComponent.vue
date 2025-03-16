@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, shallowRef, nextTick } from 'vue';
 
-const tagInput = defineModel<string>({ required: true });
+const tagInput = defineModel({ required: true, type: String });
 const emit = defineEmits(['on-complete', 'on-input']);
 const props = defineProps({
   disabled: { type: Boolean },

@@ -3,11 +3,15 @@ import NavbarComponent from '@/components/NavbarComponent.vue';
 import MainComponent from '@/components/MainComponent.vue';
 
 import { ref, onMounted, onUnmounted } from 'vue';
+import { useHistoryStore } from './stores/historyStore';
 
 const imagesRef = ref<Map<string, { tags: Set<string>; path: string }>>(new Map());
 const globalTagsRef = ref<Map<string, Set<string>>>(new Map());
 const os = ref('');
 const theme = ref('');
+const arePreviewsEnabled = ref(false);
+
+const historyStore = useHistoryStore();
 
 async function loadDataset() {
   const dataset = (await window.ipcRenderer.invoke('load_dataset')) as {
@@ -26,9 +30,17 @@ async function loadDataset() {
 async function handleGlobalShortcuts(e: KeyboardEvent) {
   if (e.repeat) return;
 
-  if ((e.ctrlKey || (os.value === 'mac' && e.metaKey)) && e.key === 'o') {
-    e.preventDefault();
-    await loadDataset();
+  if (e.ctrlKey || (os.value === 'mac' && e.metaKey)) {
+    if (e.key === 'o') {
+      e.preventDefault();
+      await loadDataset();
+    } else if (e.key === 'z') {
+      e.preventDefault();
+      historyStore.undo(imagesRef, globalTagsRef);
+    } else if (e.key === 'y') {
+      e.preventDefault();
+      historyStore.redo(imagesRef, globalTagsRef);
+    }
   }
 }
 
@@ -70,6 +82,16 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <NavbarComponent @load_dataset="loadDataset" :os="os" :theme="theme" />
-  <MainComponent :images="imagesRef" :global-tags="globalTagsRef" :os="os" />
+  <NavbarComponent
+    v-model="arePreviewsEnabled"
+    @load_dataset="loadDataset"
+    :os="os"
+    :theme="theme"
+  />
+  <MainComponent
+    :images="imagesRef"
+    :global-tags="globalTagsRef"
+    :os="os"
+    :are-previews-enabled="arePreviewsEnabled"
+  />
 </template>

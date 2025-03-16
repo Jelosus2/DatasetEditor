@@ -4,20 +4,13 @@ import TagGroupEditorComponent from '@/components/TagGroupEditorComponent.vue';
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
 import { ref, watch, computed, shallowRef, onMounted } from 'vue';
+import { useHistoryStore } from '@/stores/historyStore';
 
 const props = defineProps({
-  images: {
-    type: Map<string, { tags: Set<string>; path: string }>,
-    required: true,
-  },
-  globalTags: {
-    type: Map<string, Set<string>>,
-    required: true,
-  },
-  os: {
-    type: String,
-    required: true,
-  },
+  images: { type: Map<string, { tags: Set<string>; path: string }>, required: true },
+  globalTags: { type: Map<string, Set<string>>, required: true },
+  os: { type: String, required: true },
+  arePreviewsEnabled: { type: Boolean, required: true },
 });
 
 const selectedImages = ref<Set<string>>(new Set());
@@ -42,6 +35,9 @@ const sortMode = ref('none');
 const sortOrder = ref('asc');
 const globalSortMode = ref('alphabetical');
 const globalSortOrder = ref('asc');
+const previewImage = ref('');
+
+const historyStore = useHistoryStore();
 
 const imageKeys = computed(() => Array.from(props.images.keys()));
 
@@ -81,6 +77,8 @@ function toggleSelection(id: string, event: MouseEvent) {
 }
 
 function displayFullImage(id: string) {
+  if (props.arePreviewsEnabled) return;
+
   const modal = document.getElementById('my_modal_1') as HTMLDialogElement;
 
   if (modal) {
@@ -194,10 +192,20 @@ function addTag(tag?: string, image?: string) {
   if (!newTag) return;
 
   const images = image ? new Set([image]) : selectedImages.value;
+  const previousState = new Map();
 
   for (const image of images.values()) {
-    props.images.get(image)?.tags.add(newTag);
+    const imageTags = props.images.get(image)?.tags;
+    if (imageTags) previousState.set(image, new Set(imageTags));
+    imageTags?.add(newTag);
   }
+
+  historyStore.pushChange({
+    type: 'add_tag',
+    images,
+    tags: new Set([newTag]),
+    previousState,
+  });
 
   updateDisplayedTags();
   if (!props.globalTags.has(newTag)) {
@@ -216,6 +224,11 @@ function addGlobalTag() {
     props.images.get(image)?.tags.add(globalTagInput.value);
   }
 
+  historyStore.pushChange({
+    type: 'add_global_tag',
+    tags: new Set([globalTagInput.value]),
+  });
+
   updateDisplayedTags();
   props.globalTags.set(globalTagInput.value, new Set([...props.images.keys()]));
   updateGlobalTags();
@@ -226,6 +239,12 @@ function addGlobalTag() {
 function removeTag(tag: string, image?: string) {
   const imagesWithTag = props.globalTags.get(tag);
   const images = image ? new Set([image]) : selectedImages.value;
+
+  historyStore.pushChange({
+    type: 'remove_tag',
+    images,
+    tags: new Set([tag]),
+  });
 
   for (const image of images.values()) {
     props.images.get(image)?.tags.delete(tag);
@@ -244,6 +263,11 @@ function removeGlobalTag(tag: string) {
   for (const image of props.images.keys()) {
     props.images.get(image)?.tags.delete(tag);
   }
+
+  historyStore.pushChange({
+    type: 'remove_global_tag',
+    tags: new Set([tag]),
+  });
 
   updateDisplayedTags();
   props.globalTags.delete(tag);
@@ -340,6 +364,7 @@ onMounted(async () => {
   if (!result) return;
 
   tagGroups.value = result;
+  historyStore.onChange = [updateDisplayedTags, updateGlobalTags];
 });
 </script>
 
@@ -360,6 +385,8 @@ onMounted(async () => {
               v-for="[name, image] in images"
               :key="name"
               @click="toggleSelection(name, $event)"
+              @mouseenter="previewImage = name"
+              @mouseleave="previewImage = ''"
               class="flex cursor-pointer items-center justify-center rounded-md border-1 border-black bg-base-200 select-none dark:border-white"
               :class="{
                 'border-3 !border-blue-600 bg-blue-400': selectedImages.has(name),
@@ -403,11 +430,22 @@ onMounted(async () => {
             </label>
           </div>
         </div>
-        <div class="flex flex-1">
+        <div class="relative flex flex-1">
           <div
             class="divider m-0 divider-horizontal cursor-ew-resize not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
             @mousedown.prevent="resizeContainer"
           ></div>
+          <div
+            v-if="arePreviewsEnabled && previewImage"
+            class="absolute inset-0 z-2 flex items-center justify-center"
+          >
+            <div class="bg-transparent p-2">
+              <img
+                :src="'file://' + images.get(previewImage)?.path"
+                class="max-h-[80vh] max-w-[80vw] object-contain"
+              />
+            </div>
+          </div>
           <div class="flex w-[30%] items-center justify-center">
             <img
               v-if="selectedImages.size"
