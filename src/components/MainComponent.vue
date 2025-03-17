@@ -6,9 +6,15 @@ import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 import { ref, watch, computed, shallowRef, onMounted } from 'vue';
 import { useHistoryStore } from '@/stores/historyStore';
 
+const imagesModel = defineModel('images', {
+  required: true,
+  type: Map<string, { tags: Set<string>; path: string }>,
+});
+const globalTagsModel = defineModel('globalTags', {
+  required: true,
+  type: Map<string, Set<string>>,
+});
 const props = defineProps({
-  images: { type: Map<string, { tags: Set<string>; path: string }>, required: true },
-  globalTags: { type: Map<string, Set<string>>, required: true },
   os: { type: String, required: true },
   arePreviewsEnabled: { type: Boolean, required: true },
 });
@@ -36,10 +42,12 @@ const sortOrder = ref('asc');
 const globalSortMode = ref('alphabetical');
 const globalSortOrder = ref('asc');
 const previewImage = ref('');
+const tagPosition = ref('down');
+const globalTagPosition = ref('down');
 
 const historyStore = useHistoryStore();
 
-const imageKeys = computed(() => Array.from(props.images.keys()));
+const imageKeys = computed(() => Array.from(imagesModel.value.keys()));
 
 watch(
   imageKeys,
@@ -85,7 +93,7 @@ function displayFullImage(id: string) {
     imageModal.value = true;
     modalHtml.value = `
       <div class="flex justify-center">
-        <img src="file://${props.images.get(id)?.path}" class="max-h-screen" />
+        <img src="file://${imagesModel.value.get(id)?.path}" class="max-h-screen" />
       </div>
     `;
     modal.showModal();
@@ -97,7 +105,7 @@ function updateDisplayedTags() {
 
   const allTags = new Set<string>();
   for (const imageName of selectedImages.value) {
-    const image = props.images.get(imageName);
+    const image = imagesModel.value.get(imageName);
     if (image && image.tags) image.tags.forEach((tag) => allTags.add(tag));
   }
 
@@ -126,7 +134,7 @@ function updateDisplayedTags() {
 
 function updateGlobalTags() {
   const allTags: string[] = [];
-  for (const image of props.images.values()) {
+  for (const image of imagesModel.value.values()) {
     if (image?.tags.size > 0)
       image.tags.forEach((tag) => {
         if (!allTags.includes(tag)) allTags.push(tag);
@@ -138,7 +146,7 @@ function updateGlobalTags() {
   if (globalSortMode.value === 'alphabetical') {
     allTags.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
   } else {
-    allTags.sort((a, b) => props.globalTags.get(b)!.size - props.globalTags.get(a)!.size);
+    allTags.sort((a, b) => globalTagsModel.value.get(b)!.size - globalTagsModel.value.get(a)!.size);
   }
 
   if (globalSortOrder.value === 'desc') allTags.reverse();
@@ -195,33 +203,48 @@ function addTag(tag?: string, image?: string) {
   const previousState = new Map();
 
   for (const image of images.values()) {
-    const imageTags = props.images.get(image)?.tags;
-    if (imageTags) previousState.set(image, new Set(imageTags));
-    imageTags?.add(newTag);
+    const imageWithTags = imagesModel.value.get(image);
+    if (imageWithTags?.tags.size && !imageWithTags.tags.has(newTag))
+      previousState.set(image, new Set(imageWithTags.tags));
+
+    if (tagPosition.value === 'up') {
+      imageWithTags!.tags = new Set([newTag, ...imageWithTags!.tags]);
+    } else {
+      imageWithTags?.tags.add(newTag);
+    }
   }
 
-  historyStore.pushChange({
-    type: 'add_tag',
-    images,
-    tags: new Set([newTag]),
-    previousState,
-  });
+  if (previousState.size > 0) {
+    historyStore.pushChange({
+      type: 'add_tag',
+      images: new Set(previousState.keys()),
+      tags: new Set([newTag]),
+      previousState,
+    });
+  }
 
   updateDisplayedTags();
-  if (!props.globalTags.has(newTag)) {
-    props.globalTags.set(newTag, new Set([...images]));
+  if (!globalTagsModel.value.has(newTag)) {
+    globalTagsModel.value.set(newTag, new Set([...images]));
     updateGlobalTags();
   } else {
-    const imagesWithTag = props.globalTags.get(newTag)!;
-    props.globalTags.set(newTag, new Set([...imagesWithTag, ...images]));
+    const imagesWithTag = globalTagsModel.value.get(newTag)!;
+    globalTagsModel.value.set(newTag, new Set([...imagesWithTag, ...images]));
   }
 
   tagInput.value = '';
 }
 
 function addGlobalTag() {
-  for (const image of props.images.keys()) {
-    props.images.get(image)?.tags.add(globalTagInput.value);
+  for (const image of imagesModel.value.keys()) {
+    if (globalTagPosition.value === 'up') {
+      imagesModel.value.get(image)!.tags = new Set([
+        globalTagInput.value,
+        ...imagesModel.value.get(image)!.tags,
+      ]);
+    } else {
+      imagesModel.value.get(image)?.tags.add(globalTagInput.value);
+    }
   }
 
   historyStore.pushChange({
@@ -230,14 +253,14 @@ function addGlobalTag() {
   });
 
   updateDisplayedTags();
-  props.globalTags.set(globalTagInput.value, new Set([...props.images.keys()]));
+  globalTagsModel.value.set(globalTagInput.value, new Set([...imagesModel.value.keys()]));
   updateGlobalTags();
 
   globalTagInput.value = '';
 }
 
 function removeTag(tag: string, image?: string) {
-  const imagesWithTag = props.globalTags.get(tag);
+  const imagesWithTag = globalTagsModel.value.get(tag);
   const images = image ? new Set([image]) : selectedImages.value;
 
   historyStore.pushChange({
@@ -247,21 +270,21 @@ function removeTag(tag: string, image?: string) {
   });
 
   for (const image of images.values()) {
-    props.images.get(image)?.tags.delete(tag);
+    imagesModel.value.get(image)?.tags.delete(tag);
     imagesWithTag?.delete(image);
   }
 
   updateDisplayedTags();
 
   if (!imagesWithTag?.size) {
-    props.globalTags.delete(tag);
+    globalTagsModel.value.delete(tag);
     updateGlobalTags();
   }
 }
 
 function removeGlobalTag(tag: string) {
-  for (const image of props.images.keys()) {
-    props.images.get(image)?.tags.delete(tag);
+  for (const image of imagesModel.value.keys()) {
+    imagesModel.value.get(image)?.tags.delete(tag);
   }
 
   historyStore.pushChange({
@@ -270,7 +293,7 @@ function removeGlobalTag(tag: string) {
   });
 
   updateDisplayedTags();
-  props.globalTags.delete(tag);
+  globalTagsModel.value.delete(tag);
   updateGlobalTags();
 }
 
@@ -283,14 +306,14 @@ function filterImages() {
 
   if (filterMode.value === 'or') {
     tags.forEach((tag) => {
-      props.globalTags.get(tag)?.forEach((image) => filteredImages.value.add(image));
+      globalTagsModel.value.get(tag)?.forEach((image) => filteredImages.value.add(image));
     });
   } else if (filterMode.value === 'and') {
     const imageCount = new Map();
     const requiredTagCount = tags.length;
 
     for (const tag of tags) {
-      const imagesWithTag = props.globalTags.get(tag);
+      const imagesWithTag = globalTagsModel.value.get(tag);
       if (!imagesWithTag) {
         isFiltering.value = true;
         selectedImages.value.clear();
@@ -313,11 +336,11 @@ function filterImages() {
     const excludedImages = new Set();
 
     tags.forEach((tag) => {
-      props.globalTags.get(tag)?.forEach((image) => excludedImages.add(image));
+      globalTagsModel.value.get(tag)?.forEach((image) => excludedImages.add(image));
     });
 
     filteredImages.value = new Set(
-      [...props.images.keys()].filter((image) => !excludedImages.has(image)),
+      [...imagesModel.value.keys()].filter((image) => !excludedImages.has(image)),
     );
   }
 
@@ -333,7 +356,7 @@ function clearImageFilter() {
   if (filterInput.value) return;
 
   if (!filteredImages.value.size && !selectedImages.value.size) {
-    selectedImages.value.add(props.images.keys().next().value!);
+    selectedImages.value.add(imagesModel.value.keys().next().value!);
     updateDisplayedTags();
   }
   isFiltering.value = false;
@@ -342,7 +365,7 @@ function clearImageFilter() {
 
 function addOrRemoveTag(tag: string) {
   for (const image of selectedImages.value.values()) {
-    if (props.images.get(image)?.tags.has(tag)) removeTag(tag, image);
+    if (imagesModel.value.get(image)?.tags.has(tag)) removeTag(tag, image);
     else addTag(tag, image);
   }
 }
@@ -382,7 +405,7 @@ onMounted(async () => {
             class="grid h-fit grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-auto scroll-smooth"
           >
             <div
-              v-for="[name, image] in images"
+              v-for="[name, image] in imagesModel"
               :key="name"
               @click="toggleSelection(name, $event)"
               @mouseenter="previewImage = name"
@@ -406,10 +429,10 @@ onMounted(async () => {
           <div
             class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
           >
-            <label class="input input-sm w-full border-r-0 px-1 pr-0 !outline-none">
+            <label class="input input-sm w-full border-r-0 pr-0 pl-1 !outline-none">
               <AutocompletionComponent
                 v-model="filterInput"
-                :disabled="!images.size"
+                :disabled="!imagesModel.size"
                 :id="'filter-completion-list'"
                 :placeholder="'Type a tag to filter the images...'"
                 :multiple="true"
@@ -441,7 +464,7 @@ onMounted(async () => {
           >
             <div class="bg-transparent p-2">
               <img
-                :src="'file://' + images.get(previewImage)?.path"
+                :src="'file://' + imagesModel.get(previewImage)?.path"
                 class="max-h-[80vh] max-w-[80vw] object-contain"
               />
             </div>
@@ -449,7 +472,7 @@ onMounted(async () => {
           <div class="flex w-[30%] items-center justify-center">
             <img
               v-if="selectedImages.size"
-              :src="images.get([...selectedImages][0])?.path"
+              :src="imagesModel.get([...selectedImages][0])?.path"
               class="max-h-full"
             />
           </div>
@@ -516,7 +539,7 @@ onMounted(async () => {
                     </svg>
                   </button>
                 </div>
-                <label class="input relative input-sm w-full px-1 !outline-none">
+                <label class="input relative input-sm w-full border-r-0 pr-0 pl-1 !outline-none">
                   <AutocompletionComponent
                     v-model="tagInput"
                     :disabled="!selectedImages.size"
@@ -524,6 +547,10 @@ onMounted(async () => {
                     :placeholder="'Type to add a tag...'"
                     @on-complete="addTag()"
                   />
+                  <select v-model.lazy="tagPosition" class="select w-fit select-sm !outline-none">
+                    <option value="up">Up</option>
+                    <option value="down" selected>Down</option>
+                  </select>
                 </label>
                 <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
                   <select
@@ -606,7 +633,7 @@ onMounted(async () => {
                   class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
                   @click="removeGlobalTag(tag)"
                 >
-                  {{ tag }} | {{ props.globalTags.get(tag)!.size }}
+                  {{ tag }} | {{ globalTagsModel.get(tag)!.size }}
                 </div>
               </div>
               <div
@@ -636,14 +663,21 @@ onMounted(async () => {
                     </svg>
                   </button>
                 </div>
-                <label class="input relative input-sm w-full px-1 !outline-none">
+                <label class="input relative input-sm w-full border-r-0 pr-0 pl-1 !outline-none">
                   <AutocompletionComponent
                     v-model="globalTagInput"
-                    :disabled="!images.size"
+                    :disabled="!imagesModel.size"
                     :id="'global-completion-list'"
                     :placeholder="'Type to add a global tag...'"
                     @on-complete="addGlobalTag"
                   />
+                  <select
+                    v-model.lazy="globalTagPosition"
+                    class="select w-fit select-sm !outline-none"
+                  >
+                    <option value="up">Up</option>
+                    <option value="down" selected>Down</option>
+                  </select>
                 </label>
                 <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
                   <select

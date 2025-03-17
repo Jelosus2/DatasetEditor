@@ -44,6 +44,52 @@ export const useHistoryStore = defineStore('history', () => {
         images: change.images,
         tags: change.tags,
       });
+    } else if (change.type === 'add_global_tag') {
+      for (const image of images.value.values()) {
+        for (const tag of change.tags) {
+          image.tags.delete(tag);
+          globalTags.value.delete(tag);
+        }
+      }
+
+      redoStack.value.push({
+        type: 'add_global_tag',
+        tags: change.tags,
+      });
+    } else if (change.type === 'remove_tag') {
+      for (const image of change.images!) {
+        for (const tag of change.tags) {
+          images.value.get(image)!.tags.add(tag);
+
+          if (!globalTags.value.has(tag)) {
+            globalTags.value.set(tag, new Set([image]));
+          } else {
+            globalTags.value.get(tag)?.add(image);
+          }
+        }
+      }
+
+      redoStack.value.push({
+        type: 'remove_tag',
+        images: change.images,
+        tags: change.tags,
+      });
+    } else if (change.type === 'remove_global_tag') {
+      for (const [image, props] of images.value.entries()) {
+        for (const tag of change.tags) {
+          props.tags.add(tag);
+          if (!globalTags.value.has(tag)) {
+            globalTags.value.set(tag, new Set([image]));
+          } else {
+            globalTags.value.get(tag)?.add(image);
+          }
+        }
+      }
+
+      redoStack.value.push({
+        type: 'remove_global_tag',
+        tags: change.tags,
+      });
     }
 
     onChange.value.forEach((fn) => fn());
@@ -78,6 +124,48 @@ export const useHistoryStore = defineStore('history', () => {
         images: change.images,
         tags: change.tags,
         previousState,
+      });
+    } else if (change.type === 'add_global_tag') {
+      for (const [image, props] of images.value.entries()) {
+        const tag = change.tags.values().next().value!;
+
+        props.tags.add(tag);
+        if (!globalTags.value.has(tag)) {
+          globalTags.value.set(tag, new Set([image]));
+        } else {
+          globalTags.value.get(tag)?.add(image);
+        }
+      }
+
+      undoStack.value.push({
+        type: 'add_global_tag',
+        tags: change.tags,
+      });
+    } else if (change.type === 'remove_tag') {
+      for (const image of change.images!) {
+        for (const tag of change.tags) {
+          images.value.get(image)!.tags.delete(tag);
+          globalTags.value.get(tag)?.delete(image);
+          if (globalTags.value.get(tag)?.size === 0) globalTags.value.delete(tag);
+        }
+      }
+
+      undoStack.value.push({
+        type: 'remove_tag',
+        images: change.images,
+        tags: change.tags,
+      });
+    } else if (change.type === 'remove_global_tag') {
+      for (const image of images.value.values()) {
+        for (const tag of change.tags) {
+          image.tags.delete(tag);
+          globalTags.value.delete(tag);
+        }
+      }
+
+      undoStack.value.push({
+        type: 'remove_global_tag',
+        tags: change.tags,
       });
     }
 

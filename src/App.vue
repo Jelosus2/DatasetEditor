@@ -27,6 +27,14 @@ async function loadDataset() {
   globalTagsRef.value = dataset.globalTags;
 }
 
+function undoAction() {
+  historyStore.undo(imagesRef, globalTagsRef);
+}
+
+function redoAction() {
+  historyStore.redo(imagesRef, globalTagsRef);
+}
+
 async function handleGlobalShortcuts(e: KeyboardEvent) {
   if (e.repeat) return;
 
@@ -36,10 +44,10 @@ async function handleGlobalShortcuts(e: KeyboardEvent) {
       await loadDataset();
     } else if (e.key === 'z') {
       e.preventDefault();
-      historyStore.undo(imagesRef, globalTagsRef);
+      undoAction();
     } else if (e.key === 'y') {
       e.preventDefault();
-      historyStore.redo(imagesRef, globalTagsRef);
+      redoAction();
     }
   }
 }
@@ -84,13 +92,15 @@ onUnmounted(() => {
 <template>
   <NavbarComponent
     v-model="arePreviewsEnabled"
-    @load_dataset="loadDataset"
     :os="os"
     :theme="theme"
+    @load_dataset="loadDataset"
+    @undo="undoAction"
+    @redo="redoAction"
   />
   <MainComponent
-    :images="imagesRef"
-    :global-tags="globalTagsRef"
+    v-model:images="imagesRef"
+    v-bind:global-tags="globalTagsRef"
     :os="os"
     :are-previews-enabled="arePreviewsEnabled"
   />

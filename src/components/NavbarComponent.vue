@@ -11,7 +11,7 @@ defineProps({
   },
 });
 
-const emit = defineEmits(['load_dataset']);
+const emit = defineEmits(['load_dataset', 'undo', 'redo']);
 
 function loadDataset() {
   emit('load_dataset');
@@ -44,12 +44,48 @@ function changeTheme() {
           <li @click="loadDataset">
             <div class="justify-between">
               Load Dataset
-              <a>
+              <div>
                 <kbd v-if="os === 'mac'" class="kbd kbd-xs">&#8984;</kbd>
                 <kbd v-else class="kbd kbd-xs">Ctrl</kbd>
                 +
                 <kbd class="kbd kbd-xs">O</kbd>
-              </a>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+      <div class="dropdown">
+        <div
+          tabindex="0"
+          role="button"
+          class="btn h-1 p-3 btn-sm btn-ghost dark:hover:bg-[#323841]"
+        >
+          Edit
+        </div>
+        <ul
+          tabindex="0"
+          class="dropdown-content menu z-1 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
+        >
+          <li @click="emit('undo')">
+            <div class="justify-between">
+              Undo
+              <div>
+                <kbd v-if="os === 'mac'" class="kbd kbd-xs">&#8984;</kbd>
+                <kbd v-else class="kbd kbd-xs">Ctrl</kbd>
+                +
+                <kbd class="kbd kbd-xs">Z</kbd>
+              </div>
+            </div>
+          </li>
+          <li @click="emit('redo')">
+            <div class="justify-between">
+              Redo
+              <div>
+                <kbd v-if="os === 'mac'" class="kbd kbd-xs">&#8984;</kbd>
+                <kbd v-else class="kbd kbd-xs">Ctrl</kbd>
+                +
+                <kbd class="kbd kbd-xs">Y</kbd>
+              </div>
             </div>
           </li>
         </ul>
