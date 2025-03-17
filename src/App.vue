@@ -35,6 +35,23 @@ function redoAction() {
   historyStore.redo(imagesRef, globalTagsRef);
 }
 
+async function saveChanges() {
+  const activeTab = document.querySelector(
+    'input[type="radio"][name="editor_tabs"]:checked',
+  )?.ariaLabel;
+
+  const obj: { [key: string]: unknown } = {};
+
+  if (activeTab === 'Dataset') {
+    for (const [image, props] of imagesRef.value.entries()) {
+      obj[image] = { path: props.path, tags: [...props.tags] };
+    }
+
+    window.ipcRenderer.invoke('save_dataset', obj);
+    console.log('Dataset saved');
+  }
+}
+
 async function handleGlobalShortcuts(e: KeyboardEvent) {
   if (e.repeat) return;
 
@@ -48,6 +65,9 @@ async function handleGlobalShortcuts(e: KeyboardEvent) {
     } else if (e.key === 'y') {
       e.preventDefault();
       redoAction();
+    } else if (e.key === 's') {
+      e.preventDefault();
+      await saveChanges();
     }
   }
 }
@@ -97,6 +117,7 @@ onUnmounted(() => {
     @load_dataset="loadDataset"
     @undo="undoAction"
     @redo="redoAction"
+    @save="saveChanges"
   />
   <MainComponent
     v-model:images="imagesRef"

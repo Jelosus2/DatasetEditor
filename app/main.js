@@ -12,6 +12,7 @@ import {
   loadTagGroups,
   saveTagGroup,
   saveTagGroupFile,
+  saveDataset,
 } from './utils.js';
 
 const __dirname = _dirname(import.meta.url);
@@ -82,3 +83,4 @@ ipcMain.handle('import_tag_group', async () => await importTagGroup(mainWindow))
 ipcMain.handle('save_tag_group', (_, tagGroups) => saveTagGroup(app.getAppPath(), tagGroups));
 ipcMain.handle('load_tag_group', () => loadTagGroups(app.getAppPath()));
 ipcMain.handle('load_tag_suggestions', (_, query) => loadTagCompletions(db, query));
+ipcMain.handle('save_dataset', (_, dataset) => saveDataset(dataset));

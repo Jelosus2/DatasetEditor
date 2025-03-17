@@ -393,7 +393,7 @@ onMounted(async () => {
 
 <template>
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
-    <input type="radio" name="dataset_tabs" class="tab" aria-label="Dataset" checked />
+    <input type="radio" name="editor_tabs" class="tab" aria-label="Dataset" checked />
     <div class="tab-content border-t-base-300 bg-base-100">
       <div class="flex h-full">
         <div

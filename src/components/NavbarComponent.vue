@@ -11,11 +11,7 @@ defineProps({
   },
 });
 
-const emit = defineEmits(['load_dataset', 'undo', 'redo']);
-
-function loadDataset() {
-  emit('load_dataset');
-}
+const emit = defineEmits(['load_dataset', 'undo', 'redo', 'save']);
 
 function changeTheme() {
   const app = document.querySelector('#app') as HTMLElement;
@@ -41,7 +37,7 @@ function changeTheme() {
           tabindex="0"
           class="dropdown-content menu z-1 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
         >
-          <li @click="loadDataset">
+          <li @click="emit('load_dataset')">
             <div class="justify-between">
               Load Dataset
               <div>
@@ -49,6 +45,17 @@ function changeTheme() {
                 <kbd v-else class="kbd kbd-xs">Ctrl</kbd>
                 +
                 <kbd class="kbd kbd-xs">O</kbd>
+              </div>
+            </div>
+          </li>
+          <li @click="emit('save')">
+            <div class="justify-between">
+              Save
+              <div>
+                <kbd v-if="os === 'mac'" class="kbd kbd-xs">&#8984;</kbd>
+                <kbd v-else class="kbd kbd-xs">Ctrl</kbd>
+                +
+                <kbd class="kbd kbd-xs">S</kbd>
               </div>
             </div>
           </li>

@@ -203,3 +203,17 @@ export function loadTagCompletions(database, query) {
     .all(`${query}%`)
     .map((row) => ({ tag: row.tag, type: row.type, output: formatOutput(row.tag, row.results) }));
 }
+
+export function saveDataset(dataset) {
+  for (const image in dataset) {
+    const props = dataset[image];
+
+    const datasetDir = dirname(props.path);
+    if (!existsSync(datasetDir)) mkdirSync(datasetDir, { recursive: true });
+
+    const tags = props.tags.join(', ');
+    const filePath = props.path.replace(extname(props.path), '.txt');
+
+    writeFileSync(filePath, tags);
+  }
+}

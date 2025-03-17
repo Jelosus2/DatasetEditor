@@ -109,7 +109,7 @@ function saveTagGroups(e: KeyboardEvent | MouseEvent) {
 </script>
 
 <template>
-  <input type="radio" name="dataset_tabs" class="tab" aria-label="Tag Groups" />
+  <input type="radio" name="editor_tabs" class="tab" aria-label="Tag Groups" />
   <div
     tabindex="0"
     @keydown.ctrl.s.exact="saveTagGroups"
