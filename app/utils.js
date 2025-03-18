@@ -10,6 +10,7 @@ import {
 import { fileURLToPath } from 'node:url';
 import { dirname, extname, basename, join } from 'node:path';
 import { createInterface } from 'node:readline';
+import { spawn } from 'node:child_process';
 
 export const _dirname = (url) => dirname(fileURLToPath(url));
 
@@ -216,4 +217,21 @@ export function saveDataset(dataset) {
 
     writeFileSync(filePath, tags);
   }
+}
+
+export function startTaggerServer(appPath) {
+  const filePath = join(appPath, 'tagger', 'main.py');
+  const process = spawn('python', ['-u', filePath]);
+
+  process.stdout.on('data', (data) => {
+    console.log(`Tagger output: ${data}`);
+  });
+  process.stderr.on('data', (data) => {
+    console.error(`Tagger error: ${data}`);
+  });
+  process.on('error', (err) => {
+    console.error(`Tagger error: ${err}`);
+  });
+
+  return process;
 }

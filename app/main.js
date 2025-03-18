@@ -13,6 +13,7 @@ import {
   saveTagGroup,
   saveTagGroupFile,
   saveDataset,
+  startTaggerServer,
 } from './utils.js';
 
 const __dirname = _dirname(import.meta.url);
@@ -33,6 +34,7 @@ db.exec(`
 `);
 
 let mainWindow;
+let taggerProcess;
 
 const IS_DEBUG = process.env.NODE_ENV === 'debug';
 
@@ -64,9 +66,11 @@ app.disableHardwareAcceleration();
 app.whenReady().then(() => {
   loadCSVIntoDatabase(dbPath, db);
   createMainWindow();
+  taggerProcess = startTaggerServer(app.getAppPath());
 });
 
 app.on('window-all-closed', () => {
+  if (taggerProcess) taggerProcess.kill();
   if (process.platform !== 'darwin') app.quit();
 });
 app.on('activate', async () => {

@@ -2,6 +2,7 @@
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
 import { ref } from 'vue';
+import { useHistoryStore } from '@/stores/historyStore';
 
 const props = defineProps({
   tagGroups: {
@@ -19,6 +20,8 @@ const groupNameInput = ref('');
 const groupTags = ref('');
 const tagInput = ref('');
 const importedGroups = ref<Map<string, Set<string>>>(new Map());
+
+const historyStore = useHistoryStore();
 
 function createGroup() {
   if (!groupNameInput.value) return;
@@ -51,7 +54,24 @@ function addTag() {
       new Set([...props.tagGroups.get(selectedGroup.value)!.values(), ...tags]),
     );
   }
+
+  historyStore.pushTagGroupChange({
+    type: 'add_tag',
+    group: selectedGroup.value,
+    tags,
+  });
+
   tagInput.value = '';
+}
+
+function removeTag(tag: string, group?: string) {
+  props.tagGroups.get(group || selectedGroup.value)?.delete(tag);
+
+  historyStore.pushTagGroupChange({
+    type: 'remove_tag',
+    group: group || selectedGroup.value,
+    tags: [tag],
+  });
 }
 
 async function exportGroupToJSON(mode: 'one' | 'all') {
@@ -95,27 +115,11 @@ function addImportedGroupToCurrent(override: boolean) {
 
   importedGroups.value.clear();
 }
-
-function saveTagGroups(e: KeyboardEvent | MouseEvent) {
-  if (e instanceof KeyboardEvent && e.metaKey && props.os !== 'mac') return;
-
-  const obj: { [key: string]: string[] } = {};
-  for (const [name, tags] of props.tagGroups.entries()) {
-    obj[name] = [...tags];
-  }
-
-  if (Object.keys(obj).length) window.ipcRenderer.invoke('save_tag_group', obj);
-}
 </script>
 
 <template>
   <input type="radio" name="editor_tabs" class="tab" aria-label="Tag Groups" />
-  <div
-    tabindex="0"
-    @keydown.ctrl.s.exact="saveTagGroups"
-    @keydown.meta.s.exact="saveTagGroups"
-    class="tab-content border-t-base-300 bg-base-100 focus:outline-none"
-  >
+  <div class="tab-content border-t-base-300 bg-base-100">
     <div class="flex h-full">
       <div class="flex w-[25%] flex-col gap-2 overflow-auto pt-1 pl-1">
         <div
@@ -132,7 +136,7 @@ function saveTagGroups(e: KeyboardEvent | MouseEvent) {
               v-for="tag in tags"
               :key="tag"
               class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
-              @click="tagGroups.get(name)?.delete(tag)"
+              @click="removeTag(tag, name)"
             >
               {{ tag }}
             </div>
@@ -224,14 +228,6 @@ function saveTagGroups(e: KeyboardEvent | MouseEvent) {
                 @click="(tagGroups.clear(), (selectedGroup = ''))"
               >
                 Delete All Groups
-              </button>
-              <button
-                class="btn btn-outline btn-success"
-                type="button"
-                :disabled="!tagGroups.size"
-                @click="saveTagGroups"
-              >
-                Save Tag Groups
               </button>
             </div>
             <div
