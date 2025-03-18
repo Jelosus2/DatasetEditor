@@ -33,7 +33,11 @@ async function loadDataset() {
   globalTagsRef.value = dataset.globalTags;
 }
 
-function undoAction(activeTab: string) {
+function undoAction() {
+  const activeTab = document.querySelector(
+    'input[type="radio"][name="editor_tabs"]:checked',
+  )?.ariaLabel;
+
   if (activeTab === 'Dataset') {
     historyStore.undoDatasetAction(imagesRef, globalTagsRef);
   } else if (activeTab === 'Tag Groups') {
@@ -41,7 +45,11 @@ function undoAction(activeTab: string) {
   }
 }
 
-function redoAction(activeTab: string) {
+function redoAction() {
+  const activeTab = document.querySelector(
+    'input[type="radio"][name="editor_tabs"]:checked',
+  )?.ariaLabel;
+
   if (activeTab === 'Dataset') {
     historyStore.redoDatasetSection(imagesRef, globalTagsRef);
   } else if (activeTab === 'Tag Groups') {
@@ -49,7 +57,11 @@ function redoAction(activeTab: string) {
   }
 }
 
-async function saveChanges(activeTab: string) {
+async function saveChanges() {
+  const activeTab = document.querySelector(
+    'input[type="radio"][name="editor_tabs"]:checked',
+  )?.ariaLabel;
+
   const obj: { [key: string]: unknown } = {};
 
   if (activeTab === 'Dataset') {
@@ -91,23 +103,18 @@ async function handleGlobalShortcuts(e: KeyboardEvent) {
   if (e.repeat) return;
 
   if (e.ctrlKey || (os.value === 'mac' && e.metaKey)) {
-    const activeTab = document.querySelector(
-      'input[type="radio"][name="editor_tabs"]:checked',
-    )?.ariaLabel;
-    if (!activeTab) return;
-
     if (e.key === 'o') {
       e.preventDefault();
       await loadDataset();
     } else if (e.key === 'z') {
       e.preventDefault();
-      undoAction(activeTab);
+      undoAction();
     } else if (e.key === 'y') {
       e.preventDefault();
-      redoAction(activeTab);
+      redoAction();
     } else if (e.key === 's') {
       e.preventDefault();
-      await saveChanges(activeTab);
+      await saveChanges();
     }
   }
 }
