@@ -26,6 +26,10 @@ def tag_images(images: list[str], tagger_model: str, general_threshold: float, c
 
     model, tag_data, target_size = load_model(tagger_model)
     for image in images:
+        image_path = Path(image)
+        if not image_path.exists():
+            continue
+
         with Image.open(image) as img:
             processed_image = prepare_image(img, target_size)
             preds = model.run(None, { model.get_inputs()[0].name: processed_image })[0]
@@ -102,19 +106,20 @@ class ServerHandle(BaseHTTPRequestHandler):
         self.wfile.write(b'Invalid request - this is a POST only internal server')
 
     def do_POST(self):
-        length = int(self.headers.get('content-length'))
-        data = json.loads(self.rfile.read(length))
         if self.path == '/install-venv':
             install_venv()
             self.good_response({ 'res': 'OK' })
         elif self.path == '/tagger':
+            length = int(self.headers.get('content-length'))
+            data = json.loads(self.rfile.read(length))
+
             images: list[str] = data['images']
             tagger_model: str = data['model']
             character_threshold: float = data['character_threshold']
             general_threshold: float = data['general_threshold']
             remove_underscores: bool = data['remove_underscores']
 
-            tagged_images = tag_images(images, tagger_model, tagger_threshold, remove_underscores)
+            tagged_images = tag_images(images, tagger_model, general_threshold, character_threshold, remove_underscores)
 
             self.good_response(tagged_images)
 
