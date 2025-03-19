@@ -14,6 +14,7 @@ dist-ssr
 coverage
 *.local
 Data
+tagger/venv
 
 /cypress/videos/
 /cypress/screenshots/

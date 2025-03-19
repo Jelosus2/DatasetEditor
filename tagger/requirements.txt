@@ -1,0 +1,8 @@
+numpy==1.26.4
+pandas
+onnxruntime-gpu==1.18.1
+pillow
+huggingface_hub
+
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.5.1

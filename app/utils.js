@@ -220,8 +220,14 @@ export function saveDataset(dataset) {
 }
 
 export function startTaggerServer(appPath) {
-  const filePath = join(appPath, 'tagger', 'main.py');
-  const process = spawn('python', ['-u', filePath]);
+  const os = getOS();
+  const scriptsDir = os === 'windows' ? 'Scripts' : 'bin';
+  const executable = os === 'windows' ? 'python.exe' : 'python';
+
+  const taggerPath = join(appPath, 'tagger');
+  const venvPython = join(taggerPath, 'venv', scriptsDir, executable);
+  const filePath = join(taggerPath, 'main.py');
+  const process = spawn(venvPython, ['-u', filePath]);
 
   process.stdout.on('data', (data) => {
     console.log(`Tagger output: ${data}`);

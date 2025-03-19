@@ -1,16 +1,129 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from PIL import Image, ImageFile
+from pathlib import Path
+import onnxruntime as ort
+import pandas as pd
+import numpy as np
+import huggingface_hub
+import subprocess
+import json
+import sys
+import os
+
+def install_venv():
+    python = sys.executable
+    venv_path = Path('venv')
+
+    if not Path.exists(venv_path):
+        print('Creating virtual environment...')
+        subprocess.check_call(f'{python} -m venv venv', shell=sys.platform == 'linux')
+        venv_pip = venv_path.joinpath('Scripts/pip.exe' if sys.platform == 'win32' else 'bin/pip')
+        print('Installing requirements...')
+        subprocess.check_call(f'{venv_pip} install -r requirements.txt', shell=sys.platform == 'linux')
+
+def tag_images(images: list[str], tagger_model: str, general_threshold: float, character_threshold: float, remove_underscores: bool) -> dict[str, list[str]]:
+    final_dict = {}
+
+    model, tag_data, target_size = load_model(tagger_model)
+    for image in images:
+        with Image.open(image) as img:
+            processed_image = prepare_image(img, target_size)
+            preds = model.run(None, { model.get_inputs()[0].name: processed_image })[0]
+
+            processed_tags = process_predictions(preds, tag_data, general_threshold, character_threshold, remove_underscores)
+            final_dict[image] = processed_tags
+
+    return final_dict
+
+def download_model(model: str) -> tuple[str, str]:
+    model_repo = f'SmilingWolf/{model}'
+    csv_path = huggingface_hub.hf_hub_download(model_repo, 'model.onnx')
+    model_path = huggingface_hub.hf_hub_download(model_repo, 'selected_tags.csv')
+    return csv_path, model_path
+
+class LabelData:
+    def __init__(self, names: list[str], general: list[int], character: list[int]):
+        self.names: list[str] = names
+        self.general: list[int] = general
+        self.character: list[int] = character
+
+def load_model(tagger_model: str) -> tuple[ort.InferenceSession, LabelData, int]:
+    csv_path, model_path = download_model(tagger_model)
+    csv_content = pd.read_csv(csv_path)
+    tag_data = LabelData(
+        names=csv_content['name'].tolist(),
+        general=list(np.where(csv_content['category'] == 0)[0]),
+        character=list(np.where(csv_content['category'] == 4)[0]),
+    )
+    providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+    model = ort.InferenceSession(model_path, providers=providers)
+    target_size = model.get_inputs()[0].shape[2]
+
+    return model, tag_data, target_size
+
+def prepare_image(image: ImageFile.ImageFile, target_size: int) -> np.ndarray:
+    canvas = Image.new('RGB', image.size, (255, 255, 255))
+    canvas.paste(image, mask=image.split()[3] if image.mode == 'RGBA' else None)
+    image = canvas.convert('RGB')
+
+    max_dim = max(image.size)
+    pad_left = (max_dim - image.size[0]) // 2
+    pad_top = (max_dim - image.size[1]) // 2
+    padded_image = Image.new('RGB', (max_dim, max_dim), (255, 255, 255))
+    padded_image.paste(image, (pad_left, pad_top))
+    padded_image = padded_image.resize((target_size, target_size), Image.Resampling.LANCZOS)
+
+    image_array = np.asarray(padded_image, dtype=np.float32)[..., [2, 1, 0]]
+
+    return np.expand_dims(image_array, axis=0)
+
+def process_predictions(preds: np.ndarray, tag_data: LabelData, general_threshold: float, character_threshold: float, remove_underscores: bool) -> list[str]:
+    scores = preds.flatten()
+
+    character_tags = [tag_data.names[i] for i in tag_data.character if scores[i] >= character_threshold]
+    general_tags = [tag_data.names[i] for i in tag_data.general if scores[i] >= general_threshold]
+
+    final_tags = general_tags + character_tags
+    if remove_underscores:
+        final_tags = [tag.replace('_', ' ') for tag in final_tags]
+
+    return final_tags
 
 class ServerHandle(BaseHTTPRequestHandler):
-    def do_GET(self):
+    def good_response(self, data):
         self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
+        self.send_header('Content-type', 'application/json')
         self.end_headers()
-        self.wfile.write(b'Hello, world!')
+        self.wfile.write(json.dumps(data).encode('utf-8'))
+
+    def do_GET(self):
+        self.send_response(404)
+        self.end_headers()
+        self.wfile.write(b'Invalid request - this is a POST only internal server')
+
+    def do_POST(self):
+        length = int(self.headers.get('content-length'))
+        data = json.loads(self.rfile.read(length))
+        if self.path == '/install-venv':
+            install_venv()
+            self.good_response({ 'res': 'OK' })
+        elif self.path == '/tagger':
+            images: list[str] = data['images']
+            tagger_model: str = data['model']
+            character_threshold: float = data['character_threshold']
+            general_threshold: float = data['general_threshold']
+            remove_underscores: bool = data['remove_underscores']
+
+            tagged_images = tag_images(images, tagger_model, tagger_threshold, remove_underscores)
+
+            self.good_response(tagged_images)
 
 def run():
+    os.chdir('tagger')
+
     server_address = ('', 3067)
     httpd = HTTPServer(server_address, ServerHandle)
-    print('Tagger running on port 3067')
+    print('Tagger running')
     httpd.serve_forever()
 
 run()
