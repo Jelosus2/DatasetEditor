@@ -227,10 +227,12 @@ export function startTaggerServer(appPath) {
   const taggerPath = join(appPath, 'tagger');
   const venvPython = join(taggerPath, 'venv', scriptsDir, executable);
   const filePath = join(taggerPath, 'main.py');
-  const process = spawn(venvPython, ['-u', filePath]);
+
+  const activePython = existsSync(venvPython) ? venvPython : executable;
+  const process = spawn(activePython, ['-u', filePath]);
 
   process.stdout.on('data', (data) => {
-    console.log(`Tagger output: ${data}`);
+    console.log(`Tagger output: ${data.toString().replaceAll('\n', '')}`);
   });
   process.stderr.on('data', (data) => {
     console.error(`Tagger error: ${data}`);

@@ -10,39 +10,34 @@ import json
 import sys
 import os
 
-def install_venv():
-    python = sys.executable
-    venv_path = Path('venv')
-
-    if not Path.exists(venv_path):
-        print('Creating virtual environment...')
-        subprocess.check_call(f'{python} -m venv venv', shell=sys.platform == 'linux')
-        venv_pip = venv_path.joinpath('Scripts/pip.exe' if sys.platform == 'win32' else 'bin/pip')
-        print('Installing requirements...')
-        subprocess.check_call(f'{venv_pip} install -r requirements.txt', shell=sys.platform == 'linux')
-
 def tag_images(images: list[str], tagger_model: str, general_threshold: float, character_threshold: float, remove_underscores: bool) -> dict[str, list[str]]:
     final_dict = {}
 
     model, tag_data, target_size = load_model(tagger_model)
+    print('Tagging images...')
+    print(f'Found {len(images)} images')
     for image in images:
         image_path = Path(image)
         if not image_path.exists():
+            print(f'{image} not found, skipping')
             continue
 
+        print(f'Tagging {image}...')
         with Image.open(image) as img:
             processed_image = prepare_image(img, target_size)
             preds = model.run(None, { model.get_inputs()[0].name: processed_image })[0]
 
             processed_tags = process_predictions(preds, tag_data, general_threshold, character_threshold, remove_underscores)
-            final_dict[image] = processed_tags
+            final_dict[Path(image.replace('\\', '/')).name] = processed_tags
 
+    print('Tagging finished')
     return final_dict
 
 def download_model(model: str) -> tuple[str, str]:
     model_repo = f'SmilingWolf/{model}'
-    csv_path = huggingface_hub.hf_hub_download(model_repo, 'model.onnx')
-    model_path = huggingface_hub.hf_hub_download(model_repo, 'selected_tags.csv')
+    print('Downloading model if necessary...')
+    csv_path = huggingface_hub.hf_hub_download(model_repo, 'selected_tags.csv')
+    model_path = huggingface_hub.hf_hub_download(model_repo, 'model.onnx')
     return csv_path, model_path
 
 class LabelData:
@@ -68,13 +63,13 @@ def load_model(tagger_model: str) -> tuple[ort.InferenceSession, LabelData, int]
 def prepare_image(image: ImageFile.ImageFile, target_size: int) -> np.ndarray:
     canvas = Image.new('RGB', image.size, (255, 255, 255))
     canvas.paste(image, mask=image.split()[3] if image.mode == 'RGBA' else None)
-    image = canvas.convert('RGB')
+    prepared_image = canvas.convert('RGB')
 
-    max_dim = max(image.size)
-    pad_left = (max_dim - image.size[0]) // 2
-    pad_top = (max_dim - image.size[1]) // 2
+    max_dim = max(prepared_image.size)
+    pad_left = (max_dim - prepared_image.size[0]) // 2
+    pad_top = (max_dim - prepared_image.size[1]) // 2
     padded_image = Image.new('RGB', (max_dim, max_dim), (255, 255, 255))
-    padded_image.paste(image, (pad_left, pad_top))
+    padded_image.paste(prepared_image, (pad_left, pad_top))
     padded_image = padded_image.resize((target_size, target_size), Image.Resampling.LANCZOS)
 
     image_array = np.asarray(padded_image, dtype=np.float32)[..., [2, 1, 0]]
@@ -106,11 +101,8 @@ class ServerHandle(BaseHTTPRequestHandler):
         self.wfile.write(b'Invalid request - this is a POST only internal server')
 
     def do_POST(self):
-        if self.path == '/install-venv':
-            install_venv()
-            self.good_response({ 'res': 'OK' })
-        elif self.path == '/tagger':
-            length = int(self.headers.get('content-length'))
+        if self.path == '/tagger':
+            length = int(self.headers.get('content-length') or 0)
             data = json.loads(self.rfile.read(length))
 
             images: list[str] = data['images']
@@ -122,9 +114,23 @@ class ServerHandle(BaseHTTPRequestHandler):
             tagged_images = tag_images(images, tagger_model, general_threshold, character_threshold, remove_underscores)
 
             self.good_response(tagged_images)
+        else:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b'Invalid endpoint')
 
 def run():
     os.chdir('tagger')
+
+    python = sys.executable
+    venv_path = Path('venv')
+
+    if not Path.exists(venv_path):
+        print('Creating virtual environment...')
+        subprocess.check_call(f'{python} -m venv venv', shell=sys.platform == 'linux')
+        venv_pip = venv_path.joinpath('Scripts/pip.exe' if sys.platform == 'win32' else 'bin/pip')
+        print('Installing requirements...')
+        subprocess.check_call(f'{venv_pip} install -r requirements.txt', shell=sys.platform == 'linux')
 
     server_address = ('', 3067)
     httpd = HTTPServer(server_address, ServerHandle)
