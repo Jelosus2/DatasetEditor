@@ -229,17 +229,17 @@ export function startTaggerServer(appPath) {
   const filePath = join(taggerPath, 'main.py');
 
   const activePython = existsSync(venvPython) ? venvPython : executable;
-  const process = spawn(activePython, ['-u', filePath]);
+  const taggerProcess = spawn(activePython, ['-u', filePath]);
 
-  process.stdout.on('data', (data) => {
+  taggerProcess.stdout.on('data', (data) => {
     console.log(`Tagger output: ${data.toString().replaceAll('\n', '')}`);
   });
-  process.stderr.on('data', (data) => {
+  taggerProcess.stderr.on('data', (data) => {
     console.error(`Tagger error: ${data}`);
   });
-  process.on('error', (err) => {
+  taggerProcess.on('error', (err) => {
     console.error(`Tagger error: ${err}`);
   });
 
-  return process;
+  return taggerProcess;
 }
