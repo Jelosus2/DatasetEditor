@@ -1,6 +1,6 @@
 numpy==1.26.4
 pandas
-onnxruntime-gpu==1.18.1
+onnxruntime-gpu==1.19.2
 pillow
 huggingface_hub
 
