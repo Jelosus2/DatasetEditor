@@ -3,9 +3,10 @@ import NavbarComponent from '@/components/NavbarComponent.vue';
 import MainComponent from '@/components/MainComponent.vue';
 import TagGroupEditorComponent from '@/components/TagGroupEditorComponent.vue';
 import AlertComponent from '@/components/AlertComponent.vue';
+import AutotaggerModalComponent from '@/components/AutotaggerModalComponent.vue';
 
 import { ref, onMounted, onUnmounted } from 'vue';
-import { useHistoryStore } from './stores/historyStore';
+import { useHistoryStore } from '@/stores/historyStore';
 
 const imagesRef = ref<Map<string, { tags: Set<string>; path: string }>>(new Map());
 const globalTagsRef = ref<Map<string, Set<string>>>(new Map());
@@ -185,4 +186,5 @@ onUnmounted(() => {
     />
     <TagGroupEditorComponent :tag-groups="tagGroups" :os="os" />
   </div>
+  <AutotaggerModalComponent />
 </template>

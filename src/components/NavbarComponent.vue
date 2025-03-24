@@ -117,6 +117,23 @@ function changeTheme() {
           </li>
         </ul>
       </div>
+      <div class="dropdown">
+        <div
+          tabindex="0"
+          role="button"
+          class="btn h-1 p-3 btn-sm btn-ghost dark:hover:bg-[#323841]"
+        >
+          Tools
+        </div>
+        <ul
+          tabindex="0"
+          class="dropdown-content menu z-1 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
+        >
+          <li>
+            <label for="autotagger_modal">Autotag Images</label>
+          </li>
+        </ul>
+      </div>
     </div>
     <div class="navbar-end">
       <div class="dropdown mr-3">

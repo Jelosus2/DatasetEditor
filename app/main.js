@@ -64,10 +64,10 @@ async function createMainWindow() {
 if (!IS_DEBUG) Menu.setApplicationMenu(null);
 app.disableHardwareAcceleration();
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   loadCSVIntoDatabase(dbPath, db);
   createMainWindow();
-  taggerProcess = startTaggerServer(appPath);
+  taggerProcess = await startTaggerServer(appPath, mainWindow);
 });
 
 app.on('window-all-closed', () => {

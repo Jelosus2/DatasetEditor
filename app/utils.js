@@ -1,4 +1,5 @@
 import { dialog } from 'electron';
+import stripAnsi from 'strip-ansi';
 import {
   createReadStream,
   existsSync,
@@ -219,7 +220,7 @@ export function saveDataset(dataset) {
   }
 }
 
-export function startTaggerServer(appPath) {
+export async function startTaggerServer(appPath, mainWindow) {
   const os = getOS();
   const scriptsDir = os === 'windows' ? 'Scripts' : 'bin';
   const executable = os === 'windows' ? 'python.exe' : 'python';
@@ -228,18 +229,51 @@ export function startTaggerServer(appPath) {
   const venvPython = join(taggerPath, 'venv', scriptsDir, executable);
   const filePath = join(taggerPath, 'main.py');
 
-  const activePython = existsSync(venvPython) ? venvPython : executable;
-  const taggerProcess = spawn(activePython, ['-u', filePath]);
+  await installTaggerRequirements(taggerPath, mainWindow);
+  const taggerProcess = spawn(venvPython, ['-u', filePath]);
 
   taggerProcess.stdout.on('data', (data) => {
-    console.log(`Tagger output: ${data.toString().replaceAll('\n', '')}`);
+    const output = data.toString();
+    mainWindow.webContents.send('tagger-output', clearOutputText(output));
   });
   taggerProcess.stderr.on('data', (data) => {
-    console.error(`Tagger error: ${data}`);
+    const output = data.toString();
+    mainWindow.webContents.send('tagger-output', clearOutputText(output));
   });
   taggerProcess.on('error', (err) => {
     console.error(`Tagger error: ${err}`);
   });
 
   return taggerProcess;
+}
+
+function installTaggerRequirements(taggerPath, mainWindow) {
+  return new Promise((resolve, reject) => {
+    const filePath = join(taggerPath, 'install.py');
+
+    const installProcess = spawn('python', ['-u', filePath]);
+    installProcess.stdout.on('data', (data) => {
+      const output = data.toString();
+      mainWindow.webContents.send('tagger-output', clearOutputText(output));
+    });
+    installProcess.stderr.on('data', (data) => {
+      const output = data.toString();
+      mainWindow.webContents.send('tagger-output', clearOutputText(output));
+    });
+    installProcess.on('error', (err) => {
+      console.error(`Tagger install error: ${err}`);
+      reject(err);
+    });
+    installProcess.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Process exited with code ${code}`));
+      }
+    });
+  });
+}
+
+function clearOutputText(str) {
+  return stripAnsi(str.replaceAll('\x00', '').replaceAll('\n', '').trim());
 }

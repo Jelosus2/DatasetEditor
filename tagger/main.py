@@ -5,17 +5,14 @@ import onnxruntime as ort
 import pandas as pd
 import numpy as np
 import huggingface_hub
-import subprocess
 import torch
 import json
-import sys
-import os
 
 def tag_images(images: list[str], tagger_model: str, general_threshold: float, character_threshold: float, remove_underscores: bool) -> dict[str, list[str]]:
     final_dict = {}
 
     model, tag_data, target_size = load_model(tagger_model)
-    print('Tagging images...')
+ 
     print(f'Found {len(images)} images')
     for image in images:
         image_path = Path(image)
@@ -115,24 +112,14 @@ class ServerHandle(BaseHTTPRequestHandler):
             tagged_images = tag_images(images, tagger_model, general_threshold, character_threshold, remove_underscores)
 
             self.good_response(tagged_images)
+        elif self.path == '/device':
+            self.good_response({ 'device': 'GPU' if torch.cuda.is_available() else 'CPU' })
         else:
             self.send_response(404)
             self.end_headers()
             self.wfile.write(b'Invalid endpoint')
 
 def run():
-    os.chdir('tagger')
-
-    python = sys.executable
-    venv_path = Path('venv')
-
-    if not Path.exists(venv_path):
-        print('Creating virtual environment...')
-        subprocess.check_call(f'{python} -m venv venv', shell=sys.platform == 'linux')
-        venv_pip = venv_path.joinpath('Scripts/pip.exe' if sys.platform == 'win32' else 'bin/pip')
-        print('Installing requirements...')
-        subprocess.check_call(f'{venv_pip} install -r requirements.txt', shell=sys.platform == 'linux')
-
     server_address = ('', 3067)
     httpd = HTTPServer(server_address, ServerHandle)
     print('Tagger running')
