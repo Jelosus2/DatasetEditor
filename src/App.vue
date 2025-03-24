@@ -186,5 +186,5 @@ onUnmounted(() => {
     />
     <TagGroupEditorComponent :tag-groups="tagGroups" :os="os" />
   </div>
-  <AutotaggerModalComponent />
+  <AutotaggerModalComponent :images="imagesRef" />
 </template>

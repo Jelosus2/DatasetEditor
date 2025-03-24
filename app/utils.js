@@ -277,3 +277,28 @@ function installTaggerRequirements(taggerPath, mainWindow) {
 function clearOutputText(str) {
   return stripAnsi(str.replaceAll('\x00', '').replaceAll('\n', '').trim());
 }
+
+export async function getTaggerDevice() {
+  try {
+    const response = await fetch('http://localhost:3067/device', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    return data.device;
+  } catch (err) {
+    console.error('Error getting tagger device: ', err);
+    return 'Unkown';
+  }
+}
+
+export async function autoTagImages(props) {
+  console.log('Hello');
+  const { images, generalThreshold, characterThreshold, removeUnderscores, selectedModels } = props;
+
+  console.log(images, generalThreshold, characterThreshold, removeUnderscores, selectedModels);
+  return true;
+}

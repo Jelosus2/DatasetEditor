@@ -87,6 +87,9 @@ def process_predictions(preds: np.ndarray, tag_data: LabelData, general_threshol
     return final_tags
 
 class ServerHandle(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        pass
+
     def good_response(self, data):
         self.send_response(200)
         self.send_header('Content-type', 'application/json')

@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 
+const props = defineProps({
+  images: {
+    type: Map<string, { path: string; tags: Set<string> }>,
+    required: true,
+  },
+});
+
 const generalThreshold = ref(0.25);
 const characterThreshold = ref(0.35);
 const removeUnderscores = ref(true);
@@ -8,6 +15,7 @@ const selectedModels = ref<string[]>([]);
 const device = ref('');
 const taggerLogs = ref<string[]>([]);
 const isTaggerRunning = ref(false);
+const isTagging = ref(false);
 
 const taggerModels = [
   'wd-eva02-large-tagger-v3',
@@ -24,14 +32,48 @@ const taggerModels = [
   'wd-v1-4-vit-tagger',
 ];
 
+async function startAutotagger() {
+  if (isTaggerRunning.value) return;
+
+  taggerLogs.value = [];
+  taggerLogs.value.push('Starting autotagger...');
+  isTaggerRunning.value = true;
+
+  const active = await window.ipcRenderer.invoke('start_tagger_service');
+  if (!active) {
+    taggerLogs.value.push('Autotagger failed to start');
+    isTaggerRunning.value = false;
+  }
+}
+
+async function stopAutotagger() {
+  if (!isTaggerRunning.value) return;
+  taggerLogs.value.push('Stopping autotagger...');
+  await window.ipcRenderer.invoke('stop_tagger_service');
+  isTaggerRunning.value = false;
+  taggerLogs.value.push('Autotagger stopped');
+}
+
+async function autoTagImages() {
+  if (!taggerLogs.value.includes('Tagger running')) return;
+
+  const images = [...props.images.values()].map((image) => image.path);
+  console.log(images);
+  const obj = {
+    images,
+  };
+
+  const finished = await window.ipcRenderer.invoke('tag_images', obj);
+
+  if (finished) {
+    isTagging.value = false;
+  }
+}
+
 onMounted(() => {
   window.ipcRenderer.receive('tagger-output', async (output: string) => {
-    if (output === 'Tagger running') {
-      device.value = (
-        await (await fetch('http://localhost:3067/device', { method: 'POST' })).json()
-      ).device;
-      isTaggerRunning.value = true;
-    }
+    if (output === 'Tagger running')
+      device.value = (await window.ipcRenderer.invoke('get_tagger_device')) as string;
 
     taggerLogs.value.push(output);
   });
@@ -106,10 +148,40 @@ onUnmounted(() => {
               <span>{{ device }}</span>
             </div>
           </div>
+          <div class="flex flex-col gap-2">
+            <button
+              class="btn btn-sm btn-info"
+              :disabled="isTagging || !isTaggerRunning"
+              @click="autoTagImages"
+            >
+              Tag Images & Apply Tags
+            </button>
+            <button class="btn btn-sm btn-info" :disabled="isTagging || !isTaggerRunning">
+              Tag Images & Load Diff
+            </button>
+          </div>
         </div>
         <div class="mt-0 flex gap-2">
-          <button class="btn btn-outline btn-success" :disabled="isTaggerRunning">
-            Start Autotagger
+          <button
+            class="btn btn-outline btn-success"
+            :disabled="isTaggerRunning"
+            @click="startAutotagger"
+          >
+            Start
+          </button>
+          <button
+            class="btn btn-outline btn-info"
+            :disabled="!isTaggerRunning"
+            @click="((isTaggerRunning = false), startAutotagger())"
+          >
+            Restart
+          </button>
+          <button
+            class="btn btn-outline btn-error"
+            :disabled="!isTaggerRunning"
+            @click="stopAutotagger"
+          >
+            Stop
           </button>
         </div>
       </div>

@@ -14,6 +14,8 @@ import {
   saveTagGroupFile,
   saveDataset,
   startTaggerServer,
+  getTaggerDevice,
+  autoTagImages,
 } from './utils.js';
 
 const __dirname = _dirname(import.meta.url);
@@ -64,10 +66,9 @@ async function createMainWindow() {
 if (!IS_DEBUG) Menu.setApplicationMenu(null);
 app.disableHardwareAcceleration();
 
-app.whenReady().then(async () => {
+app.whenReady().then(() => {
   loadCSVIntoDatabase(dbPath, db);
   createMainWindow();
-  taggerProcess = await startTaggerServer(appPath, mainWindow);
 });
 
 app.on('window-all-closed', () => {
@@ -89,3 +90,21 @@ ipcMain.handle('save_tag_group', (_, tagGroups) => saveTagGroup(appPath, tagGrou
 ipcMain.handle('load_tag_group', () => loadTagGroups(appPath));
 ipcMain.handle('load_tag_suggestions', (_, query) => loadTagCompletions(db, query));
 ipcMain.handle('save_dataset', (_, dataset) => saveDataset(dataset));
+ipcMain.handle('get_tagger_device', async () => await getTaggerDevice());
+ipcMain.handle('tag_images', async (_, props) => await autoTagImages(props));
+ipcMain.handle('start_tagger_service', async () => {
+  try {
+    if (taggerProcess) taggerProcess.kill();
+    taggerProcess = await startTaggerServer(appPath, mainWindow);
+    return true;
+  } catch (err) {
+    console.error('Error starting tagger server: ', err);
+    return false;
+  }
+});
+ipcMain.handle('stop_tagger_service', () => {
+  if (taggerProcess) {
+    taggerProcess.kill();
+    taggerProcess = null;
+  }
+});
