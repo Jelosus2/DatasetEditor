@@ -275,7 +275,8 @@ function installTaggerRequirements(taggerPath, mainWindow) {
 }
 
 function clearOutputText(str) {
-  return stripAnsi(str.replaceAll('\x00', '').replaceAll('\n', '').trim());
+  if (str.endsWith('\n')) str = str.slice(0, -1);
+  return stripAnsi(str.replaceAll('\x00', '').trim());
 }
 
 export async function getTaggerDevice() {
@@ -288,6 +289,7 @@ export async function getTaggerDevice() {
     });
 
     const data = await response.json();
+
     return data.device;
   } catch (err) {
     console.error('Error getting tagger device: ', err);
@@ -296,9 +298,32 @@ export async function getTaggerDevice() {
 }
 
 export async function autoTagImages(props) {
-  console.log('Hello');
   const { images, generalThreshold, characterThreshold, removeUnderscores, selectedModels } = props;
+  const results = new Map();
 
-  console.log(images, generalThreshold, characterThreshold, removeUnderscores, selectedModels);
-  return true;
+  for (const model of selectedModels) {
+    const body = {
+      images,
+      model,
+      character_threshold: characterThreshold,
+      general_threshold: generalThreshold,
+      remove_underscores: removeUnderscores,
+    };
+
+    const response = await fetch('http://localhost:3067/tagger', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    for (const key in data) {
+      if (!results.has(key)) results.set(key, new Set(data[key]));
+      else results.set(key, new Set([...results.get(key), ...data[key]]));
+    }
+  }
+
+  return results;
 }

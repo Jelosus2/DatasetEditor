@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, shallowRef, onMounted, onUnmounted, nextTick, toRaw } from 'vue';
 
+const emit = defineEmits(['insert_tags']);
 const props = defineProps({
   images: {
     type: Map<string, { path: string; tags: Set<string> }>,
@@ -15,7 +16,9 @@ const selectedModels = ref<string[]>([]);
 const device = ref('');
 const taggerLogs = ref<string[]>([]);
 const isTaggerRunning = ref(false);
+const isInstalling = ref(false);
 const isTagging = ref(false);
+const logsContainer = shallowRef<HTMLDivElement | null>(null);
 
 const taggerModels = [
   'wd-eva02-large-tagger-v3',
@@ -51,6 +54,7 @@ async function stopAutotagger() {
   taggerLogs.value.push('Stopping autotagger...');
   await window.ipcRenderer.invoke('stop_tagger_service');
   isTaggerRunning.value = false;
+  device.value = '';
   taggerLogs.value.push('Autotagger stopped');
 }
 
@@ -58,24 +62,35 @@ async function autoTagImages() {
   if (!taggerLogs.value.includes('Tagger running')) return;
 
   const images = [...props.images.values()].map((image) => image.path);
-  console.log(images);
-  const obj = {
+  isTagging.value = true;
+  const results = (await window.ipcRenderer.invoke('tag_images', {
     images,
-  };
+    generalThreshold: toRaw(generalThreshold.value),
+    characterThreshold: toRaw(characterThreshold.value),
+    removeUnderscores: toRaw(removeUnderscores.value),
+    selectedModels: toRaw(selectedModels.value),
+  })) as Map<string, Set<string>>;
 
-  const finished = await window.ipcRenderer.invoke('tag_images', obj);
+  emit('insert_tags', results);
+  isTagging.value = false;
+}
 
-  if (finished) {
-    isTagging.value = false;
-  }
+function scrollToBottom() {
+  if (!logsContainer.value) return;
+  logsContainer.value.scrollTop = logsContainer.value.scrollHeight;
 }
 
 onMounted(() => {
   window.ipcRenderer.receive('tagger-output', async (output: string) => {
-    if (output === 'Tagger running')
+    if (output === 'Tagger running') {
       device.value = (await window.ipcRenderer.invoke('get_tagger_device')) as string;
-
+      isInstalling.value = false;
+    }
+    if (output === 'Creating virtual environment...') isInstalling.value = true;
     taggerLogs.value.push(output);
+
+    await nextTick();
+    scrollToBottom();
   });
 });
 
@@ -106,8 +121,12 @@ onUnmounted(() => {
             </div>
           </li>
         </ul>
-        <div class="mockup-code h-full w-full overflow-auto">
-          <pre v-for="log in taggerLogs" :key="log"><code>{{ log }}</code></pre>
+        <div ref="logsContainer" class="mockup-code h-full w-full overflow-auto pl-5">
+          <pre
+            v-for="log in taggerLogs"
+            :key="log"
+            class="before:hidden"
+          ><code>{{ log }}</code></pre>
         </div>
       </div>
       <div class="flex items-center pt-4">
@@ -151,12 +170,15 @@ onUnmounted(() => {
           <div class="flex flex-col gap-2">
             <button
               class="btn btn-sm btn-info"
-              :disabled="isTagging || !isTaggerRunning"
+              :disabled="isTagging || !isTaggerRunning || isInstalling"
               @click="autoTagImages"
             >
               Tag Images & Apply Tags
             </button>
-            <button class="btn btn-sm btn-info" :disabled="isTagging || !isTaggerRunning">
+            <button
+              class="btn btn-sm btn-info"
+              :disabled="isTagging || !isTaggerRunning || isInstalling"
+            >
               Tag Images & Load Diff
             </button>
           </div>
@@ -164,21 +186,21 @@ onUnmounted(() => {
         <div class="mt-0 flex gap-2">
           <button
             class="btn btn-outline btn-success"
-            :disabled="isTaggerRunning"
+            :disabled="isTaggerRunning || isInstalling"
             @click="startAutotagger"
           >
             Start
           </button>
           <button
             class="btn btn-outline btn-info"
-            :disabled="!isTaggerRunning"
+            :disabled="!isTaggerRunning || isInstalling"
             @click="((isTaggerRunning = false), startAutotagger())"
           >
             Restart
           </button>
           <button
             class="btn btn-outline btn-error"
-            :disabled="!isTaggerRunning"
+            :disabled="!isTaggerRunning || isInstalling"
             @click="stopAutotagger"
           >
             Stop

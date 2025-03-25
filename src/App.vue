@@ -138,6 +138,24 @@ function loadTheme() {
   }
 }
 
+function insertTags(tags: Map<string, Set<string>>) {
+  globalTagsRef.value = new Map();
+  for (const [image, tagsToInsert] of tags.entries()) {
+    if (!imagesRef.value.has(image)) continue;
+    imagesRef.value.get(image)!.tags = tagsToInsert;
+
+    for (const tag of tagsToInsert) {
+      if (!globalTagsRef.value.has(tag)) {
+        globalTagsRef.value.set(tag, new Set([image]));
+      } else {
+        globalTagsRef.value.get(tag)!.add(image);
+      }
+    }
+  }
+
+  historyStore.onChange.forEach((fn) => fn());
+}
+
 onMounted(async () => {
   document.addEventListener('keydown', handleGlobalShortcuts);
   loadTheme();
@@ -186,5 +204,5 @@ onUnmounted(() => {
     />
     <TagGroupEditorComponent :tag-groups="tagGroups" :os="os" />
   </div>
-  <AutotaggerModalComponent :images="imagesRef" />
+  <AutotaggerModalComponent :images="imagesRef" @insert_tags="insertTags" />
 </template>

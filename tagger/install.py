@@ -13,7 +13,7 @@ def install_requirements():
         print('Creating virtual environment...')
         subprocess.check_call(f'{python} -m venv venv', shell=sys.platform == 'linux')
         venv_pip = venv_path.joinpath('Scripts/pip.exe' if sys.platform == 'win32' else 'bin/pip')
-        print('Installing requirements...')
-        subprocess.check_call(f'{venv_pip} install -r requirements.txt', shell=sys.platform == 'linux')
+        print('Installing requirements, do not stop or restart the process...')
+        subprocess.check_call(f'{venv_pip} install --disable-pip-version-check -r requirements.txt', shell=sys.platform == 'linux')
 
 install_requirements()
