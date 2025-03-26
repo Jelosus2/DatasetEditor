@@ -3,16 +3,8 @@ import ModalComponent from '@/components/ModalComponent.vue';
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
 import { ref, watch, computed, shallowRef, onMounted } from 'vue';
-import { useHistoryStore } from '@/stores/historyStore';
+import { useDatasetStore } from '@/stores/datasetStore';
 
-const imagesModel = defineModel('images', {
-  required: true,
-  type: Map<string, { tags: Set<string>; path: string }>,
-});
-const globalTagsModel = defineModel('globalTags', {
-  required: true,
-  type: Map<string, Set<string>>,
-});
 const props = defineProps({
   os: { type: String, required: true },
   arePreviewsEnabled: { type: Boolean, required: true },
@@ -44,9 +36,9 @@ const previewImage = ref('');
 const tagPosition = ref('down');
 const globalTagPosition = ref('down');
 
-const historyStore = useHistoryStore();
+const datasetStore = useDatasetStore();
 
-const imageKeys = computed(() => Array.from(imagesModel.value.keys()));
+const imageKeys = computed(() => Array.from(datasetStore.images.keys()));
 
 watch(
   imageKeys,
@@ -92,7 +84,7 @@ function displayFullImage(id: string) {
     imageModal.value = true;
     modalHtml.value = `
       <div class="flex justify-center">
-        <img src="file://${imagesModel.value.get(id)?.path}" class="max-h-screen" />
+        <img src="file://${datasetStore.images.get(id)?.path}" class="max-h-screen" />
       </div>
     `;
     modal.showModal();
@@ -104,7 +96,7 @@ function updateDisplayedTags() {
 
   const allTags = new Set<string>();
   for (const imageName of selectedImages.value) {
-    const image = imagesModel.value.get(imageName);
+    const image = datasetStore.images.get(imageName);
     if (image && image.tags) image.tags.forEach((tag) => allTags.add(tag));
   }
 
@@ -133,19 +125,24 @@ function updateDisplayedTags() {
 
 function updateGlobalTags() {
   const allTags: string[] = [];
-  for (const image of imagesModel.value.values()) {
+  for (const image of datasetStore.images.values()) {
     if (image?.tags.size > 0)
       image.tags.forEach((tag) => {
         if (!allTags.includes(tag)) allTags.push(tag);
       });
   }
 
-  if (allTags.length === 0) return;
+  if (allTags.length === 0) {
+    displayedGlobalTags.value.clear();
+    return;
+  }
 
   if (globalSortMode.value === 'alphabetical') {
     allTags.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
   } else {
-    allTags.sort((a, b) => globalTagsModel.value.get(b)!.size - globalTagsModel.value.get(a)!.size);
+    allTags.sort(
+      (a, b) => datasetStore.globalTags.get(b)!.size - datasetStore.globalTags.get(a)!.size,
+    );
   }
 
   if (globalSortOrder.value === 'desc') allTags.reverse();
@@ -202,7 +199,7 @@ function addTag(tag?: string, image?: string) {
   const previousState = new Map();
 
   for (const image of images.values()) {
-    const imageWithTags = imagesModel.value.get(image);
+    const imageWithTags = datasetStore.images.get(image);
     if (imageWithTags?.tags.size && !imageWithTags.tags.has(newTag))
       previousState.set(image, new Set(imageWithTags.tags));
 
@@ -214,7 +211,7 @@ function addTag(tag?: string, image?: string) {
   }
 
   if (previousState.size > 0) {
-    historyStore.pushDatasetChange({
+    datasetStore.pushDatasetChange({
       type: 'add_tag',
       images: new Set(previousState.keys()),
       tags: new Set([newTag]),
@@ -223,76 +220,76 @@ function addTag(tag?: string, image?: string) {
   }
 
   updateDisplayedTags();
-  if (!globalTagsModel.value.has(newTag)) {
-    globalTagsModel.value.set(newTag, new Set([...images]));
+  if (!datasetStore.globalTags.has(newTag)) {
+    datasetStore.globalTags.set(newTag, new Set([...images]));
     updateGlobalTags();
   } else {
-    const imagesWithTag = globalTagsModel.value.get(newTag)!;
-    globalTagsModel.value.set(newTag, new Set([...imagesWithTag, ...images]));
+    const imagesWithTag = datasetStore.globalTags.get(newTag)!;
+    datasetStore.globalTags.set(newTag, new Set([...imagesWithTag, ...images]));
   }
 
   tagInput.value = '';
 }
 
 function addGlobalTag() {
-  for (const image of imagesModel.value.keys()) {
+  for (const image of datasetStore.images.keys()) {
     if (globalTagPosition.value === 'up') {
-      imagesModel.value.get(image)!.tags = new Set([
+      datasetStore.images.get(image)!.tags = new Set([
         globalTagInput.value,
-        ...imagesModel.value.get(image)!.tags,
+        ...datasetStore.images.get(image)!.tags,
       ]);
     } else {
-      imagesModel.value.get(image)?.tags.add(globalTagInput.value);
+      datasetStore.images.get(image)?.tags.add(globalTagInput.value);
     }
   }
 
-  historyStore.pushDatasetChange({
+  datasetStore.pushDatasetChange({
     type: 'add_global_tag',
     tags: new Set([globalTagInput.value]),
   });
 
   updateDisplayedTags();
-  globalTagsModel.value.set(globalTagInput.value, new Set([...imagesModel.value.keys()]));
+  datasetStore.globalTags.set(globalTagInput.value, new Set([...datasetStore.images.keys()]));
   updateGlobalTags();
 
   globalTagInput.value = '';
 }
 
 function removeTag(tag: string, image?: string) {
-  const imagesWithTag = globalTagsModel.value.get(tag);
+  const imagesWithTag = datasetStore.globalTags.get(tag);
   const images = image ? new Set([image]) : selectedImages.value;
 
-  historyStore.pushDatasetChange({
+  datasetStore.pushDatasetChange({
     type: 'remove_tag',
     images,
     tags: new Set([tag]),
   });
 
   for (const image of images.values()) {
-    imagesModel.value.get(image)?.tags.delete(tag);
+    datasetStore.images.get(image)?.tags.delete(tag);
     imagesWithTag?.delete(image);
   }
 
   updateDisplayedTags();
 
   if (!imagesWithTag?.size) {
-    globalTagsModel.value.delete(tag);
+    datasetStore.globalTags.delete(tag);
     updateGlobalTags();
   }
 }
 
 function removeGlobalTag(tag: string) {
-  for (const image of imagesModel.value.keys()) {
-    imagesModel.value.get(image)?.tags.delete(tag);
+  for (const image of datasetStore.images.keys()) {
+    datasetStore.images.get(image)?.tags.delete(tag);
   }
 
-  historyStore.pushDatasetChange({
+  datasetStore.pushDatasetChange({
     type: 'remove_global_tag',
     tags: new Set([tag]),
   });
 
   updateDisplayedTags();
-  globalTagsModel.value.delete(tag);
+  datasetStore.globalTags.delete(tag);
   updateGlobalTags();
 }
 
@@ -305,14 +302,14 @@ function filterImages() {
 
   if (filterMode.value === 'or') {
     tags.forEach((tag) => {
-      globalTagsModel.value.get(tag)?.forEach((image) => filteredImages.value.add(image));
+      datasetStore.globalTags.get(tag)?.forEach((image) => filteredImages.value.add(image));
     });
   } else if (filterMode.value === 'and') {
     const imageCount = new Map();
     const requiredTagCount = tags.length;
 
     for (const tag of tags) {
-      const imagesWithTag = globalTagsModel.value.get(tag);
+      const imagesWithTag = datasetStore.globalTags.get(tag);
       if (!imagesWithTag) {
         isFiltering.value = true;
         selectedImages.value.clear();
@@ -335,11 +332,11 @@ function filterImages() {
     const excludedImages = new Set();
 
     tags.forEach((tag) => {
-      globalTagsModel.value.get(tag)?.forEach((image) => excludedImages.add(image));
+      datasetStore.globalTags.get(tag)?.forEach((image) => excludedImages.add(image));
     });
 
     filteredImages.value = new Set(
-      [...imagesModel.value.keys()].filter((image) => !excludedImages.has(image)),
+      [...datasetStore.images.keys()].filter((image) => !excludedImages.has(image)),
     );
   }
 
@@ -355,7 +352,7 @@ function clearImageFilter() {
   if (filterInput.value) return;
 
   if (!filteredImages.value.size && !selectedImages.value.size) {
-    selectedImages.value.add(imagesModel.value.keys().next().value!);
+    selectedImages.value.add(datasetStore.images.keys().next().value!);
     updateDisplayedTags();
   }
   isFiltering.value = false;
@@ -364,7 +361,7 @@ function clearImageFilter() {
 
 function addOrRemoveTag(tag: string) {
   for (const image of selectedImages.value.values()) {
-    if (imagesModel.value.get(image)?.tags.has(tag)) removeTag(tag, image);
+    if (datasetStore.images.get(image)?.tags.has(tag)) removeTag(tag, image);
     else addTag(tag, image);
   }
 }
@@ -379,7 +376,7 @@ function copyTextToClipboard(tags: Set<string>) {
 }
 
 onMounted(() => {
-  historyStore.onChange = [updateDisplayedTags, updateGlobalTags];
+  datasetStore.onChange = [updateDisplayedTags, updateGlobalTags];
 });
 </script>
 
@@ -396,7 +393,7 @@ onMounted(() => {
           class="grid h-fit grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-auto scroll-smooth"
         >
           <div
-            v-for="[name, image] in imagesModel"
+            v-for="[name, image] in datasetStore.images"
             :key="name"
             @click="toggleSelection(name, $event)"
             @mouseenter="previewImage = name"
@@ -423,7 +420,7 @@ onMounted(() => {
           <label class="input input-sm w-full border-r-0 pr-0 pl-1 !outline-none">
             <AutocompletionComponent
               v-model="filterInput"
-              :disabled="!imagesModel.size"
+              :disabled="!datasetStore.images.size"
               :id="'filter-completion-list'"
               :placeholder="'Type a tag to filter the images...'"
               :multiple="true"
@@ -455,7 +452,7 @@ onMounted(() => {
         >
           <div class="bg-transparent p-2">
             <img
-              :src="'file://' + imagesModel.get(previewImage)?.path"
+              :src="'file://' + datasetStore.images.get(previewImage)?.path"
               class="max-h-[80vh] max-w-[80vw] object-contain"
             />
           </div>
@@ -463,7 +460,7 @@ onMounted(() => {
         <div class="flex w-[30%] items-center justify-center">
           <img
             v-if="selectedImages.size"
-            :src="imagesModel.get([...selectedImages][0])?.path"
+            :src="datasetStore.images.get([...selectedImages][0])?.path"
             class="max-h-full"
           />
         </div>
@@ -472,21 +469,39 @@ onMounted(() => {
         ></div>
         <div class="w-[40%]">
           <div class="flex h-[50%]">
-            <div class="w-[50%]">
+            <div class="flex w-[50%] flex-col">
               <div
                 class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
               >
                 <p>Tags detected by autotagger but not in the captions</p>
               </div>
+              <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth pt-2">
+                <div
+                  v-for="tag in datasetStore.tagDiff.get([...selectedImages][0])?.tagger"
+                  :key="tag"
+                  class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer dark:bg-gray-700"
+                >
+                  {{ tag }}
+                </div>
+              </div>
             </div>
             <div
               class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
             ></div>
-            <div class="w-[50%]">
+            <div class="flex w-[50%] flex-col">
               <div
                 class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
               >
                 <p>Tags in captions but not detected by the autotagger</p>
+              </div>
+              <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth pt-2">
+                <div
+                  v-for="tag in datasetStore.tagDiff.get([...selectedImages][0])?.original"
+                  :key="tag"
+                  class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer dark:bg-rose-900"
+                >
+                  {{ tag }}
+                </div>
               </div>
             </div>
           </div>
@@ -622,7 +637,7 @@ onMounted(() => {
                 class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
                 @click="removeGlobalTag(tag)"
               >
-                {{ tag }} | {{ globalTagsModel.get(tag)!.size }}
+                {{ tag }} | {{ datasetStore.globalTags.get(tag)!.size }}
               </div>
             </div>
             <div
@@ -655,7 +670,7 @@ onMounted(() => {
               <label class="input relative input-sm w-full border-r-0 pr-0 pl-1 !outline-none">
                 <AutocompletionComponent
                   v-model="globalTagInput"
-                  :disabled="!imagesModel.size"
+                  :disabled="!datasetStore.images.size"
                   :id="'global-completion-list'"
                   :placeholder="'Type to add a global tag...'"
                   @on-complete="addGlobalTag"

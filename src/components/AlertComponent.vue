@@ -42,7 +42,7 @@ watch([() => props.message, () => props.timestamp], () => {
     <div
       v-if="isVisible"
       role="alert"
-      class="fixed top-10 left-1/2 z-5 alert -translate-x-1/2 transform"
+      class="fixed top-10 left-1/2 z-1000 alert flex -translate-x-1/2 transform items-center justify-center"
       :class="{
         'alert-info': type === 'info',
         'alert-success': type === 'success',

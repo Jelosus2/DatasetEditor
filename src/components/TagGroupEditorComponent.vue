@@ -2,7 +2,7 @@
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
 import { ref } from 'vue';
-import { useHistoryStore } from '@/stores/historyStore';
+import { useDatasetStore } from '@/stores/datasetStore';
 
 const props = defineProps({
   tagGroups: {
@@ -21,7 +21,7 @@ const groupTags = ref('');
 const tagInput = ref('');
 const importedGroups = ref<Map<string, Set<string>>>(new Map());
 
-const historyStore = useHistoryStore();
+const historyStore = useDatasetStore();
 
 function createGroup() {
   if (!groupNameInput.value) return;
@@ -99,7 +99,6 @@ async function importGroup() {
     | false;
   if (result === null) return;
   if (!result) {
-    console.log('Incorrect JSON format');
     return;
   }
 

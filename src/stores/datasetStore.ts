@@ -15,7 +15,11 @@ interface TagGroupChangeRecord {
   previousState?: Map<string, Set<string>>;
 }
 
-export const useHistoryStore = defineStore('history', () => {
+export const useDatasetStore = defineStore('dataset', () => {
+  const images = ref<Map<string, { tags: Set<string>; path: string }>>(new Map());
+  const globalTags = ref<Map<string, Set<string>>>(new Map());
+  const tagDiff = ref<Map<string, { tagger: string[]; original: string[] }>>(new Map());
+
   const datasetUndoStack = ref<DatasetChangeRecord[]>([]);
   const datasetRedoStack = ref<DatasetChangeRecord[]>([]);
   const tagGroupUndoStack = ref<TagGroupChangeRecord[]>([]);
@@ -27,12 +31,8 @@ export const useHistoryStore = defineStore('history', () => {
     datasetRedoStack.value = [];
   }
 
-  function undoDatasetAction(
-    images: Ref<Map<string, { tags: Set<string>; path: string }>>,
-    globalTags: Ref<Map<string, Set<string>>>,
-  ) {
+  function undoDatasetAction() {
     const change = datasetUndoStack.value.pop();
-    console.log(change);
     if (!change) return;
 
     if (change.type === 'add_tag') {
@@ -104,12 +104,8 @@ export const useHistoryStore = defineStore('history', () => {
     onChange.value.forEach((fn) => fn());
   }
 
-  function redoDatasetSection(
-    images: Ref<Map<string, { tags: Set<string>; path: string }>>,
-    globalTags: Ref<Map<string, Set<string>>>,
-  ) {
+  function redoDatasetAction() {
     const change = datasetRedoStack.value.pop();
-    console.log(change);
     if (!change) return;
 
     const previousState = new Map<string, Set<string>>();
@@ -241,10 +237,13 @@ export const useHistoryStore = defineStore('history', () => {
   }
 
   return {
+    images,
+    globalTags,
+    tagDiff,
     onChange,
     pushDatasetChange,
     undoDatasetAction,
-    redoDatasetSection,
+    redoDatasetAction,
     pushTagGroupChange,
     undoTagGroupAction,
     redoTagGroupAction,

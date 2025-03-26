@@ -1,13 +1,8 @@
 <script setup lang="ts">
 import { ref, shallowRef, onMounted, onUnmounted, nextTick, toRaw } from 'vue';
+import { useDatasetStore } from '@/stores/datasetStore';
 
-const emit = defineEmits(['insert_tags']);
-const props = defineProps({
-  images: {
-    type: Map<string, { path: string; tags: Set<string> }>,
-    required: true,
-  },
-});
+const emit = defineEmits(['trigger_alert']);
 
 const generalThreshold = ref(0.25);
 const characterThreshold = ref(0.35);
@@ -19,6 +14,8 @@ const isTaggerRunning = ref(false);
 const isInstalling = ref(false);
 const isTagging = ref(false);
 const logsContainer = shallowRef<HTMLDivElement | null>(null);
+
+const datasetStore = useDatasetStore();
 
 const taggerModels = [
   'wd-eva02-large-tagger-v3',
@@ -58,10 +55,18 @@ async function stopAutotagger() {
   taggerLogs.value.push('Autotagger stopped');
 }
 
-async function autoTagImages() {
+async function autoTagImages(type: 'insert' | 'diff') {
   if (!taggerLogs.value.includes('Tagger running')) return;
+  if (!datasetStore.images.size) {
+    emit('trigger_alert', 'error', 'Dataset not loaded');
+    return;
+  }
+  if (!selectedModels.value.length) {
+    emit('trigger_alert', 'error', 'No tagger model selected');
+    return;
+  }
 
-  const images = [...props.images.values()].map((image) => image.path);
+  const images = [...datasetStore.images.values()].map((image) => image.path);
   isTagging.value = true;
   const results = (await window.ipcRenderer.invoke('tag_images', {
     images,
@@ -71,8 +76,64 @@ async function autoTagImages() {
     selectedModels: toRaw(selectedModels.value),
   })) as Map<string, Set<string>>;
 
-  emit('insert_tags', results);
+  if (type === 'insert') {
+    datasetStore.pushDatasetChange({
+      type: 'add_tag',
+      images: new Set(datasetStore.images.keys()),
+      tags: new Set(Array.from(results.values()).flatMap((set) => Array.from(set))),
+      previousState: new Map(
+        [...datasetStore.images.entries()].map(([imageName, image]) => [
+          imageName,
+          new Set([...image.tags]),
+        ]),
+      ),
+    });
+
+    insertTags(results);
+  } else {
+    loadDiff(results);
+  }
+}
+
+function insertTags(tags: Map<string, Set<string>>) {
+  datasetStore.globalTags = new Map();
+  for (const [image, tagsToInsert] of tags.entries()) {
+    if (!datasetStore.images.has(image)) continue;
+    datasetStore.images.get(image)!.tags = tagsToInsert;
+
+    for (const tag of tagsToInsert) {
+      if (!datasetStore.globalTags.has(tag)) {
+        datasetStore.globalTags.set(tag, new Set([image]));
+      } else {
+        datasetStore.globalTags.get(tag)!.add(image);
+      }
+    }
+  }
+
+  datasetStore.onChange.forEach((fn) => fn());
   isTagging.value = false;
+}
+
+function loadDiff(tags: Map<string, Set<string>>) {
+  const taggerTags = [];
+  const originalTags = [];
+
+  for (const [image, tagsToInsert] of tags.entries()) {
+    if (!datasetStore.images.has(image)) continue;
+    const imageTags = [...datasetStore.images.get(image)!.tags];
+    for (const tag of imageTags) {
+      if (!tagsToInsert.has(tag)) {
+        originalTags.push(tag);
+      } else {
+        taggerTags.push(tag);
+      }
+    }
+
+    datasetStore.tagDiff.set(image, {
+      tagger: taggerTags,
+      original: originalTags,
+    });
+  }
 }
 
 function scrollToBottom() {
@@ -171,13 +232,14 @@ onUnmounted(() => {
             <button
               class="btn btn-sm btn-info"
               :disabled="isTagging || !isTaggerRunning || isInstalling"
-              @click="autoTagImages"
+              @click="autoTagImages('insert')"
             >
               Tag Images & Apply Tags
             </button>
             <button
               class="btn btn-sm btn-info"
               :disabled="isTagging || !isTaggerRunning || isInstalling"
+              @click="autoTagImages('diff')"
             >
               Tag Images & Load Diff
             </button>

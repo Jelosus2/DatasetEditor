@@ -6,10 +6,8 @@ import AlertComponent from '@/components/AlertComponent.vue';
 import AutotaggerModalComponent from '@/components/AutotaggerModalComponent.vue';
 
 import { ref, onMounted, onUnmounted } from 'vue';
-import { useHistoryStore } from '@/stores/historyStore';
+import { useDatasetStore } from '@/stores/datasetStore';
 
-const imagesRef = ref<Map<string, { tags: Set<string>; path: string }>>(new Map());
-const globalTagsRef = ref<Map<string, Set<string>>>(new Map());
 const tagGroups = ref<Map<string, Set<string>>>(new Map());
 const os = ref('');
 const theme = ref('');
@@ -18,7 +16,7 @@ const alertMessage = ref('');
 const alertType = ref('info');
 const alertTimestamp = ref(Date.now());
 
-const historyStore = useHistoryStore();
+const datasetStore = useDatasetStore();
 
 async function loadDataset() {
   const dataset = (await window.ipcRenderer.invoke('load_dataset')) as {
@@ -30,8 +28,8 @@ async function loadDataset() {
 
   console.log(dataset.images, dataset.globalTags);
 
-  imagesRef.value = dataset.images;
-  globalTagsRef.value = dataset.globalTags;
+  datasetStore.images = dataset.images;
+  dataset.globalTags = dataset.globalTags;
 }
 
 function undoAction() {
@@ -40,9 +38,9 @@ function undoAction() {
   )?.ariaLabel;
 
   if (activeTab === 'Dataset') {
-    historyStore.undoDatasetAction(imagesRef, globalTagsRef);
+    datasetStore.undoDatasetAction();
   } else if (activeTab === 'Tag Groups') {
-    historyStore.undoTagGroupAction(tagGroups);
+    datasetStore.undoTagGroupAction(tagGroups);
   }
 }
 
@@ -52,9 +50,9 @@ function redoAction() {
   )?.ariaLabel;
 
   if (activeTab === 'Dataset') {
-    historyStore.redoDatasetSection(imagesRef, globalTagsRef);
+    datasetStore.redoDatasetAction();
   } else if (activeTab === 'Tag Groups') {
-    historyStore.redoTagGroupAction(tagGroups);
+    datasetStore.redoTagGroupAction(tagGroups);
   }
 }
 
@@ -66,17 +64,16 @@ async function saveChanges() {
   const obj: { [key: string]: unknown } = {};
 
   if (activeTab === 'Dataset') {
-    if (imagesRef.value.size === 0) {
+    if (datasetStore.images.size === 0) {
       showAlert('error', 'The dataset has not been loaded yet');
       return;
     }
 
-    for (const [image, props] of imagesRef.value.entries()) {
+    for (const [image, props] of datasetStore.images.entries()) {
       obj[image] = { path: props.path, tags: [...props.tags] };
     }
 
     window.ipcRenderer.invoke('save_dataset', obj);
-    console.log('Dataset saved');
     showAlert('success', 'Dataset saved successfully');
   } else if (activeTab === 'Tag Groups') {
     if (tagGroups.value.size === 0) {
@@ -89,7 +86,6 @@ async function saveChanges() {
     }
 
     window.ipcRenderer.invoke('save_tag_group', obj);
-    console.log('Tag groups saved');
     showAlert('success', 'Tag groups saved successfully');
   }
 }
@@ -138,24 +134,6 @@ function loadTheme() {
   }
 }
 
-function insertTags(tags: Map<string, Set<string>>) {
-  globalTagsRef.value = new Map();
-  for (const [image, tagsToInsert] of tags.entries()) {
-    if (!imagesRef.value.has(image)) continue;
-    imagesRef.value.get(image)!.tags = tagsToInsert;
-
-    for (const tag of tagsToInsert) {
-      if (!globalTagsRef.value.has(tag)) {
-        globalTagsRef.value.set(tag, new Set([image]));
-      } else {
-        globalTagsRef.value.get(tag)!.add(image);
-      }
-    }
-  }
-
-  historyStore.onChange.forEach((fn) => fn());
-}
-
 onMounted(async () => {
   document.addEventListener('keydown', handleGlobalShortcuts);
   loadTheme();
@@ -195,14 +173,8 @@ onUnmounted(() => {
     @save="saveChanges"
   />
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
-    <MainComponent
-      v-model:images="imagesRef"
-      v-bind:global-tags="globalTagsRef"
-      :os="os"
-      :tag-groups="tagGroups"
-      :are-previews-enabled="arePreviewsEnabled"
-    />
+    <MainComponent :os="os" :tag-groups="tagGroups" :are-previews-enabled="arePreviewsEnabled" />
     <TagGroupEditorComponent :tag-groups="tagGroups" :os="os" />
   </div>
-  <AutotaggerModalComponent :images="imagesRef" @insert_tags="insertTags" />
+  <AutotaggerModalComponent @trigger_alert="showAlert" />
 </template>
