@@ -2,13 +2,9 @@
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
 import { ref } from 'vue';
-import { useDatasetStore } from '@/stores/datasetStore';
+import { useTagGroupStore } from '@/stores/tagGroupStore';
 
-const props = defineProps({
-  tagGroups: {
-    type: Map<string, Set<string>>,
-    required: true,
-  },
+defineProps({
   os: {
     type: String,
     required: true,
@@ -21,7 +17,7 @@ const groupTags = ref('');
 const tagInput = ref('');
 const importedGroups = ref<Map<string, Set<string>>>(new Map());
 
-const historyStore = useDatasetStore();
+const tagGroupsStore = useTagGroupStore();
 
 function createGroup() {
   if (!groupNameInput.value) return;
@@ -32,7 +28,7 @@ function createGroup() {
     .map((tag) => tag.trim())
     .filter((tag) => tag);
 
-  props.tagGroups.set(groupNameInput.value, new Set(tags));
+  tagGroupsStore.tagGroups.set(groupNameInput.value, new Set(tags));
 
   groupNameInput.value = '';
   groupTags.value = '';
@@ -47,15 +43,15 @@ function addTag() {
     .filter((tag) => tag);
 
   if (tags.length === 1) {
-    props.tagGroups.get(selectedGroup.value)?.add(tags[0]);
+    tagGroupsStore.tagGroups.get(selectedGroup.value)?.add(tags[0]);
   } else {
-    props.tagGroups.set(
+    tagGroupsStore.tagGroups.set(
       selectedGroup.value,
-      new Set([...props.tagGroups.get(selectedGroup.value)!.values(), ...tags]),
+      new Set([...tagGroupsStore.tagGroups.get(selectedGroup.value)!.values(), ...tags]),
     );
   }
 
-  historyStore.pushTagGroupChange({
+  tagGroupsStore.pushTagGroupChange({
     type: 'add_tag',
     group: selectedGroup.value,
     tags,
@@ -65,9 +61,9 @@ function addTag() {
 }
 
 function removeTag(tag: string, group?: string) {
-  props.tagGroups.get(group || selectedGroup.value)?.delete(tag);
+  tagGroupsStore.tagGroups.get(group || selectedGroup.value)?.delete(tag);
 
-  historyStore.pushTagGroupChange({
+  tagGroupsStore.pushTagGroupChange({
     type: 'remove_tag',
     group: group || selectedGroup.value,
     tags: [tag],
@@ -75,18 +71,18 @@ function removeTag(tag: string, group?: string) {
 }
 
 async function exportGroupToJSON(mode: 'one' | 'all') {
-  if (!props.tagGroups.size || (mode === 'one' && !selectedGroup.value)) return;
+  if (!tagGroupsStore.tagGroups.size || (mode === 'one' && !selectedGroup.value)) return;
 
   const obj: { [key: string]: string[] } = {};
 
   if (mode === 'all') {
-    for (const [name, tags] of props.tagGroups.entries()) {
+    for (const [name, tags] of tagGroupsStore.tagGroups.entries()) {
       obj[name] = [...tags];
     }
 
     await window.ipcRenderer.invoke('save_tag_group_file', obj);
   } else {
-    obj[selectedGroup.value] = [...props.tagGroups.get(selectedGroup.value)!];
+    obj[selectedGroup.value] = [...tagGroupsStore.tagGroups.get(selectedGroup.value)!];
 
     await window.ipcRenderer.invoke('save_tag_group_file', obj);
   }
@@ -106,10 +102,10 @@ async function importGroup() {
 }
 
 function addImportedGroupToCurrent(override: boolean) {
-  if (override) props.tagGroups.clear();
+  if (override) tagGroupsStore.tagGroups.clear();
 
   for (const [name, tags] of importedGroups.value) {
-    props.tagGroups.set(name, tags);
+    tagGroupsStore.tagGroups.set(name, tags);
   }
 
   importedGroups.value.clear();
@@ -122,7 +118,7 @@ function addImportedGroupToCurrent(override: boolean) {
     <div class="flex h-full">
       <div class="flex w-[25%] flex-col gap-2 overflow-auto pt-1 pl-1">
         <div
-          v-for="[name, tags] in tagGroups"
+          v-for="[name, tags] in tagGroupsStore.tagGroups"
           :key="name"
           class="collapse shrink-0 rounded-none border border-base-300 bg-base-100"
         >
@@ -159,7 +155,7 @@ function addImportedGroupToCurrent(override: boolean) {
                 class="select w-full text-center select-sm !outline-none"
               >
                 <option value="" selected></option>
-                <option v-for="name in tagGroups.keys()" :key="name" :value="name">
+                <option v-for="name in tagGroupsStore.tagGroups.keys()" :key="name" :value="name">
                   {{ name }}
                 </option>
               </select>
@@ -190,7 +186,7 @@ function addImportedGroupToCurrent(override: boolean) {
               </button>
               <button
                 class="btn btn-outline btn-info"
-                :disabled="!tagGroups.size"
+                :disabled="!tagGroupsStore.tagGroups.size"
                 @click="exportGroupToJSON('all')"
               >
                 <svg
@@ -216,15 +212,15 @@ function addImportedGroupToCurrent(override: boolean) {
               <button
                 class="btn btn-outline btn-error"
                 :disabled="!selectedGroup"
-                @click="(tagGroups.delete(selectedGroup), (selectedGroup = ''))"
+                @click="(tagGroupsStore.tagGroups.delete(selectedGroup), (selectedGroup = ''))"
               >
                 Delete This Group
               </button>
               <button
                 class="btn btn-outline btn-error"
                 type="button"
-                :disabled="!tagGroups.size"
-                @click="(tagGroups.clear(), (selectedGroup = ''))"
+                :disabled="!tagGroupsStore.tagGroups.size"
+                @click="(tagGroupsStore.tagGroups.clear(), (selectedGroup = ''))"
               >
                 Delete All Groups
               </button>
@@ -253,7 +249,7 @@ function addImportedGroupToCurrent(override: boolean) {
               ></textarea>
               <button
                 class="btn btn-outline btn-success"
-                :disabled="!groupNameInput || tagGroups.has(groupNameInput)"
+                :disabled="!groupNameInput || tagGroupsStore.tagGroups.has(groupNameInput)"
                 @click="createGroup"
               >
                 Create Group
@@ -265,10 +261,10 @@ function addImportedGroupToCurrent(override: boolean) {
           >
             <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth">
               <div
-                v-for="tag in tagGroups.get(selectedGroup)?.values()"
+                v-for="tag in tagGroupsStore.tagGroups.get(selectedGroup)?.values()"
                 :key="tag"
                 class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
-                @click="tagGroups.get(selectedGroup)?.delete(tag)"
+                @click="tagGroupsStore.tagGroups.get(selectedGroup)?.delete(tag)"
               >
                 {{ tag }}
               </div>

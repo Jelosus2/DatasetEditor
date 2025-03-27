@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, type Ref } from 'vue';
+import { ref } from 'vue';
 
 interface DatasetChangeRecord {
   type: 'add_tag' | 'remove_tag' | 'add_global_tag' | 'remove_global_tag';
@@ -8,22 +8,13 @@ interface DatasetChangeRecord {
   previousState?: Map<string, Set<string>>;
 }
 
-interface TagGroupChangeRecord {
-  type: 'add_tag' | 'remove_tag';
-  group: string;
-  tags: string[];
-  previousState?: Map<string, Set<string>>;
-}
-
 export const useDatasetStore = defineStore('dataset', () => {
   const images = ref<Map<string, { tags: Set<string>; path: string }>>(new Map());
   const globalTags = ref<Map<string, Set<string>>>(new Map());
-  const tagDiff = ref<Map<string, { tagger: string[]; original: string[] }>>(new Map());
+  const tagDiff = ref<Map<string, { tagger: Set<string>; original: Set<string> }>>(new Map());
 
   const datasetUndoStack = ref<DatasetChangeRecord[]>([]);
   const datasetRedoStack = ref<DatasetChangeRecord[]>([]);
-  const tagGroupUndoStack = ref<TagGroupChangeRecord[]>([]);
-  const tagGroupRedoStack = ref<TagGroupChangeRecord[]>([]);
   const onChange = ref<(() => void)[]>([]);
 
   function pushDatasetChange(change: DatasetChangeRecord) {
@@ -177,65 +168,6 @@ export const useDatasetStore = defineStore('dataset', () => {
     onChange.value.forEach((fn) => fn());
   }
 
-  function pushTagGroupChange(change: TagGroupChangeRecord) {
-    tagGroupUndoStack.value.push(change);
-    tagGroupRedoStack.value = [];
-  }
-
-  function undoTagGroupAction(tagGroups: Ref<Map<string, Set<string>>>) {
-    const change = tagGroupUndoStack.value.pop();
-    if (!change) return;
-
-    if (change.type === 'add_tag') {
-      for (const tag of change.tags) {
-        tagGroups.value.get(change.group)?.delete(tag);
-      }
-
-      tagGroupRedoStack.value.push({
-        type: 'add_tag',
-        group: change.group,
-        tags: change.tags,
-      });
-    } else if (change.type === 'remove_tag') {
-      for (const tag of change.tags) {
-        tagGroups.value.get(change.group)?.add(tag);
-      }
-
-      tagGroupRedoStack.value.push({
-        type: 'remove_tag',
-        group: change.group,
-        tags: change.tags,
-      });
-    }
-  }
-
-  function redoTagGroupAction(tagGroups: Ref<Map<string, Set<string>>>) {
-    const change = tagGroupRedoStack.value.pop();
-    if (!change) return;
-
-    if (change.type === 'add_tag') {
-      for (const tag of change.tags) {
-        tagGroups.value.get(change.group)?.add(tag);
-      }
-
-      tagGroupUndoStack.value.push({
-        type: 'add_tag',
-        group: change.group,
-        tags: change.tags,
-      });
-    } else if (change.type === 'remove_tag') {
-      for (const tag of change.tags) {
-        tagGroups.value.get(change.group)?.delete(tag);
-      }
-
-      tagGroupUndoStack.value.push({
-        type: 'remove_tag',
-        group: change.group,
-        tags: change.tags,
-      });
-    }
-  }
-
   return {
     images,
     globalTags,
@@ -244,8 +176,5 @@ export const useDatasetStore = defineStore('dataset', () => {
     pushDatasetChange,
     undoDatasetAction,
     redoDatasetAction,
-    pushTagGroupChange,
-    undoTagGroupAction,
-    redoTagGroupAction,
   };
 });

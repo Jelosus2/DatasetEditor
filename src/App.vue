@@ -7,8 +7,8 @@ import AutotaggerModalComponent from '@/components/AutotaggerModalComponent.vue'
 
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
+import { useTagGroupStore } from '@/stores/tagGroupStore';
 
-const tagGroups = ref<Map<string, Set<string>>>(new Map());
 const os = ref('');
 const theme = ref('');
 const arePreviewsEnabled = ref(false);
@@ -17,6 +17,7 @@ const alertType = ref('info');
 const alertTimestamp = ref(Date.now());
 
 const datasetStore = useDatasetStore();
+const tagGroupsStore = useTagGroupStore();
 
 async function loadDataset() {
   const dataset = (await window.ipcRenderer.invoke('load_dataset')) as {
@@ -40,7 +41,7 @@ function undoAction() {
   if (activeTab === 'Dataset') {
     datasetStore.undoDatasetAction();
   } else if (activeTab === 'Tag Groups') {
-    datasetStore.undoTagGroupAction(tagGroups);
+    tagGroupsStore.undoTagGroupAction();
   }
 }
 
@@ -52,7 +53,7 @@ function redoAction() {
   if (activeTab === 'Dataset') {
     datasetStore.redoDatasetAction();
   } else if (activeTab === 'Tag Groups') {
-    datasetStore.redoTagGroupAction(tagGroups);
+    tagGroupsStore.redoTagGroupAction();
   }
 }
 
@@ -76,12 +77,12 @@ async function saveChanges() {
     window.ipcRenderer.invoke('save_dataset', obj);
     showAlert('success', 'Dataset saved successfully');
   } else if (activeTab === 'Tag Groups') {
-    if (tagGroups.value.size === 0) {
+    if (tagGroupsStore.tagGroups.size === 0) {
       showAlert('error', 'No tag groups have been created yet');
       return;
     }
 
-    for (const [tagGroup, tags] of tagGroups.value.entries()) {
+    for (const [tagGroup, tags] of tagGroupsStore.tagGroups.entries()) {
       obj[tagGroup] = [...tags];
     }
 
@@ -144,7 +145,7 @@ onMounted(async () => {
   > | null;
   if (!result) return;
 
-  tagGroups.value = result;
+  tagGroupsStore.tagGroups = result;
 
   let osType = localStorage.getItem('os');
   if (osType) {
@@ -173,8 +174,8 @@ onUnmounted(() => {
     @save="saveChanges"
   />
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
-    <MainComponent :os="os" :tag-groups="tagGroups" :are-previews-enabled="arePreviewsEnabled" />
-    <TagGroupEditorComponent :tag-groups="tagGroups" :os="os" />
+    <MainComponent :os="os" :are-previews-enabled="arePreviewsEnabled" />
+    <TagGroupEditorComponent :os="os" />
   </div>
   <AutotaggerModalComponent @trigger_alert="showAlert" />
 </template>

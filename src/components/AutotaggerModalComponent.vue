@@ -115,19 +115,17 @@ function insertTags(tags: Map<string, Set<string>>) {
 }
 
 function loadDiff(tags: Map<string, Set<string>>) {
-  const taggerTags = [];
-  const originalTags = [];
-
   for (const [image, tagsToInsert] of tags.entries()) {
     if (!datasetStore.images.has(image)) continue;
+
+    const taggerTags: Set<string> = new Set();
     const imageTags = [...datasetStore.images.get(image)!.tags];
-    for (const tag of imageTags) {
-      if (!tagsToInsert.has(tag)) {
-        originalTags.push(tag);
-      } else {
-        taggerTags.push(tag);
-      }
+
+    for (const tag of tagsToInsert.values()) {
+      if (!imageTags.includes(tag)) taggerTags.add(tag);
     }
+
+    const originalTags: Set<string> = new Set(imageTags.filter((tag) => !tagsToInsert.has(tag)));
 
     datasetStore.tagDiff.set(image, {
       tagger: taggerTags,

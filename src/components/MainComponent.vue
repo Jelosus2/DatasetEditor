@@ -4,11 +4,11 @@ import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
 import { ref, watch, computed, shallowRef, onMounted } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
+import { useTagGroupStore } from '@/stores/tagGroupStore';
 
 const props = defineProps({
   os: { type: String, required: true },
   arePreviewsEnabled: { type: Boolean, required: true },
-  tagGroups: { type: Map<string, Set<string>>, required: true },
 });
 
 const selectedImages = ref<Set<string>>(new Set());
@@ -37,6 +37,7 @@ const tagPosition = ref('down');
 const globalTagPosition = ref('down');
 
 const datasetStore = useDatasetStore();
+const tagGroupsStore = useTagGroupStore();
 
 const imageKeys = computed(() => Array.from(datasetStore.images.keys()));
 
@@ -208,6 +209,16 @@ function addTag(tag?: string, image?: string) {
     } else {
       imageWithTags?.tags.add(newTag);
     }
+
+    if (datasetStore.tagDiff.size > 0) {
+      const diff = datasetStore.tagDiff.get(image);
+
+      if (diff?.tagger.has(newTag)) {
+        diff?.tagger.delete(newTag);
+      } else {
+        diff?.original.add(newTag);
+      }
+    }
   }
 
   if (previousState.size > 0) {
@@ -268,6 +279,10 @@ function removeTag(tag: string, image?: string) {
   for (const image of images.values()) {
     datasetStore.images.get(image)?.tags.delete(tag);
     imagesWithTag?.delete(image);
+
+    if (datasetStore.tagDiff.size > 0) {
+      datasetStore.tagDiff.get(image)?.original.delete(tag);
+    }
   }
 
   updateDisplayedTags();
@@ -480,6 +495,7 @@ onMounted(() => {
                   v-for="tag in datasetStore.tagDiff.get([...selectedImages][0])?.tagger"
                   :key="tag"
                   class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer dark:bg-gray-700"
+                  @click="addTag(tag, [...selectedImages][0])"
                 >
                   {{ tag }}
                 </div>
@@ -499,6 +515,7 @@ onMounted(() => {
                   v-for="tag in datasetStore.tagDiff.get([...selectedImages][0])?.original"
                   :key="tag"
                   class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer dark:bg-rose-900"
+                  @click="removeTag(tag, [...selectedImages][0])"
                 >
                   {{ tag }}
                 </div>
@@ -607,7 +624,7 @@ onMounted(() => {
             class="flex flex-col gap-2 overflow-auto"
             :style="{ height: tagGroupSectionTopHeight + '%' }"
           >
-            <div v-for="[name, tags] in tagGroups" :key="name">
+            <div v-for="[name, tags] in tagGroupsStore.tagGroups" :key="name">
               <span>{{ name }}</span>
               <div class="flex h-fit flex-wrap gap-2">
                 <div
