@@ -1,4 +1,4 @@
-import { app, ipcMain, BrowserWindow, Menu } from 'electron';
+import { app, ipcMain, BrowserWindow, Menu, dialog } from 'electron';
 import Database from 'better-sqlite3';
 import { join } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
@@ -16,6 +16,9 @@ import {
   startTaggerServer,
   getTaggerDevice,
   autoTagImages,
+  saveSettings,
+  loadSettings,
+  changeAutocompleteFile,
 } from './utils.js';
 
 const __dirname = _dirname(import.meta.url);
@@ -61,6 +64,22 @@ async function createMainWindow() {
   else mainWindow.loadFile(join(__dirname, '..', 'dist', 'index.html'));
 
   mainWindow.on('closed', () => (mainWindow = null));
+  mainWindow.on('close', async (e) => {
+    e.preventDefault();
+
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: 'question',
+      buttons: ['Yes', 'No'],
+      title: 'Confirm',
+      message: 'You are about to quit, save all changes?',
+    });
+
+    if (result.response === 0) {
+      mainWindow.webContents.send('save_all_changes');
+
+      ipcMain.on('save_all_done', () => mainWindow.destroy());
+    }
+  });
 }
 
 if (!IS_DEBUG) Menu.setApplicationMenu(null);
@@ -69,6 +88,7 @@ app.disableHardwareAcceleration();
 app.whenReady().then(() => {
   loadCSVIntoDatabase(dbPath, db);
   createMainWindow();
+  saveSettings(appPath, null);
 });
 
 app.on('window-all-closed', () => {
@@ -92,6 +112,9 @@ ipcMain.handle('load_tag_suggestions', (_, query) => loadTagCompletions(db, quer
 ipcMain.handle('save_dataset', (_, dataset) => saveDataset(dataset));
 ipcMain.handle('get_tagger_device', async () => await getTaggerDevice());
 ipcMain.handle('tag_images', async (_, props) => await autoTagImages(props));
+ipcMain.handle('save_settings', (_, settings) => saveSettings(appPath, settings));
+ipcMain.handle('load_settings', () => loadSettings(appPath));
+ipcMain.handle('change_autotag_file', async () => await changeAutocompleteFile(mainWindow, db));
 ipcMain.handle('start_tagger_service', async () => {
   try {
     if (taggerProcess) taggerProcess.kill();

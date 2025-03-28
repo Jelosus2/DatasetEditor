@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, shallowRef, nextTick } from 'vue';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 const tagInput = defineModel({ required: true, type: String });
 const emit = defineEmits(['on-complete', 'on-input']);
@@ -11,12 +12,15 @@ const props = defineProps({
   onInput: { type: Function },
 });
 
+const settingsStore = useSettingsStore();
+
 const completions = ref<{ tag: string; type: number; output: string }[]>([]);
 const completionList = shallowRef<HTMLLIElement[]>([]);
 const selectedIndex = ref(-1);
 const active = ref(false);
 
 async function showSuggestions() {
+  if (!settingsStore.autocomplete) return;
   const value = props.multiple ? tagInput.value.split(',').pop()?.trim() : tagInput.value;
 
   const results = (await window.ipcRenderer.invoke('load_tag_suggestions', value)) as {

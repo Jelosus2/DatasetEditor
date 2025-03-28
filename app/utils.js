@@ -18,44 +18,59 @@ export const _dirname = (url) => dirname(fileURLToPath(url));
 export function loadCSVIntoDatabase(autocompletionsPath, database) {
   const rowCount = database.prepare('SELECT COUNT(*) as count FROM tags').get().count;
   if (rowCount === 0) {
-    const csvFile = readdirSync(autocompletionsPath).filter((f) => f.endsWith('.csv'))?.[0];
-    if (!csvFile) return;
-
-    const batchSize = 5000;
-    const stmt = database.prepare(
-      'INSERT INTO tags (tag, type, results, alias) VALUES (?, ?, ?, ?)',
+    insertTagsIntoDatabase(
+      database,
+      join(autocompletionsPath, 'danbooru_2025-02-16_pt25-ia-dd.csv'),
     );
-    const insertMany = database.transaction((rows) => {
-      for (const row of rows) stmt.run(row.tag, row.type, row.results, row.alias);
-    });
-
-    const csvPath = join(autocompletionsPath, csvFile);
-    const stream = createReadStream(csvPath);
-    const rl = createInterface({ input: stream });
-
-    let batch = [];
-
-    rl.on('line', (line) => {
-      const [tag, type, results, ...alias] = line.replaceAll('"', '').split(',');
-      if (tag && type && results) {
-        batch.push({
-          tag: tag.replaceAll('_', ' '),
-          type: parseInt(type, 10),
-          results: parseInt(results, 10),
-          alias: alias.join(',') || null,
-        });
-        if (batch.length >= batchSize) {
-          insertMany(batch);
-          batch = [];
-        }
-      }
-    });
-
-    rl.on('close', () => {
-      if (batch.length) insertMany(batch);
-      console.log('Completed!');
-    });
   }
+}
+
+function insertTagsIntoDatabase(database, csvFile, resetTable = false) {
+  if (!csvFile) return;
+  if (resetTable) {
+    database.exec('DROP TABLE IF EXISTS tags');
+    database.exec(`
+        CREATE TABLE tags (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          tag TEXT NOT NULL,
+          type INTEGER NOT NULL,
+          results INTEGER NOT NULL,
+          alias TEXT
+        )
+      `);
+  }
+
+  const batchSize = 5000;
+  const stmt = database.prepare('INSERT INTO tags (tag, type, results, alias) VALUES (?, ?, ?, ?)');
+  const insertMany = database.transaction((rows) => {
+    for (const row of rows) stmt.run(row.tag, row.type, row.results, row.alias);
+  });
+
+  const stream = createReadStream(csvFile);
+  const rl = createInterface({ input: stream });
+
+  let batch = [];
+
+  rl.on('line', (line) => {
+    const [tag, type, results, ...alias] = line.replaceAll('"', '').split(',');
+    if (tag && type && results) {
+      batch.push({
+        tag: tag.replaceAll('_', ' '),
+        type: parseInt(type, 10),
+        results: parseInt(results, 10),
+        alias: alias.join(',') || null,
+      });
+      if (batch.length >= batchSize) {
+        insertMany(batch);
+        batch = [];
+      }
+    }
+  });
+
+  rl.on('close', () => {
+    if (batch.length) insertMany(batch);
+    console.log('Completed!');
+  });
 }
 
 export async function loadDatasetDirectory(mainWindow) {
@@ -326,4 +341,53 @@ export async function autoTagImages(props) {
   }
 
   return results;
+}
+
+export function saveSettings(appPath, settings) {
+  const defaultSettings = {
+    showTagCount: false,
+    theme: 'auto',
+    autocomplete: true,
+    autocompleteFile: join(
+      appPath,
+      'Data',
+      'TagAutocompletions',
+      'danbooru_2025-02-16_pt25-ia-dd.csv',
+    ),
+  };
+
+  const settingsPath = join(appPath, 'Data', 'settings.json');
+  if (!existsSync(settingsPath)) {
+    writeFileSync(settingsPath, JSON.stringify(defaultSettings, null, 2));
+    return;
+  }
+
+  if (!settings) return;
+  writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+}
+
+export function loadSettings(appPath) {
+  const settingsPath = join(appPath, 'Data', 'settings.json');
+  if (!existsSync(settingsPath)) return null;
+
+  const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
+  return settings;
+}
+
+export async function changeAutocompleteFile(mainWindow, database) {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select the autocomplete file',
+    properties: ['openFile'],
+    filters: [
+      {
+        name: 'CSV File',
+        extensions: ['csv'],
+      },
+    ],
+  });
+
+  if (result.canceled) return null;
+
+  insertTagsIntoDatabase(database, result.filePaths[0], true);
+  return result.filePaths[0];
 }

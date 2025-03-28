@@ -5,6 +5,7 @@ import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 import { ref, watch, computed, shallowRef, onMounted } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
 import { useTagGroupStore } from '@/stores/tagGroupStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 const props = defineProps({
   os: { type: String, required: true },
@@ -38,6 +39,7 @@ const globalTagPosition = ref('down');
 
 const datasetStore = useDatasetStore();
 const tagGroupsStore = useTagGroupStore();
+const settingsStore = useSettingsStore();
 
 const imageKeys = computed(() => Array.from(datasetStore.images.keys()));
 
@@ -654,7 +656,11 @@ onMounted(() => {
                 class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
                 @click="removeGlobalTag(tag)"
               >
-                {{ tag }} | {{ datasetStore.globalTags.get(tag)!.size }}
+                {{
+                  settingsStore.showTagCount
+                    ? tag + ' | ' + datasetStore.globalTags.get(tag)!.size
+                    : tag
+                }}
               </div>
             </div>
             <div

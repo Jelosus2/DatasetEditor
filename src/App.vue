@@ -4,13 +4,14 @@ import MainComponent from '@/components/MainComponent.vue';
 import TagGroupEditorComponent from '@/components/TagGroupEditorComponent.vue';
 import AlertComponent from '@/components/AlertComponent.vue';
 import AutotaggerModalComponent from '@/components/AutotaggerModalComponent.vue';
+import SettingComponent from '@/components/SettingComponent.vue';
 
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
 import { useTagGroupStore } from '@/stores/tagGroupStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 const os = ref('');
-const theme = ref('');
 const arePreviewsEnabled = ref(false);
 const alertMessage = ref('');
 const alertType = ref('info');
@@ -18,6 +19,7 @@ const alertTimestamp = ref(Date.now());
 
 const datasetStore = useDatasetStore();
 const tagGroupsStore = useTagGroupStore();
+const settingStore = useSettingsStore();
 
 async function loadDataset() {
   const dataset = (await window.ipcRenderer.invoke('load_dataset')) as {
@@ -30,7 +32,7 @@ async function loadDataset() {
   console.log(dataset.images, dataset.globalTags);
 
   datasetStore.images = dataset.images;
-  dataset.globalTags = dataset.globalTags;
+  datasetStore.globalTags = dataset.globalTags;
 }
 
 function undoAction() {
@@ -57,12 +59,32 @@ function redoAction() {
   }
 }
 
-async function saveChanges() {
+async function saveChanges(all = false) {
   const activeTab = document.querySelector(
     'input[type="radio"][name="editor_tabs"]:checked',
   )?.ariaLabel;
 
-  const obj: { [key: string]: unknown } = {};
+  let obj: { [key: string]: unknown } = {};
+
+  if (all) {
+    if (datasetStore.images.size > 0) {
+      for (const [image, props] of datasetStore.images.entries()) {
+        obj[image] = { path: props.path, tags: [...props.tags] };
+      }
+
+      await window.ipcRenderer.invoke('save_dataset', obj);
+      obj = {};
+    }
+    if (tagGroupsStore.tagGroups.size > 0) {
+      for (const [tagGroup, tags] of tagGroupsStore.tagGroups.entries()) {
+        obj[tagGroup] = [...tags];
+      }
+
+      await window.ipcRenderer.invoke('save_tag_group', obj);
+    }
+    await settingStore.saveSettings();
+    return;
+  }
 
   if (activeTab === 'Dataset') {
     if (datasetStore.images.size === 0) {
@@ -74,7 +96,7 @@ async function saveChanges() {
       obj[image] = { path: props.path, tags: [...props.tags] };
     }
 
-    window.ipcRenderer.invoke('save_dataset', obj);
+    await window.ipcRenderer.invoke('save_dataset', obj);
     showAlert('success', 'Dataset saved successfully');
   } else if (activeTab === 'Tag Groups') {
     if (tagGroupsStore.tagGroups.size === 0) {
@@ -86,8 +108,11 @@ async function saveChanges() {
       obj[tagGroup] = [...tags];
     }
 
-    window.ipcRenderer.invoke('save_tag_group', obj);
+    await window.ipcRenderer.invoke('save_tag_group', obj);
     showAlert('success', 'Tag groups saved successfully');
+  } else if (activeTab === 'Settings') {
+    await settingStore.saveSettings();
+    showAlert('success', 'Settings saved successfully');
   }
 }
 
@@ -117,35 +142,18 @@ async function handleGlobalShortcuts(e: KeyboardEvent) {
   }
 }
 
-function loadTheme() {
-  const app = document.querySelector('#app') as HTMLElement;
-  let storagedTheme = localStorage.getItem('theme');
-
-  if (storagedTheme) {
-    app.dataset.theme = storagedTheme;
-    theme.value = storagedTheme;
-  } else {
-    localStorage.setItem(
-      'theme',
-      window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'winter',
-    );
-    storagedTheme = localStorage.getItem('theme')!;
-    app.dataset.theme = storagedTheme;
-    theme.value = storagedTheme;
-  }
-}
-
 onMounted(async () => {
   document.addEventListener('keydown', handleGlobalShortcuts);
-  loadTheme();
+
+  await settingStore.loadSettings();
+  settingStore.loadTheme();
 
   const result = (await window.ipcRenderer.invoke('load_tag_group')) as Map<
     string,
     Set<string>
   > | null;
-  if (!result) return;
 
-  tagGroupsStore.tagGroups = result;
+  if (result) tagGroupsStore.tagGroups = result;
 
   let osType = localStorage.getItem('os');
   if (osType) {
@@ -155,10 +163,16 @@ onMounted(async () => {
     localStorage.setItem('os', osType);
     os.value = osType;
   }
+
+  window.ipcRenderer.receive('save_all_changes', async () => {
+    await saveChanges(true);
+    window.ipcRenderer.send('save_all_done');
+  });
 });
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleGlobalShortcuts);
+  window.ipcRenderer.unsubscribe('save_all');
 });
 </script>
 
@@ -167,7 +181,6 @@ onUnmounted(() => {
   <NavbarComponent
     v-model="arePreviewsEnabled"
     :os="os"
-    :theme="theme"
     @load_dataset="loadDataset"
     @undo="undoAction"
     @redo="redoAction"
@@ -176,6 +189,7 @@ onUnmounted(() => {
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
     <MainComponent :os="os" :are-previews-enabled="arePreviewsEnabled" />
     <TagGroupEditorComponent :os="os" />
+    <SettingComponent />
   </div>
   <AutotaggerModalComponent @trigger_alert="showAlert" />
 </template>

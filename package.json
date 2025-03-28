@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "main": "app/main.js",
+  "description": "A dataset editor",
+  "author": "Jelosus1",
   "scripts": {
     "dev": "vite",
     "electron": "electron .",
@@ -15,7 +17,9 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
-    "format": "prettier --write src/"
+    "format": "prettier --write src/",
+    "package": "vite build && electron-builder build --win",
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.0.6",
@@ -35,6 +39,7 @@
     "@vue/tsconfig": "^0.7.0",
     "daisyui": "5.0.0",
     "electron": "^34.2.0",
+    "electron-builder": "^26.0.12",
     "eslint": "^9.18.0",
     "eslint-plugin-vue": "^9.32.0",
     "jiti": "^2.4.2",
@@ -47,7 +52,45 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "electron"
+      "electron",
+      "electron-winstaller"
     ]
+  },
+  "build": {
+    "appId": "com.jelosus1.dataset-editor",
+    "productName": "Dataset Editor",
+    "directories": {
+      "output": "dist_electron"
+    },
+    "files": [
+      "dist/**/*",
+      "app/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "tagger",
+        "to": "tagger",
+        "filter": [
+          "**/*",
+          "!**/venv/**"
+        ]
+      },
+      {
+        "from": "Data",
+        "to": "Data",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
