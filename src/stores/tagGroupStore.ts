@@ -73,6 +73,7 @@ export const useTagGroupStore = defineStore('tagGroup', () => {
   }
 
   return {
+    tagGroupUndoStack,
     tagGroups,
     pushTagGroupChange,
     undoTagGroupAction,

@@ -16,6 +16,8 @@ coverage
 *.local
 Data
 tagger/venv
+tagger/dependencies_installed
+embedded_python
 
 /cypress/videos/
 /cypress/screenshots/

@@ -22,7 +22,9 @@ import {
 } from './utils.js';
 
 const __dirname = _dirname(import.meta.url);
-const appPath = app.getAppPath();
+const DEBUG_FLAG = process.argv.includes('--debug-mode');
+const IS_DEBUG = process.env.NODE_ENV === 'debug';
+const appPath = IS_DEBUG ? app.getAppPath() : process.resourcesPath;
 
 const dbPath = join(appPath, 'Data', 'TagAutocompletions');
 if (!existsSync(dbPath)) mkdirSync(dbPath, { recursive: true });
@@ -42,8 +44,6 @@ db.exec(`
 let mainWindow;
 let taggerProcess;
 
-const IS_DEBUG = process.env.NODE_ENV === 'debug';
-
 async function createMainWindow() {
   mainWindow = new BrowserWindow({
     backgroundColor: '#1d232a',
@@ -55,7 +55,7 @@ async function createMainWindow() {
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       webSecurity: !IS_DEBUG,
-      devTools: IS_DEBUG,
+      devTools: IS_DEBUG || DEBUG_FLAG,
     },
   });
 
@@ -64,25 +64,33 @@ async function createMainWindow() {
   else mainWindow.loadFile(join(__dirname, '..', 'dist', 'index.html'));
 
   mainWindow.on('closed', () => (mainWindow = null));
-  mainWindow.on('close', async (e) => {
+  mainWindow.on('close', (e) => {
     e.preventDefault();
 
-    const result = await dialog.showMessageBox(mainWindow, {
-      type: 'question',
-      buttons: ['Yes', 'No'],
-      title: 'Confirm',
-      message: 'You are about to quit, save all changes?',
+    mainWindow.webContents.send('are_changes_saved');
+    ipcMain.once('changes_saved', async (_, allSaved) => {
+      if (allSaved) mainWindow.destroy();
+      else {
+        const result = await dialog.showMessageBox(mainWindow, {
+          type: 'question',
+          buttons: ['Yes', 'No', 'Cancel'],
+          title: 'Confirm',
+          message: 'You are about to quit, save all changes?',
+        });
+
+        if (result.response === 0) {
+          mainWindow.webContents.send('save_all_changes');
+
+          ipcMain.once('save_all_done', () => mainWindow.destroy());
+        } else if (result.response === 1) {
+          mainWindow.destroy();
+        }
+      }
     });
-
-    if (result.response === 0) {
-      mainWindow.webContents.send('save_all_changes');
-
-      ipcMain.on('save_all_done', () => mainWindow.destroy());
-    }
   });
 }
 
-if (!IS_DEBUG) Menu.setApplicationMenu(null);
+if (!IS_DEBUG && !DEBUG_FLAG) Menu.setApplicationMenu(null);
 app.disableHardwareAcceleration();
 
 app.whenReady().then(() => {

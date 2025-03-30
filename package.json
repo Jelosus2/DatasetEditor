@@ -72,20 +72,33 @@
         "to": "tagger",
         "filter": [
           "**/*",
-          "!**/venv/**"
+          "!**/venv/**",
+          "!**/embedded_python/*",
+          "!**/dependencies_installed"
         ]
       },
       {
         "from": "Data",
         "to": "Data",
         "filter": [
-          "**/*"
+          "**/*",
+          "!**/settings.json",
+          "!**/TagGroups/tag_groups.json"
         ]
       }
     ],
     "win": {
       "target": [
         "nsis"
+      ],
+      "extraResources": [
+        {
+          "from": "tagger/embedded_python",
+          "to": "tagger/embedded_python",
+          "filter": [
+            "**/*"
+          ]
+        }
       ]
     },
     "nsis": {

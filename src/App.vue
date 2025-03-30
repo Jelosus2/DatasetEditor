@@ -164,6 +164,12 @@ onMounted(async () => {
     os.value = osType;
   }
 
+  window.ipcRenderer.receive('are_changes_saved', () => {
+    const allSaved =
+      datasetStore.datasetUndoStack.length === 0 && tagGroupsStore.tagGroupUndoStack.length === 0;
+    window.ipcRenderer.send('changes_saved', allSaved);
+  });
+
   window.ipcRenderer.receive('save_all_changes', async () => {
     await saveChanges(true);
     window.ipcRenderer.send('save_all_done');
@@ -172,7 +178,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleGlobalShortcuts);
-  window.ipcRenderer.unsubscribe('save_all');
+  window.ipcRenderer.unsubscribe('are_changes_saved');
+  window.ipcRenderer.unsubscribe('save_all_changes');
 });
 </script>
 

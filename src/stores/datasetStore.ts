@@ -24,6 +24,7 @@ export const useDatasetStore = defineStore('dataset', () => {
 
   function undoDatasetAction() {
     const change = datasetUndoStack.value.pop();
+    console.log('Undo tags', change?.previousState);
     if (!change) return;
 
     if (change.type === 'add_tag') {
@@ -39,10 +40,12 @@ export const useDatasetStore = defineStore('dataset', () => {
         }
       }
 
+      console.log('Redo tags', change.previousState);
       datasetRedoStack.value.push({
         type: 'add_tag',
         images: change.images,
         tags: change.tags,
+        previousState: change.previousState,
       });
     } else if (change.type === 'add_global_tag') {
       for (const image of images.value.values()) {
@@ -99,14 +102,13 @@ export const useDatasetStore = defineStore('dataset', () => {
     const change = datasetRedoStack.value.pop();
     if (!change) return;
 
-    const previousState = new Map<string, Set<string>>();
     if (change.type === 'add_tag') {
-      for (const image of change.images!) {
-        const imageTags = images.value.get(image);
-        if (imageTags) previousState.set(image, new Set(imageTags.tags));
+      for (const [image, previousTags] of change.previousState!.entries()) {
+        images.value.get(image)!.tags = new Set([...previousTags, ...change.tags]);
+      }
 
+      for (const image of change.images!) {
         for (const tag of change.tags) {
-          images.value.get(image)!.tags.add(tag);
           if (!globalTags.value.has(tag)) {
             globalTags.value.set(tag, new Set([image]));
           } else {
@@ -119,7 +121,7 @@ export const useDatasetStore = defineStore('dataset', () => {
         type: 'add_tag',
         images: change.images,
         tags: change.tags,
-        previousState,
+        previousState: change.previousState,
       });
     } else if (change.type === 'add_global_tag') {
       for (const [image, props] of images.value.entries()) {
@@ -169,6 +171,7 @@ export const useDatasetStore = defineStore('dataset', () => {
   }
 
   return {
+    datasetUndoStack,
     images,
     globalTags,
     tagDiff,

@@ -241,11 +241,13 @@ export async function startTaggerServer(appPath, mainWindow) {
   const executable = os === 'windows' ? 'python.exe' : 'python';
 
   const taggerPath = join(appPath, 'tagger');
+  const embeddedPythonDir = join(taggerPath, 'embedded_python');
   const venvPython = join(taggerPath, 'venv', scriptsDir, executable);
+  const python = existsSync(embeddedPythonDir) ? join(embeddedPythonDir, 'python.exe') : venvPython;
   const filePath = join(taggerPath, 'main.py');
 
   await installTaggerRequirements(taggerPath, mainWindow);
-  const taggerProcess = spawn(venvPython, ['-u', filePath]);
+  const taggerProcess = spawn(python, ['-u', filePath]);
 
   taggerProcess.stdout.on('data', (data) => {
     const output = data.toString();
@@ -265,8 +267,14 @@ export async function startTaggerServer(appPath, mainWindow) {
 function installTaggerRequirements(taggerPath, mainWindow) {
   return new Promise((resolve, reject) => {
     const filePath = join(taggerPath, 'install.py');
+    const embeddedPythonDir = join(taggerPath, 'embedded_python');
+    const embeddedPythonExists = existsSync(embeddedPythonDir);
+    const python = embeddedPythonExists ? join(embeddedPythonDir, 'python.exe') : 'python';
 
-    const installProcess = spawn('python', ['-u', filePath]);
+    const args = ['-u', filePath];
+    if (embeddedPythonExists) args.push('--skip-venv');
+
+    const installProcess = spawn(python, args);
     installProcess.stdout.on('data', (data) => {
       const output = data.toString();
       mainWindow.webContents.send('tagger-output', clearOutputText(output));

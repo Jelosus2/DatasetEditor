@@ -42,6 +42,7 @@ async function startAutotagger() {
   const active = await window.ipcRenderer.invoke('start_tagger_service');
   if (!active) {
     taggerLogs.value.push('Autotagger failed to start');
+    isInstalling.value = false;
     isTaggerRunning.value = false;
   }
 }
@@ -77,18 +78,6 @@ async function autoTagImages(type: 'insert' | 'diff') {
   })) as Map<string, Set<string>>;
 
   if (type === 'insert') {
-    datasetStore.pushDatasetChange({
-      type: 'add_tag',
-      images: new Set(datasetStore.images.keys()),
-      tags: new Set(Array.from(results.values()).flatMap((set) => Array.from(set))),
-      previousState: new Map(
-        [...datasetStore.images.entries()].map(([imageName, image]) => [
-          imageName,
-          new Set([...image.tags]),
-        ]),
-      ),
-    });
-
     insertTags(results);
   } else {
     loadDiff(results);
