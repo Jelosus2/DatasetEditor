@@ -32,7 +32,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function loadTheme(th?: string) {
-    const app = document.querySelector('#app') as HTMLElement;
+    const app = document.querySelector('html') as HTMLElement;
 
     if (th) {
       app.dataset.theme = th;

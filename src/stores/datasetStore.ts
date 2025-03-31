@@ -12,19 +12,19 @@ export const useDatasetStore = defineStore('dataset', () => {
   const images = ref<Map<string, { tags: Set<string>; path: string }>>(new Map());
   const globalTags = ref<Map<string, Set<string>>>(new Map());
   const tagDiff = ref<Map<string, { tagger: Set<string>; original: Set<string> }>>(new Map());
-
   const datasetUndoStack = ref<DatasetChangeRecord[]>([]);
   const datasetRedoStack = ref<DatasetChangeRecord[]>([]);
+  const isAllSaved = ref(true);
   const onChange = ref<(() => void)[]>([]);
 
   function pushDatasetChange(change: DatasetChangeRecord) {
+    isAllSaved.value = false;
     datasetUndoStack.value.push(change);
     datasetRedoStack.value = [];
   }
 
   function undoDatasetAction() {
     const change = datasetUndoStack.value.pop();
-    console.log('Undo tags', change?.previousState);
     if (!change) return;
 
     if (change.type === 'add_tag') {
@@ -40,7 +40,6 @@ export const useDatasetStore = defineStore('dataset', () => {
         }
       }
 
-      console.log('Redo tags', change.previousState);
       datasetRedoStack.value.push({
         type: 'add_tag',
         images: change.images,
@@ -95,6 +94,7 @@ export const useDatasetStore = defineStore('dataset', () => {
       });
     }
 
+    isAllSaved.value = datasetUndoStack.value.length === 0;
     onChange.value.forEach((fn) => fn());
   }
 
@@ -167,17 +167,25 @@ export const useDatasetStore = defineStore('dataset', () => {
       });
     }
 
+    isAllSaved.value = datasetRedoStack.value.length === 0;
     onChange.value.forEach((fn) => fn());
   }
 
+  function resetDatasetStatus() {
+    datasetUndoStack.value = [];
+    datasetRedoStack.value = [];
+    isAllSaved.value = true;
+  }
+
   return {
-    datasetUndoStack,
     images,
     globalTags,
     tagDiff,
     onChange,
+    isAllSaved,
     pushDatasetChange,
     undoDatasetAction,
     redoDatasetAction,
+    resetDatasetStatus,
   };
 });

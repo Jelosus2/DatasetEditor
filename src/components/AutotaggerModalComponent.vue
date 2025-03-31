@@ -37,7 +37,6 @@ async function startAutotagger() {
 
   taggerLogs.value = [];
   taggerLogs.value.push('Starting autotagger...');
-  isTaggerRunning.value = true;
 
   const active = await window.ipcRenderer.invoke('start_tagger_service');
   if (!active) {
@@ -75,13 +74,20 @@ async function autoTagImages(type: 'insert' | 'diff') {
     characterThreshold: toRaw(characterThreshold.value),
     removeUnderscores: toRaw(removeUnderscores.value),
     selectedModels: toRaw(selectedModels.value),
-  })) as Map<string, Set<string>>;
+  })) as Map<string, Set<string>> | null;
+
+  if (!results) {
+    isTagging.value = false;
+    return;
+  }
 
   if (type === 'insert') {
     insertTags(results);
   } else {
     loadDiff(results);
   }
+
+  isTagging.value = false;
 }
 
 function insertTags(tags: Map<string, Set<string>>) {
@@ -100,7 +106,6 @@ function insertTags(tags: Map<string, Set<string>>) {
   }
 
   datasetStore.onChange.forEach((fn) => fn());
-  isTagging.value = false;
 }
 
 function loadDiff(tags: Map<string, Set<string>>) {
@@ -132,9 +137,14 @@ onMounted(() => {
   window.ipcRenderer.receive('tagger-output', async (output: string) => {
     if (output === 'Tagger running') {
       device.value = (await window.ipcRenderer.invoke('get_tagger_device')) as string;
+      isTaggerRunning.value = true;
       isInstalling.value = false;
     }
-    if (output === 'Creating virtual environment...') isInstalling.value = true;
+    if (
+      output === 'Creating virtual environment...' ||
+      output.startsWith('Installing requirements')
+    )
+      isInstalling.value = true;
     taggerLogs.value.push(output);
 
     await nextTick();

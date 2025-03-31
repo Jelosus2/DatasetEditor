@@ -107,7 +107,10 @@ app.on('activate', async () => {
   if (!mainWindow) createMainWindow();
 });
 
-ipcMain.handle('load_dataset', async () => await loadDatasetDirectory(mainWindow));
+ipcMain.handle(
+  'load_dataset',
+  async (_, isAllSaved) => await loadDatasetDirectory(mainWindow, isAllSaved),
+);
 ipcMain.handle('get_os_type', getOS);
 ipcMain.handle(
   'save_tag_group_file',

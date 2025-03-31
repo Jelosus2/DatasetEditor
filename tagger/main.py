@@ -108,8 +108,8 @@ class ServerHandle(BaseHTTPRequestHandler):
 
             images: list[str] = data['images']
             tagger_model: str = data['model']
-            character_threshold: float = data['character_threshold']
-            general_threshold: float = data['general_threshold']
+            character_threshold: float = float(data['character_threshold'])
+            general_threshold: float = float(data['general_threshold'])
             remove_underscores: bool = data['remove_underscores']
 
             tagged_images = tag_images(images, tagger_model, general_threshold, character_threshold, remove_underscores)

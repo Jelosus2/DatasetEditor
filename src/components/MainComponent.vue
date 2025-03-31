@@ -51,6 +51,7 @@ watch(
       selectedImages.value = new Set([firstImage]);
       updateDisplayedTags();
       updateGlobalTags();
+      datasetStore.resetDatasetStatus();
     }
   },
   { immediate: true },

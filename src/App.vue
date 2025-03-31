@@ -22,7 +22,9 @@ const tagGroupsStore = useTagGroupStore();
 const settingStore = useSettingsStore();
 
 async function loadDataset() {
-  const dataset = (await window.ipcRenderer.invoke('load_dataset')) as {
+  const isAllSaved = datasetStore.isAllSaved && tagGroupsStore.isAllSaved;
+
+  const dataset = (await window.ipcRenderer.invoke('load_dataset', isAllSaved)) as {
     images: Map<string, { tags: Set<string>; path: string }>;
     globalTags: Map<string, Set<string>>;
   };
@@ -59,14 +61,14 @@ function redoAction() {
   }
 }
 
-async function saveChanges(all = false) {
+async function saveChanges(type?: 'all' | 'dataset') {
   const activeTab = document.querySelector(
     'input[type="radio"][name="editor_tabs"]:checked',
   )?.ariaLabel;
 
   let obj: { [key: string]: unknown } = {};
 
-  if (all) {
+  if (type === 'all') {
     if (datasetStore.images.size > 0) {
       for (const [image, props] of datasetStore.images.entries()) {
         obj[image] = { path: props.path, tags: [...props.tags] };
@@ -86,7 +88,7 @@ async function saveChanges(all = false) {
     return;
   }
 
-  if (activeTab === 'Dataset') {
+  if (activeTab === 'Dataset' || type === 'dataset') {
     if (datasetStore.images.size === 0) {
       showAlert('error', 'The dataset has not been loaded yet');
       return;
@@ -97,6 +99,7 @@ async function saveChanges(all = false) {
     }
 
     await window.ipcRenderer.invoke('save_dataset', obj);
+    datasetStore.isAllSaved = true;
     showAlert('success', 'Dataset saved successfully');
   } else if (activeTab === 'Tag Groups') {
     if (tagGroupsStore.tagGroups.size === 0) {
@@ -109,6 +112,7 @@ async function saveChanges(all = false) {
     }
 
     await window.ipcRenderer.invoke('save_tag_group', obj);
+    tagGroupsStore.isAllSaved = true;
     showAlert('success', 'Tag groups saved successfully');
   } else if (activeTab === 'Settings') {
     await settingStore.saveSettings();
@@ -165,13 +169,12 @@ onMounted(async () => {
   }
 
   window.ipcRenderer.receive('are_changes_saved', () => {
-    const allSaved =
-      datasetStore.datasetUndoStack.length === 0 && tagGroupsStore.tagGroupUndoStack.length === 0;
+    const allSaved = datasetStore.isAllSaved && tagGroupsStore.isAllSaved;
     window.ipcRenderer.send('changes_saved', allSaved);
   });
 
   window.ipcRenderer.receive('save_all_changes', async () => {
-    await saveChanges(true);
+    await saveChanges('all');
     window.ipcRenderer.send('save_all_done');
   });
 });

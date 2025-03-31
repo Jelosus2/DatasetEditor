@@ -12,10 +12,12 @@ export const useTagGroupStore = defineStore('tagGroup', () => {
   const tagGroups = ref<Map<string, Set<string>>>(new Map());
   const tagGroupUndoStack = ref<TagGroupChangeRecord[]>([]);
   const tagGroupRedoStack = ref<TagGroupChangeRecord[]>([]);
+  const isAllSaved = ref(true);
 
   function pushTagGroupChange(change: TagGroupChangeRecord) {
     tagGroupUndoStack.value.push(change);
     tagGroupRedoStack.value = [];
+    isAllSaved.value = false;
   }
 
   function undoTagGroupAction() {
@@ -43,6 +45,8 @@ export const useTagGroupStore = defineStore('tagGroup', () => {
         tags: change.tags,
       });
     }
+
+    isAllSaved.value = tagGroupUndoStack.value.length === 0;
   }
 
   function redoTagGroupAction() {
@@ -70,11 +74,14 @@ export const useTagGroupStore = defineStore('tagGroup', () => {
         tags: change.tags,
       });
     }
+
+    isAllSaved.value = tagGroupRedoStack.value.length === 0;
   }
 
   return {
     tagGroupUndoStack,
     tagGroups,
+    isAllSaved,
     pushTagGroupChange,
     undoTagGroupAction,
     redoTagGroupAction,

@@ -9,7 +9,7 @@ const props = defineProps({
   id: { type: String },
   placeholder: { type: String },
   multiple: { type: Boolean },
-  onInput: { type: Function },
+  customList: { type: Array },
 });
 
 const settingsStore = useSettingsStore();

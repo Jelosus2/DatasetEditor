@@ -34,9 +34,11 @@ def install_requirements():
 
     if not args.skip_venv:
         venv_path = Path('venv')
-        if not Path.exists(venv_path) or not dependencies_installed:
+        if not Path.exists(venv_path):
             print('Creating virtual environment...')
             subprocess.check_call(f'{python} -m venv venv', shell=sys.platform == 'linux')
+            
+        if not dependencies_installed:
             venv_pip = venv_path.joinpath('Scripts/pip.exe' if sys.platform == 'win32' else 'bin/pip')
             print('Installing requirements, do not stop or restart the process...')
             subprocess.check_call(f'{venv_pip} install --disable-pip-version-check -r requirements.txt', shell=sys.platform == 'linux')

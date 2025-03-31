@@ -73,7 +73,17 @@ function insertTagsIntoDatabase(database, csvFile, resetTable = false) {
   });
 }
 
-export async function loadDatasetDirectory(mainWindow) {
+export async function loadDatasetDirectory(mainWindow, isAllSaved) {
+  if (!isAllSaved) {
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: 'question',
+      title: 'Unsaved Changes',
+      message: 'You have unsaved changes in the dataset. Do you want to continue?',
+      buttons: ['Yes', 'No'],
+    });
+    if (result.response === 1) return null;
+  }
+
   const result = await dialog.showOpenDialog(mainWindow, {
     title: 'Select the dataset directory',
     buttonLabel: 'Load Dataset',
@@ -321,34 +331,40 @@ export async function getTaggerDevice() {
 }
 
 export async function autoTagImages(props) {
-  const { images, generalThreshold, characterThreshold, removeUnderscores, selectedModels } = props;
-  const results = new Map();
+  try {
+    const { images, generalThreshold, characterThreshold, removeUnderscores, selectedModels } =
+      props;
+    const results = new Map();
 
-  for (const model of selectedModels) {
-    const body = {
-      images,
-      model,
-      character_threshold: characterThreshold,
-      general_threshold: generalThreshold,
-      remove_underscores: removeUnderscores,
-    };
+    for (const model of selectedModels) {
+      const body = {
+        images,
+        model,
+        character_threshold: characterThreshold,
+        general_threshold: generalThreshold,
+        remove_underscores: removeUnderscores,
+      };
 
-    const response = await fetch('http://localhost:3067/tagger', {
-      method: 'POST',
-      body: JSON.stringify(body),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+      const response = await fetch('http://localhost:3067/tagger', {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    const data = await response.json();
-    for (const key in data) {
-      if (!results.has(key)) results.set(key, new Set(data[key]));
-      else results.set(key, new Set([...results.get(key), ...data[key]]));
+      const data = await response.json();
+      for (const key in data) {
+        if (!results.has(key)) results.set(key, new Set(data[key]));
+        else results.set(key, new Set([...results.get(key), ...data[key]]));
+      }
     }
-  }
 
-  return results;
+    return results;
+  } catch (err) {
+    console.error('Error auto tagging images: ', err);
+    return null;
+  }
 }
 
 export function saveSettings(appPath, settings) {
