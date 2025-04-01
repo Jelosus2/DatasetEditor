@@ -195,52 +195,55 @@ function resizeTagGroupSection(moveEvent: MouseEvent) {
   window.addEventListener('mouseup', onMouseUp);
 }
 
-function addTag(tag?: string, image?: string) {
-  const newTag = tag || tagInput.value;
-  if (!newTag) return;
+function addTag(_tag?: string, image?: string) {
+  const newTags = _tag || tagInput.value;
+  if (!newTags) return;
 
   const images = image ? new Set([image]) : selectedImages.value;
+  const tags = newTags.split(',').map((tag) => tag.trim());
+
   const previousState = new Map();
+  for (const image of images.values()) {
+    previousState.set(image, new Set(datasetStore.images.get(image)?.tags));
+  }
 
   for (const image of images.values()) {
-    const imageWithTags = datasetStore.images.get(image);
-    if (imageWithTags?.tags.size && !imageWithTags.tags.has(newTag))
-      previousState.set(image, new Set(imageWithTags.tags));
+    for (const tag of tags) {
+      const imageWithTags = datasetStore.images.get(image);
 
-    if (tagPosition.value === 'up') {
-      imageWithTags!.tags = new Set([newTag, ...imageWithTags!.tags]);
-    } else {
-      imageWithTags?.tags.add(newTag);
-    }
-
-    if (datasetStore.tagDiff.size > 0) {
-      const diff = datasetStore.tagDiff.get(image);
-
-      if (diff?.tagger.has(newTag)) {
-        diff?.tagger.delete(newTag);
+      if (tagPosition.value === 'up') {
+        imageWithTags!.tags = new Set([tag, ...imageWithTags!.tags]);
       } else {
-        diff?.original.add(newTag);
+        imageWithTags?.tags.add(tag);
+      }
+
+      if (!datasetStore.globalTags.has(tag)) {
+        datasetStore.globalTags.set(tag, new Set(images));
+      } else {
+        const imagesWithTag = datasetStore.globalTags.get(tag)!;
+        datasetStore.globalTags.set(tag, new Set([...imagesWithTag, ...images]));
+      }
+
+      if (datasetStore.tagDiff.size === 0) continue;
+
+      const diff = datasetStore.tagDiff.get(image);
+      if (diff?.tagger.has(tag)) {
+        diff?.tagger.delete(tag);
+      } else {
+        diff?.original.add(tag);
       }
     }
   }
 
-  if (previousState.size > 0) {
-    datasetStore.pushDatasetChange({
-      type: 'add_tag',
-      images: new Set(previousState.keys()),
-      tags: new Set([newTag]),
-      previousState,
-    });
-  }
+  datasetStore.pushDatasetChange({
+    type: 'add_tag',
+    images: new Set(images.values()),
+    tags: new Set(tags),
+    previousState,
+  });
 
   updateDisplayedTags();
-  if (!datasetStore.globalTags.has(newTag)) {
-    datasetStore.globalTags.set(newTag, new Set([...images]));
-    updateGlobalTags();
-  } else {
-    const imagesWithTag = datasetStore.globalTags.get(newTag)!;
-    datasetStore.globalTags.set(newTag, new Set([...imagesWithTag, ...images]));
-  }
+  updateGlobalTags();
 
   tagInput.value = '';
 }
@@ -571,6 +574,7 @@ onMounted(() => {
                   :disabled="!selectedImages.size"
                   :id="'completion-list'"
                   :placeholder="'Type to add a tag...'"
+                  :multiple="true"
                   @on-complete="addTag()"
                 />
                 <select v-model.lazy="tagPosition" class="select w-fit select-sm !outline-none">
