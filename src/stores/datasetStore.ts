@@ -5,6 +5,7 @@ interface DatasetChangeRecord {
   type: 'add_tag' | 'remove_tag' | 'add_global_tag' | 'remove_global_tag';
   images?: Set<string>;
   tags: Set<string>;
+  tagPosition?: number;
   previousState?: Map<string, Set<string>>;
 }
 
@@ -40,12 +41,7 @@ export const useDatasetStore = defineStore('dataset', () => {
         }
       }
 
-      datasetRedoStack.value.push({
-        type: 'add_tag',
-        images: change.images,
-        tags: change.tags,
-        previousState: change.previousState,
-      });
+      datasetRedoStack.value.push(change);
     } else if (change.type === 'add_global_tag') {
       for (const image of images.value.values()) {
         for (const tag of change.tags) {
@@ -54,10 +50,7 @@ export const useDatasetStore = defineStore('dataset', () => {
         }
       }
 
-      datasetRedoStack.value.push({
-        type: 'add_global_tag',
-        tags: change.tags,
-      });
+      datasetRedoStack.value.push(change);
     } else if (change.type === 'remove_tag') {
       for (const image of change.images!) {
         for (const tag of change.tags) {
@@ -71,11 +64,7 @@ export const useDatasetStore = defineStore('dataset', () => {
         }
       }
 
-      datasetRedoStack.value.push({
-        type: 'remove_tag',
-        images: change.images,
-        tags: change.tags,
-      });
+      datasetRedoStack.value.push(change);
     } else if (change.type === 'remove_global_tag') {
       for (const [image, props] of images.value.entries()) {
         for (const tag of change.tags) {
@@ -88,10 +77,7 @@ export const useDatasetStore = defineStore('dataset', () => {
         }
       }
 
-      datasetRedoStack.value.push({
-        type: 'remove_global_tag',
-        tags: change.tags,
-      });
+      datasetRedoStack.value.push(change);
     }
 
     isAllSaved.value = datasetUndoStack.value.length === 0;
@@ -104,10 +90,14 @@ export const useDatasetStore = defineStore('dataset', () => {
 
     if (change.type === 'add_tag') {
       for (const [image, previousTags] of change.previousState!.entries()) {
-        images.value.get(image)!.tags = new Set([...previousTags, ...change.tags]);
-      }
+        if (change.tagPosition === -1) {
+          images.value.get(image)!.tags = new Set([...previousTags, ...change.tags]);
+        } else {
+          const tagsCopy = [...previousTags];
+          tagsCopy.splice(change.tagPosition! - 1, 0, ...change.tags);
+          images.value.get(image)!.tags = new Set(tagsCopy);
+        }
 
-      for (const image of change.images!) {
         for (const tag of change.tags) {
           if (!globalTags.value.has(tag)) {
             globalTags.value.set(tag, new Set([image]));
@@ -117,16 +107,18 @@ export const useDatasetStore = defineStore('dataset', () => {
         }
       }
 
-      datasetUndoStack.value.push({
-        type: 'add_tag',
-        images: change.images,
-        tags: change.tags,
-        previousState: change.previousState,
-      });
+      datasetUndoStack.value.push(change);
     } else if (change.type === 'add_global_tag') {
       for (const [image, props] of images.value.entries()) {
+        if (change.tagPosition === -1) {
+          images.value.get(image)!.tags = new Set([...props.tags, ...change.tags]);
+        } else {
+          const tagsCopy = [...props.tags];
+          tagsCopy.splice(change.tagPosition! - 1, 0, ...change.tags);
+          images.value.get(image)!.tags = new Set(tagsCopy);
+        }
+
         for (const tag of change.tags) {
-          props.tags.add(tag);
           if (!globalTags.value.has(tag)) {
             globalTags.value.set(tag, new Set([image]));
           } else {
@@ -135,10 +127,7 @@ export const useDatasetStore = defineStore('dataset', () => {
         }
       }
 
-      datasetUndoStack.value.push({
-        type: 'add_global_tag',
-        tags: change.tags,
-      });
+      datasetUndoStack.value.push(change);
     } else if (change.type === 'remove_tag') {
       for (const image of change.images!) {
         for (const tag of change.tags) {
@@ -148,11 +137,7 @@ export const useDatasetStore = defineStore('dataset', () => {
         }
       }
 
-      datasetUndoStack.value.push({
-        type: 'remove_tag',
-        images: change.images,
-        tags: change.tags,
-      });
+      datasetUndoStack.value.push(change);
     } else if (change.type === 'remove_global_tag') {
       for (const image of images.value.values()) {
         for (const tag of change.tags) {
@@ -161,10 +146,7 @@ export const useDatasetStore = defineStore('dataset', () => {
         }
       }
 
-      datasetUndoStack.value.push({
-        type: 'remove_global_tag',
-        tags: change.tags,
-      });
+      datasetUndoStack.value.push(change);
     }
 
     isAllSaved.value = datasetRedoStack.value.length === 0;

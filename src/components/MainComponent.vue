@@ -2,7 +2,7 @@
 import ModalComponent from '@/components/ModalComponent.vue';
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
-import { ref, watch, computed, shallowRef, onMounted } from 'vue';
+import { ref, watch, computed, shallowRef, onMounted, toRaw } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
 import { useTagGroupStore } from '@/stores/tagGroupStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -215,14 +215,6 @@ function addTag(_tag?: string, image?: string) {
     previousState.set(image, new Set(imageWithTags?.tags));
 
     for (const tag of tags) {
-      if (tagPosition.value === -1) {
-        imageWithTags?.tags.add(tag);
-      } else {
-        const tagsCopy = [...imageWithTags!.tags];
-        tagsCopy.splice(tagPosition.value - 1, 0, tag);
-        imageWithTags!.tags = new Set(tagsCopy);
-      }
-
       if (!datasetStore.globalTags.has(tag)) {
         datasetStore.globalTags.set(tag, new Set(images));
       } else {
@@ -239,6 +231,14 @@ function addTag(_tag?: string, image?: string) {
         diff?.original.add(tag);
       }
     }
+
+    if (tagPosition.value === -1) {
+      imageWithTags!.tags = new Set([...imageWithTags!.tags, ...tags]);
+    } else {
+      const tagsCopy = [...imageWithTags!.tags];
+      tagsCopy.splice(tagPosition.value - 1, 0, ...tags);
+      imageWithTags!.tags = new Set(tagsCopy);
+    }
   }
 
   tagInput.value = '';
@@ -248,6 +248,7 @@ function addTag(_tag?: string, image?: string) {
     type: 'add_tag',
     images: new Set(images.values()),
     tags: new Set(tags),
+    tagPosition: toRaw(tagPosition.value),
     previousState,
   });
 
@@ -279,6 +280,7 @@ function addGlobalTag() {
   datasetStore.pushDatasetChange({
     type: 'add_global_tag',
     tags: new Set(tags),
+    tagPosition: toRaw(tagPosition.value),
   });
 
   updateDisplayedTags();
