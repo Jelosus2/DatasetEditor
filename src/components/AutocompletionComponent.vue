@@ -18,6 +18,7 @@ const completions = ref<{ tag: string; type: number; output: string }[]>([]);
 const completionList = shallowRef<HTMLLIElement[]>([]);
 const selectedIndex = ref(-1);
 const active = ref(false);
+const input = shallowRef<HTMLInputElement | null>(null);
 
 async function showSuggestions() {
   if (!settingsStore.autocomplete) return;
@@ -77,10 +78,20 @@ function onKeyEnter() {
   completions.value = [];
   emit('on-complete');
 }
+
+async function handleSuggestionClick(tag: string) {
+  tagInput.value = tag;
+  completions.value = [];
+
+  setTimeout(() => {
+    if (input.value) input.value.focus();
+  }, 0);
+}
 </script>
 
 <template>
   <input
+    ref="input"
     v-model.trim="tagInput"
     type="text"
     :placeholder="placeholder"
@@ -110,7 +121,7 @@ function onKeyEnter() {
         'text-[#318842]': completion.type === 4,
         'text-[#dac68a]': completion.type === 5,
       }"
-      @mousedown="tagInput = completion.tag"
+      @mousedown="handleSuggestionClick(completion.tag)"
     >
       {{ completion.output }}
     </li>
