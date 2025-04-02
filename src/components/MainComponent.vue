@@ -199,18 +199,21 @@ function addTag(_tag?: string, image?: string) {
   const newTags = _tag || tagInput.value;
   if (!newTags) return;
 
-  const images = image ? new Set([image]) : selectedImages.value;
+  const images = image ? new Set([image]) : new Set(selectedImages.value);
   const tags = newTags.split(',').map((tag) => tag.trim());
 
   const previousState = new Map();
   for (const image of images.values()) {
-    previousState.set(image, new Set(datasetStore.images.get(image)?.tags));
-  }
+    const imageWithTags = datasetStore.images.get(image);
 
-  for (const image of images.values()) {
+    if (tags.every((tag) => imageWithTags?.tags.has(tag))) {
+      images.delete(image);
+      continue;
+    }
+
+    previousState.set(image, new Set(imageWithTags?.tags));
+
     for (const tag of tags) {
-      const imageWithTags = datasetStore.images.get(image);
-
       if (tagPosition.value === 'up') {
         imageWithTags!.tags = new Set([tag, ...imageWithTags!.tags]);
       } else {
@@ -235,6 +238,9 @@ function addTag(_tag?: string, image?: string) {
     }
   }
 
+  tagInput.value = '';
+  if (images.size === 0) return;
+
   datasetStore.pushDatasetChange({
     type: 'add_tag',
     images: new Set(images.values()),
@@ -244,29 +250,32 @@ function addTag(_tag?: string, image?: string) {
 
   updateDisplayedTags();
   updateGlobalTags();
-
-  tagInput.value = '';
 }
 
 function addGlobalTag() {
+  const tags = globalTagInput.value.split(',').map((tag) => tag.trim());
+  if (tags.length === 0) return;
+
   for (const image of datasetStore.images.keys()) {
-    if (globalTagPosition.value === 'up') {
-      datasetStore.images.get(image)!.tags = new Set([
-        globalTagInput.value,
-        ...datasetStore.images.get(image)!.tags,
-      ]);
-    } else {
-      datasetStore.images.get(image)?.tags.add(globalTagInput.value);
+    const imageWithTags = datasetStore.images.get(image);
+
+    for (const tag of tags) {
+      if (globalTagPosition.value === 'up') {
+        imageWithTags!.tags = new Set([tag, ...imageWithTags!.tags]);
+      } else {
+        imageWithTags?.tags.add(tag);
+      }
+
+      datasetStore.globalTags.set(tag, new Set([...datasetStore.images.keys()]));
     }
   }
 
   datasetStore.pushDatasetChange({
     type: 'add_global_tag',
-    tags: new Set([globalTagInput.value]),
+    tags: new Set(tags),
   });
 
   updateDisplayedTags();
-  datasetStore.globalTags.set(globalTagInput.value, new Set([...datasetStore.images.keys()]));
   updateGlobalTags();
 
   globalTagInput.value = '';
@@ -701,6 +710,7 @@ onMounted(() => {
                   :disabled="!datasetStore.images.size"
                   :id="'global-completion-list'"
                   :placeholder="'Type to add a global tag...'"
+                  :multiple="true"
                   @on-complete="addGlobalTag"
                 />
                 <select

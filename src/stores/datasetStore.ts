@@ -125,13 +125,13 @@ export const useDatasetStore = defineStore('dataset', () => {
       });
     } else if (change.type === 'add_global_tag') {
       for (const [image, props] of images.value.entries()) {
-        const tag = change.tags.values().next().value!;
-
-        props.tags.add(tag);
-        if (!globalTags.value.has(tag)) {
-          globalTags.value.set(tag, new Set([image]));
-        } else {
-          globalTags.value.get(tag)?.add(image);
+        for (const tag of change.tags) {
+          props.tags.add(tag);
+          if (!globalTags.value.has(tag)) {
+            globalTags.value.set(tag, new Set([image]));
+          } else {
+            globalTags.value.get(tag)?.add(image);
+          }
         }
       }
 
