@@ -34,8 +34,7 @@ const sortOrder = ref('asc');
 const globalSortMode = ref('alphabetical');
 const globalSortOrder = ref('asc');
 const previewImage = ref('');
-const tagPosition = ref('down');
-const globalTagPosition = ref('down');
+const tagPosition = ref(-1);
 
 const datasetStore = useDatasetStore();
 const tagGroupsStore = useTagGroupStore();
@@ -203,6 +202,8 @@ function addTag(_tag?: string, image?: string) {
   const tags = newTags.split(',').map((tag) => tag.trim());
 
   const previousState = new Map();
+
+  validateTagPosition();
   for (const image of images.values()) {
     const imageWithTags = datasetStore.images.get(image);
 
@@ -214,10 +215,12 @@ function addTag(_tag?: string, image?: string) {
     previousState.set(image, new Set(imageWithTags?.tags));
 
     for (const tag of tags) {
-      if (tagPosition.value === 'up') {
-        imageWithTags!.tags = new Set([tag, ...imageWithTags!.tags]);
-      } else {
+      if (tagPosition.value === -1) {
         imageWithTags?.tags.add(tag);
+      } else {
+        const tagsCopy = [...imageWithTags!.tags];
+        tagsCopy.splice(tagPosition.value - 1, 0, tag);
+        imageWithTags!.tags = new Set(tagsCopy);
       }
 
       if (!datasetStore.globalTags.has(tag)) {
@@ -256,14 +259,17 @@ function addGlobalTag() {
   const tags = globalTagInput.value.split(',').map((tag) => tag.trim());
   if (tags.length === 0) return;
 
+  validateTagPosition();
   for (const image of datasetStore.images.keys()) {
     const imageWithTags = datasetStore.images.get(image);
 
     for (const tag of tags) {
-      if (globalTagPosition.value === 'up') {
-        imageWithTags!.tags = new Set([tag, ...imageWithTags!.tags]);
-      } else {
+      if (tagPosition.value === -1) {
         imageWithTags?.tags.add(tag);
+      } else {
+        const tagsCopy = [...imageWithTags!.tags];
+        tagsCopy.splice(tagPosition.value - 1, 0, tag);
+        imageWithTags!.tags = new Set(tagsCopy);
       }
 
       datasetStore.globalTags.set(tag, new Set([...datasetStore.images.keys()]));
@@ -405,6 +411,12 @@ function copyTextToClipboard(tags: Set<string>) {
   }, 1000);
 }
 
+function validateTagPosition() {
+  if (!tagPosition.value || tagPosition.value < -1) tagPosition.value = -1;
+  if (!Number.isInteger(tagPosition.value))
+    tagPosition.value = parseInt(tagPosition.value.toString());
+}
+
 onMounted(() => {
   datasetStore.onChange = [updateDisplayedTags, updateGlobalTags];
 });
@@ -444,9 +456,7 @@ onMounted(() => {
             />
           </div>
         </div>
-        <div
-          class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
-        >
+        <div class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
           <label class="input input-sm w-full border-r-0 pr-0 pl-1 !outline-none">
             <AutocompletionComponent
               v-model="filterInput"
@@ -501,7 +511,7 @@ onMounted(() => {
           <div class="flex h-[50%]">
             <div class="flex w-[50%] flex-col">
               <div
-                class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+                class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-base-content/10"
               >
                 <p>Tags detected by autotagger but not in the captions</p>
               </div>
@@ -521,7 +531,7 @@ onMounted(() => {
             ></div>
             <div class="flex w-[50%] flex-col">
               <div
-                class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+                class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-base-content/10"
               >
                 <p>Tags in captions but not detected by the autotagger</p>
               </div>
@@ -538,9 +548,15 @@ onMounted(() => {
             </div>
           </div>
           <div
-            class="flex h-[50%] flex-col border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+            class="flex h-[50%] flex-col border-t-2 border-gray-400 pt-1 dark:border-base-content/10"
           >
-            <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth">
+            <div class="border-b-2 border-gray-400 pb-1 dark:border-base-content/10">
+              <label class="input input-sm w-[40%] gap-0 !outline-none xl:w-[35%]">
+                <span class="label">Tag Position</span>
+                <input type="number" v-model.trim.lazy="tagPosition" @blur="validateTagPosition" />
+              </label>
+            </div>
+            <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth pt-1">
               <div
                 v-for="tag in displayedTags"
                 :key="tag"
@@ -551,7 +567,7 @@ onMounted(() => {
               </div>
             </div>
             <div
-              class="mt-auto flex gap-2 border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+              class="mt-auto flex gap-2 border-t-2 border-gray-400 pt-1 dark:border-base-content/10"
             >
               <div
                 class="tooltip"
@@ -577,7 +593,7 @@ onMounted(() => {
                   </svg>
                 </button>
               </div>
-              <label class="input relative input-sm w-full border-r-0 pr-0 pl-1 !outline-none">
+              <label class="input relative input-sm w-full pl-1 !outline-none">
                 <AutocompletionComponent
                   v-model="tagInput"
                   :disabled="!selectedImages.size"
@@ -586,10 +602,6 @@ onMounted(() => {
                   :multiple="true"
                   @on-complete="addTag()"
                 />
-                <select v-model.lazy="tagPosition" class="select w-fit select-sm !outline-none">
-                  <option value="up">Up</option>
-                  <option value="down" selected>Down</option>
-                </select>
               </label>
               <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
                 <select
@@ -704,7 +716,7 @@ onMounted(() => {
                   </svg>
                 </button>
               </div>
-              <label class="input relative input-sm w-full border-r-0 pr-0 pl-1 !outline-none">
+              <label class="input relative input-sm w-full pl-1 !outline-none">
                 <AutocompletionComponent
                   v-model="globalTagInput"
                   :disabled="!datasetStore.images.size"
@@ -713,13 +725,6 @@ onMounted(() => {
                   :multiple="true"
                   @on-complete="addGlobalTag"
                 />
-                <select
-                  v-model.lazy="globalTagPosition"
-                  class="select w-fit select-sm !outline-none"
-                >
-                  <option value="up">Up</option>
-                  <option value="down" selected>Down</option>
-                </select>
               </label>
               <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
                 <select

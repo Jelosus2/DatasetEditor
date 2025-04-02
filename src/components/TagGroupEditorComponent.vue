@@ -146,7 +146,7 @@ function addImportedGroupToCurrent(override: boolean) {
           <div class="flex h-[50%]">
             <div class="flex w-[50%] flex-col gap-2 pb-2">
               <div
-                class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+                class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-base-content/10"
               >
                 <p>Edit tag group</p>
               </div>
@@ -230,7 +230,7 @@ function addImportedGroupToCurrent(override: boolean) {
             ></div>
             <div class="flex w-[50%] flex-col gap-2 pb-2">
               <div
-                class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+                class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-base-content/10"
               >
                 <p>Create tag group</p>
               </div>
@@ -257,7 +257,7 @@ function addImportedGroupToCurrent(override: boolean) {
             </div>
           </div>
           <div
-            class="flex h-[50%] flex-col border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+            class="flex h-[50%] flex-col border-t-2 border-gray-400 pt-1 dark:border-base-content/10"
           >
             <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth">
               <div
@@ -269,9 +269,7 @@ function addImportedGroupToCurrent(override: boolean) {
                 {{ tag }}
               </div>
             </div>
-            <div
-              class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
-            >
+            <div class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
               <label class="input input-sm w-full px-1 !outline-none">
                 <AutocompletionComponent
                   v-model="tagInput"
@@ -292,7 +290,7 @@ function addImportedGroupToCurrent(override: boolean) {
           <div class="flex h-[30%]">
             <div class="flex w-full flex-col gap-2">
               <div
-                class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+                class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-base-content/10"
               >
                 <p>Import tag groups</p>
               </div>
@@ -335,7 +333,7 @@ function addImportedGroupToCurrent(override: boolean) {
           </div>
           <div class="flex h-[70%] w-full flex-col gap-2">
             <div
-              class="flex items-center justify-center border-y-2 border-gray-400 text-center dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent)]"
+              class="flex items-center justify-center border-y-2 border-gray-400 text-center dark:border-base-content/10"
             >
               <p>Import Preview</p>
             </div>
