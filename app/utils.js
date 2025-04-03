@@ -12,6 +12,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, extname, basename, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+
+let originalDatasetHash;
+let originalTagGroupsHash;
 
 export const _dirname = (url) => dirname(fileURLToPath(url));
 
@@ -30,14 +34,14 @@ function insertTagsIntoDatabase(database, csvFile, resetTable = false) {
   if (resetTable) {
     database.exec('DROP TABLE IF EXISTS tags');
     database.exec(`
-        CREATE TABLE tags (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          tag TEXT NOT NULL,
-          type INTEGER NOT NULL,
-          results INTEGER NOT NULL,
-          alias TEXT
-        )
-      `);
+      CREATE TABLE tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tag TEXT NOT NULL,
+        type INTEGER NOT NULL,
+        results INTEGER NOT NULL,
+        alias TEXT
+      )
+    `);
   }
 
   const batchSize = 5000;
@@ -73,7 +77,7 @@ function insertTagsIntoDatabase(database, csvFile, resetTable = false) {
   });
 }
 
-export async function loadDatasetDirectory(mainWindow, isAllSaved) {
+export async function loadDatasetDirectory(mainWindow, isAllSaved, directory) {
   if (!isAllSaved) {
     const result = await dialog.showMessageBox(mainWindow, {
       type: 'question',
@@ -84,15 +88,18 @@ export async function loadDatasetDirectory(mainWindow, isAllSaved) {
     if (result.response === 1) return null;
   }
 
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Select the dataset directory',
-    buttonLabel: 'Load Dataset',
-    properties: ['openDirectory'],
-  });
+  let directoryPath = directory;
 
-  if (result.canceled) return null;
+  if (directoryPath === null) {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select the dataset directory',
+      buttonLabel: 'Load Dataset',
+      properties: ['openDirectory'],
+    });
 
-  const directoryPath = result.filePaths[0];
+    if (result.canceled) return null;
+    directoryPath = result.filePaths[0];
+  }
 
   const images = new Map();
   const globalTags = new Map();
@@ -128,7 +135,15 @@ export async function loadDatasetDirectory(mainWindow, isAllSaved) {
     }
   }
 
-  return { images, globalTags };
+  originalDatasetHash = createHash('md5')
+    .update(
+      JSON.stringify(
+        [...images].map(([img, props]) => [img, { tags: [...props.tags], path: props.path }]),
+      ),
+    )
+    .digest('hex');
+
+  return { images, globalTags, directoryPath };
 }
 
 export function getOS() {
@@ -193,8 +208,9 @@ export function saveTagGroup(appPath, tagGroups) {
   const tagGroupFilePath = join(dataDirPath, 'tag_groups.json');
 
   if (!existsSync(dataDirPath)) mkdirSync(dataDirPath, { recursive: true });
-
   writeFileSync(tagGroupFilePath, JSON.stringify(tagGroups, null, 2));
+
+  originalTagGroupsHash = createHash('md5').update(JSON.stringify(tagGroups)).digest('hex');
 }
 
 export function loadTagGroups(appPath) {
@@ -202,6 +218,8 @@ export function loadTagGroups(appPath) {
 
   if (!existsSync(tagGroupFilePath)) return null;
   const data = JSON.parse(readFileSync(tagGroupFilePath, 'utf-8'));
+
+  originalTagGroupsHash = createHash('md5').update(JSON.stringify(data)).digest('hex');
 
   return new Map(Object.entries(data).map(([name, tags]) => [name, new Set(tags)]));
 }
@@ -414,4 +432,20 @@ export async function changeAutocompleteFile(mainWindow, database) {
 
   insertTagsIntoDatabase(database, result.filePaths[0], true);
   return result.filePaths[0];
+}
+
+export function compareDatasetChanges(images) {
+  const currentDatasetHash = createHash('md5').update(images).digest('hex');
+  if (!originalDatasetHash) return true;
+  return originalDatasetHash === currentDatasetHash;
+}
+
+export function updateOriginalDatasetHash(images) {
+  originalDatasetHash = createHash('md5').update(images).digest('hex');
+}
+
+export function compareTagGroupChanges(tagGroups) {
+  const currentTagGroupHash = createHash('md5').update(tagGroups).digest('hex');
+  if (!originalTagGroupsHash) return true;
+  return originalTagGroupsHash === currentTagGroupHash;
 }

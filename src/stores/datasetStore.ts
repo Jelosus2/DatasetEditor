@@ -15,11 +15,10 @@ export const useDatasetStore = defineStore('dataset', () => {
   const tagDiff = ref<Map<string, { tagger: Set<string>; original: Set<string> }>>(new Map());
   const datasetUndoStack = ref<DatasetChangeRecord[]>([]);
   const datasetRedoStack = ref<DatasetChangeRecord[]>([]);
-  const isAllSaved = ref(true);
+  const directory = ref('');
   const onChange = ref<(() => void)[]>([]);
 
   function pushDatasetChange(change: DatasetChangeRecord) {
-    isAllSaved.value = false;
     datasetUndoStack.value.push(change);
     datasetRedoStack.value = [];
   }
@@ -80,7 +79,6 @@ export const useDatasetStore = defineStore('dataset', () => {
       datasetRedoStack.value.push(change);
     }
 
-    isAllSaved.value = datasetUndoStack.value.length === 0;
     onChange.value.forEach((fn) => fn());
   }
 
@@ -149,22 +147,20 @@ export const useDatasetStore = defineStore('dataset', () => {
       datasetUndoStack.value.push(change);
     }
 
-    isAllSaved.value = datasetRedoStack.value.length === 0;
     onChange.value.forEach((fn) => fn());
   }
 
   function resetDatasetStatus() {
     datasetUndoStack.value = [];
     datasetRedoStack.value = [];
-    isAllSaved.value = true;
   }
 
   return {
     images,
     globalTags,
+    directory,
     tagDiff,
     onChange,
-    isAllSaved,
     pushDatasetChange,
     undoDatasetAction,
     redoDatasetAction,

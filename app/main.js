@@ -19,6 +19,9 @@ import {
   saveSettings,
   loadSettings,
   changeAutocompleteFile,
+  compareDatasetChanges,
+  updateOriginalDatasetHash,
+  compareTagGroupChanges,
 } from './utils.js';
 
 const __dirname = _dirname(import.meta.url);
@@ -109,7 +112,7 @@ app.on('activate', async () => {
 
 ipcMain.handle(
   'load_dataset',
-  async (_, isAllSaved) => await loadDatasetDirectory(mainWindow, isAllSaved),
+  async (_, isAllSaved, directory) => await loadDatasetDirectory(mainWindow, isAllSaved, directory),
 );
 ipcMain.handle('get_os_type', getOS);
 ipcMain.handle(
@@ -126,6 +129,9 @@ ipcMain.handle('tag_images', async (_, props) => await autoTagImages(props));
 ipcMain.handle('save_settings', (_, settings) => saveSettings(appPath, settings));
 ipcMain.handle('load_settings', () => loadSettings(appPath));
 ipcMain.handle('change_autotag_file', async () => await changeAutocompleteFile(mainWindow, db));
+ipcMain.handle('compare_dataset_changes', (_, images) => compareDatasetChanges(images));
+ipcMain.handle('update_dataset_status', (_, images) => updateOriginalDatasetHash(images));
+ipcMain.handle('compare_tag_group_changes', (_, tagGroups) => compareTagGroupChanges(tagGroups));
 ipcMain.handle('start_tagger_service', async () => {
   try {
     if (taggerProcess) taggerProcess.kill();

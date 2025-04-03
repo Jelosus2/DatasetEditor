@@ -21,20 +21,26 @@ const datasetStore = useDatasetStore();
 const tagGroupsStore = useTagGroupStore();
 const settingStore = useSettingsStore();
 
-async function loadDataset() {
-  const isAllSaved = datasetStore.isAllSaved && tagGroupsStore.isAllSaved;
+async function loadDataset(reload = false) {
+  const isDatasetSaved = await isSaved('dataset');
 
-  const dataset = (await window.ipcRenderer.invoke('load_dataset', isAllSaved)) as {
+  const dataset = (await window.ipcRenderer.invoke(
+    'load_dataset',
+    isDatasetSaved,
+    reload ? datasetStore.directory : null,
+  )) as {
     images: Map<string, { tags: Set<string>; path: string }>;
     globalTags: Map<string, Set<string>>;
+    directoryPath: string;
   };
 
   if (!dataset) return;
 
-  console.log(dataset.images, dataset.globalTags);
+  console.log(dataset.images, dataset.globalTags, dataset.directoryPath);
 
   datasetStore.images = dataset.images;
   datasetStore.globalTags = dataset.globalTags;
+  datasetStore.directory = dataset.directoryPath;
 }
 
 function undoAction() {
@@ -61,7 +67,7 @@ function redoAction() {
   }
 }
 
-async function saveChanges(type?: 'all' | 'dataset') {
+async function saveChanges(type?: 'all') {
   const activeTab = document.querySelector(
     'input[type="radio"][name="editor_tabs"]:checked',
   )?.ariaLabel;
@@ -88,7 +94,7 @@ async function saveChanges(type?: 'all' | 'dataset') {
     return;
   }
 
-  if (activeTab === 'Dataset' || type === 'dataset') {
+  if (activeTab === 'Dataset') {
     if (datasetStore.images.size === 0) {
       showAlert('error', 'The dataset has not been loaded yet');
       return;
@@ -99,7 +105,7 @@ async function saveChanges(type?: 'all' | 'dataset') {
     }
 
     await window.ipcRenderer.invoke('save_dataset', obj);
-    datasetStore.isAllSaved = true;
+    await window.ipcRenderer.invoke('update_dataset_status', imagesToString());
     showAlert('success', 'Dataset saved successfully');
   } else if (activeTab === 'Tag Groups') {
     if (tagGroupsStore.tagGroups.size === 0) {
@@ -112,7 +118,6 @@ async function saveChanges(type?: 'all' | 'dataset') {
     }
 
     await window.ipcRenderer.invoke('save_tag_group', obj);
-    tagGroupsStore.isAllSaved = true;
     showAlert('success', 'Tag groups saved successfully');
   } else if (activeTab === 'Settings') {
     await settingStore.saveSettings();
@@ -142,8 +147,45 @@ async function handleGlobalShortcuts(e: KeyboardEvent) {
     } else if (e.key === 's') {
       e.preventDefault();
       await saveChanges();
+    } else if (e.key === 'r') {
+      e.preventDefault();
+      await loadDataset(true);
     }
   }
+}
+
+function imagesToString() {
+  const images = [...datasetStore.images].map(([img, props]) => [
+    img,
+    { tags: [...props.tags], path: props.path },
+  ]);
+
+  return JSON.stringify(images);
+}
+
+function tagGroupsToString() {
+  const obj: { [key: string]: string[] } = {};
+  for (const [tagGroup, tags] of tagGroupsStore.tagGroups.entries()) {
+    obj[tagGroup] = [...tags];
+  }
+
+  return JSON.stringify(obj);
+}
+
+async function isSaved(type: 'all' | 'dataset' | 'tag_group') {
+  if (type === 'dataset') {
+    return await window.ipcRenderer.invoke('compare_dataset_changes', imagesToString());
+  } else if (type === 'tag_group') {
+    return await window.ipcRenderer.invoke('compare_tag_group_changes', tagGroupsToString());
+  }
+
+  const datasetSaved = await window.ipcRenderer.invoke('compare_dataset_changes', imagesToString());
+  const tagGroupSaved = await window.ipcRenderer.invoke(
+    'compare_tag_group_changes',
+    tagGroupsToString(),
+  );
+
+  return datasetSaved && tagGroupSaved;
 }
 
 onMounted(async () => {
@@ -168,8 +210,8 @@ onMounted(async () => {
     os.value = osType;
   }
 
-  window.ipcRenderer.receive('are_changes_saved', () => {
-    const allSaved = datasetStore.isAllSaved && tagGroupsStore.isAllSaved;
+  window.ipcRenderer.receive('are_changes_saved', async () => {
+    const allSaved = await isSaved('all');
     window.ipcRenderer.send('changes_saved', allSaved);
   });
 
@@ -195,6 +237,7 @@ onUnmounted(() => {
     @undo="undoAction"
     @redo="redoAction"
     @save="saveChanges"
+    @reload_dataset="loadDataset(true)"
   />
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
     <MainComponent :os="os" :are-previews-enabled="arePreviewsEnabled" />
