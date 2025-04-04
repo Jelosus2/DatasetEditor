@@ -9,12 +9,12 @@ const props = defineProps({
   id: { type: String },
   placeholder: { type: String },
   multiple: { type: Boolean },
-  customList: { type: Array },
+  customList: { type: Array<string> },
 });
 
 const settingsStore = useSettingsStore();
 
-const completions = ref<{ tag: string; type: number; output: string }[]>([]);
+const completions = ref<{ tag: string; type?: number; output: string }[]>([]);
 const completionList = shallowRef<HTMLLIElement[]>([]);
 const selectedIndex = ref(-1);
 const active = ref(false);
@@ -24,11 +24,18 @@ async function showSuggestions() {
   if (!settingsStore.autocomplete) return;
   const value = props.multiple ? tagInput.value.split(',').pop()?.trim() : tagInput.value;
 
-  const results = (await window.ipcRenderer.invoke('load_tag_suggestions', value)) as {
-    tag: string;
-    type: number;
-    output: string;
-  }[];
+  const results = props.customList?.length
+    ? props.customList
+        .filter((tag) => {
+          if (!value) return false;
+          return tag.toLowerCase().startsWith(value!.toLowerCase());
+        })
+        .map((tag) => ({ tag, output: tag }))
+    : ((await window.ipcRenderer.invoke('load_tag_suggestions', value)) as {
+        tag: string;
+        type?: number;
+        output: string;
+      }[]);
   completions.value = results;
   selectedIndex.value = -1;
 

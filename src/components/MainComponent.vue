@@ -366,16 +366,6 @@ function filterImages() {
         .filter(([, count]) => count === requiredTagCount)
         .map(([image]) => image),
     );
-  } else if (filterMode.value === 'no') {
-    const excludedImages = new Set();
-
-    tags.forEach((tag) => {
-      datasetStore.globalTags.get(tag)?.forEach((image) => excludedImages.add(image));
-    });
-
-    filteredImages.value = new Set(
-      [...datasetStore.images.keys()].filter((image) => !excludedImages.has(image)),
-    );
   }
 
   isFiltering.value = true;
@@ -466,6 +456,7 @@ onMounted(() => {
               :id="'filter-completion-list'"
               :placeholder="'Type a tag to filter the images...'"
               :multiple="true"
+              :custom-list="[...datasetStore.globalTags.keys()]"
               @on-complete="filterImages"
               @on-input="clearImageFilter"
             />
@@ -477,7 +468,6 @@ onMounted(() => {
             >
             <select v-model.lazy="filterMode" class="select w-fit select-sm !outline-none">
               <option value="or" selected>OR</option>
-              <option value="no">NO</option>
               <option value="and">AND</option>
             </select>
           </label>
