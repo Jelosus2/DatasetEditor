@@ -35,7 +35,7 @@ const globalSortMode = ref('alphabetical');
 const globalSortOrder = ref('asc');
 const previewImage = ref('');
 const tagPosition = ref(-1);
-const selectedTagGroup = ref('');
+const selectedTagGroups = ref<Set<string>>(new Set());
 const tagGroupFilterInput = ref('');
 
 const datasetStore = useDatasetStore();
@@ -411,6 +411,11 @@ function validateTagPosition() {
     tagPosition.value = parseInt(tagPosition.value.toString());
 }
 
+function handleTagGroupChange(tagGroup: string) {
+  if (selectedTagGroups.value.has(tagGroup)) selectedTagGroups.value.delete(tagGroup);
+  else selectedTagGroups.value.add(tagGroup);
+}
+
 onMounted(() => {
   datasetStore.onChange = [updateDisplayedTags, updateGlobalTags];
 });
@@ -643,18 +648,23 @@ onMounted(() => {
         ></div>
         <div class="w-[30%] pt-1 pr-1">
           <div
-            class="flex flex-col gap-2 overflow-auto"
+            class="flex flex-col gap-2 overflow-auto pb-1"
             :style="{ height: tagGroupSectionTopHeight + '%' }"
           >
-            <div class="h-[60%]">
-              <label class="input input-sm w-full !outline-none">
-                <span class="label">Group Search</span>
-                <input
-                  v-model="tagGroupFilterInput"
-                  type="text"
-                  placeholder="Type to seach for a group..."
-                />
-              </label>
+            <div class="h-[40%] pb-1">
+              <div class="flex gap-2">
+                <label class="input input-sm w-full !outline-none">
+                  <span class="label">Group Search</span>
+                  <input
+                    v-model="tagGroupFilterInput"
+                    type="text"
+                    placeholder="Type to seach for a group..."
+                  />
+                </label>
+                <button class="btn btn-sm btn-outline btn-error" @click="selectedTagGroups.clear()">
+                  Close All
+                </button>
+              </div>
               <span class="text-sm">Tag Groups</span>
               <div
                 class="flex h-[calc(100%_-_50px)] flex-wrap content-start gap-2 overflow-auto pb-1"
@@ -674,26 +684,29 @@ onMounted(() => {
                       tagGroupFilterInput &&
                       !name.toLowerCase().includes(tagGroupFilterInput.toLowerCase()),
                   }"
-                  @click="selectedTagGroup = name"
+                  @click="handleTagGroupChange(name)"
                 >
                   {{ name }}
                 </button>
               </div>
             </div>
-            <div
-              class="flex h-[40%] flex-wrap content-start gap-2 overflow-auto border-t-2 pt-1 dark:border-base-content/10"
-            >
-              <div
-                v-for="tag in tagGroupsStore.tagGroups.get(selectedTagGroup)"
-                :key="tag"
-                class="h-fit w-fit px-1.5 text-sm hover:cursor-pointer"
-                :class="{
-                  'bg-rose-900': displayedTags.has(tag),
-                  'bg-[#a6d9e2] dark:bg-gray-700': !displayedTags.has(tag),
-                }"
-                @click="addOrRemoveTag(tag)"
-              >
-                {{ tag }}
+            <div class="h-[60%] overflow-auto border-t-3 dark:border-base-content/50">
+              <div v-for="name in selectedTagGroups" :key="name">
+                <div class="divider my-2 text-sm">{{ name }}</div>
+                <div class="flex flex-wrap content-start gap-2">
+                  <div
+                    v-for="tag in tagGroupsStore.tagGroups.get(name)"
+                    :key="tag"
+                    class="h-fit w-fit px-1.5 text-sm hover:cursor-pointer"
+                    :class="{
+                      'bg-rose-900': displayedTags.has(tag),
+                      'bg-[#a6d9e2] dark:bg-gray-700': !displayedTags.has(tag),
+                    }"
+                    @click="addOrRemoveTag(tag)"
+                  >
+                    {{ tag }}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
