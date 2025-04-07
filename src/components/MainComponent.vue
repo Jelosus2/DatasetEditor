@@ -35,6 +35,8 @@ const globalSortMode = ref('alphabetical');
 const globalSortOrder = ref('asc');
 const previewImage = ref('');
 const tagPosition = ref(-1);
+const selectedTagGroup = ref('');
+const tagGroupFilterInput = ref('');
 
 const datasetStore = useDatasetStore();
 const tagGroupsStore = useTagGroupStore();
@@ -639,26 +641,59 @@ onMounted(() => {
         <div
           class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
         ></div>
-        <div class="w-[30%] pr-1">
+        <div class="w-[30%] pt-1 pr-1">
           <div
             class="flex flex-col gap-2 overflow-auto"
             :style="{ height: tagGroupSectionTopHeight + '%' }"
           >
-            <div v-for="[name, tags] in tagGroupsStore.tagGroups" :key="name">
-              <span>{{ name }}</span>
-              <div class="flex h-fit flex-wrap gap-2">
-                <div
-                  v-for="tag in tags"
-                  :key="tag"
-                  class="h-fit w-fit px-1.5 text-sm hover:cursor-pointer"
+            <div class="h-[60%]">
+              <label class="input input-sm w-full !outline-none">
+                <span class="label">Group Search</span>
+                <input
+                  v-model="tagGroupFilterInput"
+                  type="text"
+                  placeholder="Type to seach for a group..."
+                />
+              </label>
+              <span class="text-sm">Tag Groups</span>
+              <div
+                class="flex h-[calc(100%_-_50px)] flex-wrap content-start gap-2 overflow-auto pb-1"
+              >
+                <button
+                  v-for="name in tagGroupsStore.tagGroups.keys()"
+                  :key="name"
+                  class="btn !text-sm btn-xs font-normal"
                   :class="{
-                    'bg-rose-900': displayedTags.has(tag),
-                    'bg-[#a6d9e2] dark:bg-gray-700': !displayedTags.has(tag),
+                    '[--btn-color:var(--color-rose-900)]': [...displayedTags].some((tag) =>
+                      tagGroupsStore.tagGroups.get(name)?.has(tag),
+                    ),
+                    '[--btn-color:#a6d9e2] dark:[--btn-color:var(--color-gray-700)]': ![
+                      ...displayedTags,
+                    ].some((tag) => tagGroupsStore.tagGroups.get(name)?.has(tag)),
+                    hidden:
+                      tagGroupFilterInput &&
+                      !name.toLowerCase().includes(tagGroupFilterInput.toLowerCase()),
                   }"
-                  @click="addOrRemoveTag(tag)"
+                  @click="selectedTagGroup = name"
                 >
-                  {{ tag }}
-                </div>
+                  {{ name }}
+                </button>
+              </div>
+            </div>
+            <div
+              class="flex h-[40%] flex-wrap content-start gap-2 overflow-auto border-t-2 pt-1 dark:border-base-content/10"
+            >
+              <div
+                v-for="tag in tagGroupsStore.tagGroups.get(selectedTagGroup)"
+                :key="tag"
+                class="h-fit w-fit px-1.5 text-sm hover:cursor-pointer"
+                :class="{
+                  'bg-rose-900': displayedTags.has(tag),
+                  'bg-[#a6d9e2] dark:bg-gray-700': !displayedTags.has(tag),
+                }"
+                @click="addOrRemoveTag(tag)"
+              >
+                {{ tag }}
               </div>
             </div>
           </div>
