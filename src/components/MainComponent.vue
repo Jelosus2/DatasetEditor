@@ -473,10 +473,12 @@ onMounted(() => {
               @click="((filterInput = ''), clearImageFilter())"
               >X</span
             >
-            <select v-model.lazy="filterMode" class="select w-fit select-sm !outline-none">
-              <option value="or" selected>OR</option>
-              <option value="and">AND</option>
-            </select>
+            <div class="not-focus-within:hover:tooltip" data-tip="Mode to filter the images">
+              <select v-model.lazy="filterMode" class="select w-fit select-sm !outline-none">
+                <option value="or" selected>OR</option>
+                <option value="and">AND</option>
+              </select>
+            </div>
           </label>
         </div>
       </div>
@@ -550,10 +552,21 @@ onMounted(() => {
             class="flex h-[50%] flex-col border-t-2 border-gray-400 pt-1 dark:border-base-content/10"
           >
             <div class="border-b-2 border-gray-400 pb-1 dark:border-base-content/10">
-              <label class="input input-sm w-[40%] gap-0 !outline-none xl:w-[35%]">
-                <span class="label">Tag Position</span>
-                <input type="number" v-model.trim.lazy="tagPosition" @blur="validateTagPosition" />
-              </label>
+              <div class="flex w-[50%] gap-2">
+                <label class="input input-sm gap-0 !outline-none">
+                  <span class="label">Tag Position</span>
+                  <input
+                    type="number"
+                    v-model.trim.lazy="tagPosition"
+                    @blur="validateTagPosition"
+                  />
+                </label>
+                <div class="tooltip" data-tip="Resets the tag position back to -1">
+                  <button class="btn btn-sm btn-outline btn-error" @click="tagPosition = -1">
+                    Reset
+                  </button>
+                </div>
+              </div>
             </div>
             <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth pt-1">
               <div

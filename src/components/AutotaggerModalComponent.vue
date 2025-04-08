@@ -226,44 +226,60 @@ onUnmounted(() => {
             </div>
           </div>
           <div class="flex flex-col gap-2">
-            <button
-              class="btn btn-sm btn-info"
-              :disabled="isTagging || !isTaggerRunning || isInstalling"
-              @click="autoTagImages('insert')"
+            <div
+              class="tooltip"
+              data-tip="Autotag the images and apply the tags to the current captions"
             >
-              Tag Images & Apply Tags
-            </button>
-            <button
-              class="btn btn-sm btn-info"
-              :disabled="isTagging || !isTaggerRunning || isInstalling"
-              @click="autoTagImages('diff')"
+              <button
+                class="btn btn-sm btn-info"
+                :disabled="isTagging || !isTaggerRunning || isInstalling"
+                @click="autoTagImages('insert')"
+              >
+                Tag Images
+              </button>
+            </div>
+            <div
+              class="tooltip"
+              data-tip="Autotag the images and load the difference with the current tags"
             >
-              Tag Images & Load Diff
-            </button>
+              <button
+                class="btn w-full btn-sm btn-info"
+                :disabled="isTagging || !isTaggerRunning || isInstalling"
+                @click="autoTagImages('diff')"
+              >
+                Load Diff
+              </button>
+            </div>
           </div>
         </div>
         <div class="mt-0 flex gap-2">
-          <button
-            class="btn btn-outline btn-success"
-            :disabled="isTaggerRunning || isInstalling"
-            @click="startAutotagger"
-          >
-            Start
-          </button>
-          <button
-            class="btn btn-outline btn-info"
-            :disabled="!isTaggerRunning || isInstalling"
-            @click="((isTaggerRunning = false), startAutotagger())"
-          >
-            Restart
-          </button>
-          <button
-            class="btn btn-outline btn-error"
-            :disabled="!isTaggerRunning || isInstalling"
-            @click="stopAutotagger"
-          >
-            Stop
-          </button>
+          <div class="tooltip" data-tip="Start the autotagger service">
+            <button
+              class="btn btn-outline btn-success"
+              :disabled="isTaggerRunning || isInstalling"
+              @click="startAutotagger"
+            >
+              Start
+            </button>
+          </div>
+          <div class="tooltip" data-tip="Restart the autotagger service">
+            <button
+              class="btn btn-outline btn-info"
+              :disabled="!isTaggerRunning || isInstalling"
+              @click="((isTaggerRunning = false), startAutotagger())"
+            >
+              Restart
+            </button>
+          </div>
+          <div class="tooltip tooltip-left" data-tip="Stop the autotagger service">
+            <button
+              class="btn btn-outline btn-error"
+              :disabled="!isTaggerRunning || isInstalling"
+              @click="stopAutotagger"
+            >
+              Stop
+            </button>
+          </div>
         </div>
       </div>
     </div>
