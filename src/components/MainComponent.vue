@@ -368,7 +368,6 @@ function filterImages() {
         .filter(([, count]) => count === requiredTagCount)
         .map(([image]) => image),
     );
-    // No filter existed before but I removed it without thinking about all cases, seems it was necessary
   } else if (filterMode.value === 'no') {
     const excludedImages = new Set();
 
