@@ -350,8 +350,14 @@ export async function getTaggerDevice() {
 
 export async function autoTagImages(props) {
   try {
-    const { images, generalThreshold, characterThreshold, removeUnderscores, selectedModels } =
-      props;
+    const {
+      images,
+      generalThreshold,
+      characterThreshold,
+      removeUnderscores,
+      selectedModels,
+      removeRedundantTags,
+    } = props;
     const results = new Map();
 
     for (const model of selectedModels) {
@@ -361,6 +367,7 @@ export async function autoTagImages(props) {
         character_threshold: characterThreshold,
         general_threshold: generalThreshold,
         remove_underscores: removeUnderscores,
+        remove_redundant_tags: removeRedundantTags,
       };
 
       const response = await fetch('http://localhost:3067/tagger', {

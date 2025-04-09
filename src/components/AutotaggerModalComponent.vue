@@ -9,6 +9,7 @@ const characterThreshold = ref(0.35);
 const removeUnderscores = ref(true);
 const selectedModels = ref<string[]>([]);
 const device = ref('');
+const removeRedundantTags = ref(true);
 const taggerLogs = ref<string[]>([]);
 const isTaggerRunning = ref(false);
 const isInstalling = ref(false);
@@ -74,6 +75,7 @@ async function autoTagImages(type: 'insert' | 'diff') {
     characterThreshold: toRaw(characterThreshold.value),
     removeUnderscores: toRaw(removeUnderscores.value),
     selectedModels: toRaw(selectedModels.value),
+    removeRedundantTags: toRaw(removeRedundantTags.value),
   })) as Map<string, Set<string>> | null;
 
   if (!results) {
@@ -220,35 +222,41 @@ onUnmounted(() => {
               step="0.05"
               class="range w-full [--range-fill:0] [--range-thumb:var(--color-base-100)] range-xs"
             />
-            <div class="flex items-center gap-2 pt-2 text-sm">
-              <div class="tracking-wide opacity-60">Autotagger Device:</div>
-              <span>{{ device }}</span>
+            <div class="flex items-center gap-2 pt-2">
+              <input v-model="removeRedundantTags" type="checkbox" class="checkbox checkbox-xs" />
+              <span class="text-xs">Remove Redundant Tags</span>
             </div>
           </div>
           <div class="flex flex-col gap-2">
-            <div
-              class="tooltip"
-              data-tip="Autotag the images and apply the tags to the current captions"
-            >
-              <button
-                class="btn btn-sm btn-info"
-                :disabled="isTagging || !isTaggerRunning || isInstalling"
-                @click="autoTagImages('insert')"
+            <div class="flex gap-2">
+              <div
+                class="tooltip"
+                data-tip="Autotag the images and apply the tags to the current captions"
               >
-                Tag Images
-              </button>
+                <button
+                  class="btn btn-sm btn-info"
+                  :disabled="isTagging || !isTaggerRunning || isInstalling"
+                  @click="autoTagImages('insert')"
+                >
+                  Tag Images
+                </button>
+              </div>
+              <div
+                class="tooltip"
+                data-tip="Autotag the images and load the difference with the current tags"
+              >
+                <button
+                  class="btn w-full btn-sm btn-info"
+                  :disabled="isTagging || !isTaggerRunning || isInstalling"
+                  @click="autoTagImages('diff')"
+                >
+                  Load Diff
+                </button>
+              </div>
             </div>
-            <div
-              class="tooltip"
-              data-tip="Autotag the images and load the difference with the current tags"
-            >
-              <button
-                class="btn w-full btn-sm btn-info"
-                :disabled="isTagging || !isTaggerRunning || isInstalling"
-                @click="autoTagImages('diff')"
-              >
-                Load Diff
-              </button>
+            <div class="flex items-center gap-2 pt-1.5 text-sm">
+              <div class="tracking-wide opacity-60">Autotagger Device:</div>
+              <span>{{ device }}</span>
             </div>
           </div>
         </div>
