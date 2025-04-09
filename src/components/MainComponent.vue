@@ -368,6 +368,17 @@ function filterImages() {
         .filter(([, count]) => count === requiredTagCount)
         .map(([image]) => image),
     );
+    // No filter existed before but I removed it without thinking about all cases, seems it was necessary
+  } else if (filterMode.value === 'no') {
+    const excludedImages = new Set();
+
+    tags.forEach((tag) => {
+      datasetStore.globalTags.get(tag)?.forEach((image) => excludedImages.add(image));
+    });
+
+    filteredImages.value = new Set(
+      [...datasetStore.images.keys()].filter((image) => !excludedImages.has(image)),
+    );
   }
 
   isFiltering.value = true;
@@ -476,6 +487,7 @@ onMounted(() => {
             <div class="not-focus-within:hover:tooltip" data-tip="Mode to filter the images">
               <select v-model.lazy="filterMode" class="select w-fit select-sm !outline-none">
                 <option value="or" selected>OR</option>
+                <option value="no">NO</option>
                 <option value="and">AND</option>
               </select>
             </div>
