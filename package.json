@@ -60,7 +60,7 @@
     "appId": "com.jelosus1.dataset-editor",
     "productName": "Dataset Editor",
     "directories": {
-      "output": "dist_electron"
+      "output": "dist_electron/${os}"
     },
     "files": [
       "dist/**/*",
@@ -89,7 +89,8 @@
     ],
     "win": {
       "target": [
-        "nsis"
+        "nsis",
+        "zip"
       ],
       "extraResources": [
         {
