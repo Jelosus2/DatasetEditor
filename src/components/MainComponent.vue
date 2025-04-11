@@ -697,7 +697,7 @@ onMounted(() => {
                       openReplaceTagSection ? 'Type a tag to replace...' : 'Type to add a tag...'
                     "
                     :multiple="openReplaceTagSection ? false : true"
-                    @on-complete="openReplaceTagSection ? tagReplaceContainer?.focus() : addTag()"
+                    @on-complete="addTag()"
                   />
                 </label>
                 <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
@@ -750,7 +750,7 @@ onMounted(() => {
                     v-model="tagReplaceInput"
                     :disabled="!selectedImages.size"
                     :id="'replace-completion-list'"
-                    :placeholder="'Type to the replacement of the tag...'"
+                    :placeholder="'Type the replacement of the tag...'"
                   />
                 </label>
                 <div class="tooltip shrink-0" data-tip="Replace the tags from the selected images">
