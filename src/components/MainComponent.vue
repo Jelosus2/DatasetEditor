@@ -728,8 +728,8 @@ onMounted(() => {
                   <span
                     class="cursor-pointer border-1 px-1 font-bold hover:text-error"
                     @click="selectedTagGroups.delete(name)"
-                    >X</span
-                  >
+                    >X
+                  </span>
                 </div>
                 <div class="flex flex-wrap content-start gap-2">
                   <div

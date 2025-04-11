@@ -241,7 +241,7 @@ onUnmounted(() => {
   />
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
     <MainComponent :os="os" :are-previews-enabled="arePreviewsEnabled" />
-    <TagGroupEditorComponent :os="os" />
+    <TagGroupEditorComponent :os="os" @trigger_alert="showAlert" />
     <SettingComponent />
   </div>
   <AutotaggerModalComponent @trigger_alert="showAlert" />

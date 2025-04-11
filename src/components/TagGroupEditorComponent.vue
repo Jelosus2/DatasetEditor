@@ -4,6 +4,7 @@ import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 import { ref } from 'vue';
 import { useTagGroupStore } from '@/stores/tagGroupStore';
 
+const emit = defineEmits(['trigger_alert']);
 defineProps({
   os: {
     type: String,
@@ -110,6 +111,34 @@ function addImportedGroupToCurrent(override: boolean) {
 
   importedGroups.value.clear();
 }
+
+function renameTagGroup(event: KeyboardEvent) {
+  const target = event.target as HTMLInputElement;
+  const newName = target.value?.trim();
+
+  if (!newName) return;
+  if (selectedGroup.value === newName) {
+    emit('trigger_alert', 'error', 'Selected group already has that name.');
+    return;
+  }
+  if (tagGroupsStore.tagGroups.has(newName)) {
+    emit('trigger_alert', 'error', 'Group name already exists.');
+    return;
+  }
+
+  const newGroup = new Map();
+  for (const [name, tags] of tagGroupsStore.tagGroups.entries()) {
+    if (name === selectedGroup.value) {
+      newGroup.set(newName, tags);
+    } else {
+      newGroup.set(name, tags);
+    }
+  }
+
+  tagGroupsStore.tagGroups = newGroup;
+  selectedGroup.value = newName;
+  target.value = '';
+}
 </script>
 
 <template>
@@ -159,6 +188,15 @@ function addImportedGroupToCurrent(override: boolean) {
                   {{ name }}
                 </option>
               </select>
+              <label class="input input-sm w-full px-2 !outline-none">
+                <span class="label">Rename Group</span>
+                <input
+                  type="text"
+                  placeholder="New name for the tag group..."
+                  :disabled="!selectedGroup"
+                  @keyup.enter="renameTagGroup"
+                />
+              </label>
               <button
                 class="btn btn-outline btn-info"
                 :disabled="!selectedGroup"
