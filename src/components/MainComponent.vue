@@ -436,7 +436,55 @@ function handleTagGroupChange(tagGroup: string) {
   else selectedTagGroups.value.add(tagGroup);
 }
 
-function replaceTag() {}
+function replaceTag(mode: 'selected' | 'all') {
+  const originalTag = tagInput.value;
+  const tag = tagReplaceInput.value;
+  if (!tag || !originalTag || tag === originalTag) return;
+
+  const images =
+    mode === 'selected' ? new Set(selectedImages.value) : new Set(datasetStore.images.keys());
+
+  const previousState = new Map();
+  for (const image of images.values()) {
+    const imageWithTags = datasetStore.images.get(image)!;
+    if (imageWithTags.tags.has(tag) || !imageWithTags.tags.has(originalTag)) {
+      images.delete(image);
+      continue;
+    }
+
+    previousState.set(image, new Set(imageWithTags.tags));
+
+    const tagsCopy = [...imageWithTags.tags];
+    const tagIndex = tagsCopy.indexOf(originalTag);
+    tagsCopy.splice(tagIndex, 1, tag);
+    imageWithTags.tags = new Set(tagsCopy);
+
+    datasetStore.globalTags.get(originalTag)?.delete(image);
+
+    if (!datasetStore.globalTags.has(tag)) {
+      datasetStore.globalTags.set(tag, new Set(images));
+    } else {
+      const imagesWithTag = datasetStore.globalTags.get(tag)!;
+      datasetStore.globalTags.set(tag, new Set([...imagesWithTag, ...images]));
+    }
+
+    if (datasetStore.tagDiff.size === 0) continue;
+
+    const diff = datasetStore.tagDiff.get(image);
+    if (diff?.tagger.has(tag)) {
+      diff?.tagger.delete(tag);
+    } else {
+      diff?.original.add(tag);
+    }
+  }
+
+  tagInput.value = '';
+  tagReplaceInput.value = '';
+  if (images.size === 0) return;
+
+  updateDisplayedTags();
+  updateGlobalTags();
+}
 
 onMounted(() => {
   datasetStore.onChange = [updateDisplayedTags, updateGlobalTags];
@@ -631,20 +679,24 @@ onMounted(() => {
                   </button>
                 </div>
                 <label class="input relative input-sm w-full pl-1 !outline-none">
-                  <span
-                    class="cursor-pointer text-sm"
-                    :class="{
-                      'rotate-90': openReplaceTagSection,
-                    }"
-                    @click="openReplaceTagSection = !openReplaceTagSection"
-                    >></span
-                  >
+                  <div class="tooltip" data-tip="Click to open or close the tag replace section">
+                    <span
+                      class="inline-block cursor-pointer text-sm"
+                      :class="{
+                        'rotate-90': openReplaceTagSection,
+                      }"
+                      @click="openReplaceTagSection = !openReplaceTagSection"
+                      >></span
+                    >
+                  </div>
                   <AutocompletionComponent
                     v-model="tagInput"
                     :disabled="!selectedImages.size"
                     :id="'completion-list'"
-                    :placeholder="'Type to add a tag...'"
-                    :multiple="true"
+                    :placeholder="
+                      openReplaceTagSection ? 'Type a tag to replace...' : 'Type to add a tag...'
+                    "
+                    :multiple="openReplaceTagSection ? false : true"
                     @on-complete="openReplaceTagSection ? tagReplaceContainer?.focus() : addTag()"
                   />
                 </label>
@@ -689,7 +741,7 @@ onMounted(() => {
                   </svg>
                 </button>
               </div>
-              <div v-if="openReplaceTagSection" class="flex">
+              <div v-if="openReplaceTagSection" class="flex gap-2">
                 <label
                   ref="tagReplaceContainer"
                   class="input relative input-sm w-full pl-1 !outline-none"
@@ -698,10 +750,19 @@ onMounted(() => {
                     v-model="tagReplaceInput"
                     :disabled="!selectedImages.size"
                     :id="'replace-completion-list'"
-                    :placeholder="'Type to add a tag...'"
-                    @on-complete="replaceTag"
+                    :placeholder="'Type to the replacement of the tag...'"
                   />
                 </label>
+                <div class="tooltip shrink-0" data-tip="Replace the tags from the selected images">
+                  <button class="btn btn-sm btn-outline btn-info" @click="replaceTag('selected')">
+                    Replace Selected
+                  </button>
+                </div>
+                <div class="tooltip shrink-0" data-tip="Replace the tags from all images">
+                  <button class="btn btn-sm btn-outline btn-info" @click="replaceTag('all')">
+                    Replace All
+                  </button>
+                </div>
               </div>
             </div>
           </div>
