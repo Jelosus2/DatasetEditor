@@ -645,6 +645,14 @@ onMounted(() => {
                 v-for="tag in displayedTags"
                 :key="tag"
                 class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
+                :class="{
+                  'dark:bg-warning/50':
+                    isFiltering &&
+                    filterInput
+                      .split(',')
+                      .map((tag) => tag.trim())
+                      .includes(tag),
+                }"
                 @click="removeTag(tag)"
               >
                 {{ tag }}
