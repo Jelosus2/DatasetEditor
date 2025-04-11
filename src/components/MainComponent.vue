@@ -201,7 +201,10 @@ function addTag(_tag?: string, image?: string) {
   if (!newTags) return;
 
   const images = image ? new Set([image]) : new Set(selectedImages.value);
-  const tags = newTags.split(',').map((tag) => tag.trim());
+  const tags = newTags
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter((tag) => tag);
 
   const previousState = new Map();
 
@@ -259,7 +262,10 @@ function addTag(_tag?: string, image?: string) {
 }
 
 function addGlobalTag() {
-  const tags = globalTagInput.value.split(',').map((tag) => tag.trim());
+  const tags = globalTagInput.value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter((tag) => tag);
   if (tags.length === 0) return;
 
   validateTagPosition();
