@@ -87,8 +87,12 @@ function onKeyEnter() {
 }
 
 async function handleSuggestionClick(tag: string) {
-  tagInput.value = tag;
+  const parts = tagInput.value.split(',').map((part) => part.trim());
+  parts[parts.length - 1] = tag;
+
+  tagInput.value = parts.join(', ');
   completions.value = [];
+  selectedIndex.value = -1;
 
   setTimeout(() => {
     if (input.value) input.value.focus();
