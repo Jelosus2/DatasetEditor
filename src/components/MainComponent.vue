@@ -37,6 +37,9 @@ const previewImage = ref('');
 const tagPosition = ref(-1);
 const selectedTagGroups = ref<Set<string>>(new Set());
 const tagGroupFilterInput = ref('');
+const openReplaceTagSection = ref(false);
+const tagReplaceContainer = shallowRef<HTMLLabelElement | null>(null);
+const tagReplaceInput = ref('');
 
 const datasetStore = useDatasetStore();
 const tagGroupsStore = useTagGroupStore();
@@ -422,6 +425,7 @@ function copyTextToClipboard(tags: Set<string>) {
 }
 
 function validateTagPosition() {
+  if (isNaN(tagPosition.value)) tagPosition.value = -1;
   if (!tagPosition.value || tagPosition.value < -1) tagPosition.value = -1;
   if (!Number.isInteger(tagPosition.value))
     tagPosition.value = parseInt(tagPosition.value.toString());
@@ -431,6 +435,8 @@ function handleTagGroupChange(tagGroup: string) {
   if (selectedTagGroups.value.has(tagGroup)) selectedTagGroups.value.delete(tagGroup);
   else selectedTagGroups.value.add(tagGroup);
 }
+
+function replaceTag() {}
 
 onMounted(() => {
   datasetStore.onChange = [updateDisplayedTags, updateGlobalTags];
@@ -574,8 +580,8 @@ onMounted(() => {
                 <label class="input input-sm gap-0 !outline-none">
                   <span class="label">Tag Position</span>
                   <input
-                    type="number"
-                    v-model.trim.lazy="tagPosition"
+                    type="text"
+                    v-model.trim.number.lazy="tagPosition"
                     @blur="validateTagPosition"
                   />
                 </label>
@@ -597,80 +603,106 @@ onMounted(() => {
               </div>
             </div>
             <div
-              class="mt-auto flex gap-2 border-t-2 border-gray-400 pt-1 dark:border-base-content/10"
+              class="mt-auto flex flex-col gap-2 border-t-2 border-gray-400 pt-1 dark:border-base-content/10"
             >
-              <div
-                class="tooltip"
-                :class="{ 'tooltip-success': areTagsCopied }"
-                :data-tip="areTagsCopied ? 'Tags copied!' : 'Click to copy the tags'"
-              >
+              <div class="flex gap-2">
+                <div
+                  class="tooltip"
+                  :class="{ 'tooltip-success': areTagsCopied }"
+                  :data-tip="areTagsCopied ? 'Tags copied!' : 'Click to copy the tags'"
+                >
+                  <button
+                    class="btn btn-circle border-none p-0.5 btn-sm btn-ghost dark:hover:bg-[#323841]"
+                    :disabled="!displayedTags.size"
+                    @click="copyTextToClipboard(displayedTags)"
+                  >
+                    <svg
+                      class="h-full w-full fill-none"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                        d="M9.29289 3.29289C9.48043 3.10536 9.73478 3 10 3H14C15.6569 3 17 4.34315 17 6V15C17 16.6569 15.6569 18 14 18H7C5.34315 18 4 16.6569 4 15V9C4 8.73478 4.10536 8.48043 4.29289 8.29289L9.29289 3.29289ZM14 5H11V9C11 9.55228 10.5523 10 10 10H6V15C6 15.5523 6.44772 16 7 16H14C14.5523 16 15 15.5523 15 15V6C15 5.44772 14.5523 5 14 5ZM7.41421 8H9V6.41421L7.41421 8ZM19 5C19.5523 5 20 5.44772 20 6V18C20 19.6569 18.6569 21 17 21H7C6.44772 21 6 20.5523 6 20C6 19.4477 6.44772 19 7 19H17C17.5523 19 18 18.5523 18 18V6C18 5.44772 18.4477 5 19 5Z"
+                        class="fill-current"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <label class="input relative input-sm w-full pl-1 !outline-none">
+                  <span
+                    class="cursor-pointer text-sm"
+                    :class="{
+                      'rotate-90': openReplaceTagSection,
+                    }"
+                    @click="openReplaceTagSection = !openReplaceTagSection"
+                    >></span
+                  >
+                  <AutocompletionComponent
+                    v-model="tagInput"
+                    :disabled="!selectedImages.size"
+                    :id="'completion-list'"
+                    :placeholder="'Type to add a tag...'"
+                    :multiple="true"
+                    @on-complete="openReplaceTagSection ? tagReplaceContainer?.focus() : addTag()"
+                  />
+                </label>
+                <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
+                  <select
+                    v-model.lazy="sortMode"
+                    class="select relative w-fit select-sm !outline-none"
+                    :disabled="!displayedTags.size"
+                    @change="updateDisplayedTags"
+                  >
+                    <option value="none" selected>None</option>
+                    <option value="alphabetical">Alphabetical</option>
+                  </select>
+                </div>
                 <button
-                  class="btn btn-circle border-none p-0.5 btn-sm btn-ghost dark:hover:bg-[#323841]"
+                  class="btn btn-circle overflow-hidden border-none btn-sm dark:bg-[#323841]"
                   :disabled="!displayedTags.size"
-                  @click="copyTextToClipboard(displayedTags)"
+                  @click="
+                    ((sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'), updateDisplayedTags())
+                  "
                 >
                   <svg
-                    class="h-full w-full fill-none"
+                    class="swap-off h-full w-full fill-none transition-[transform] duration-[0.5s]"
                     viewBox="0 0 24 24"
+                    :class="{
+                      'transform-[rotate(180deg)]': sortOrder === 'desc',
+                    }"
                     xmlns="http://www.w3.org/2000/svg"
                   >
                     <path
-                      fill-rule="evenodd"
-                      clip-rule="evenodd"
-                      d="M9.29289 3.29289C9.48043 3.10536 9.73478 3 10 3H14C15.6569 3 17 4.34315 17 6V15C17 16.6569 15.6569 18 14 18H7C5.34315 18 4 16.6569 4 15V9C4 8.73478 4.10536 8.48043 4.29289 8.29289L9.29289 3.29289ZM14 5H11V9C11 9.55228 10.5523 10 10 10H6V15C6 15.5523 6.44772 16 7 16H14C14.5523 16 15 15.5523 15 15V6C15 5.44772 14.5523 5 14 5ZM7.41421 8H9V6.41421L7.41421 8ZM19 5C19.5523 5 20 5.44772 20 6V18C20 19.6569 18.6569 21 17 21H7C6.44772 21 6 20.5523 6 20C6 19.4477 6.44772 19 7 19H17C17.5523 19 18 18.5523 18 18V6C18 5.44772 18.4477 5 19 5Z"
-                      class="fill-current"
+                      d="M12 4L12 20"
+                      class="stroke-current stroke-2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M18 10L12.0625 4.0625V4.0625C12.028 4.02798 11.972 4.02798 11.9375 4.0625V4.0625L6 10"
+                      class="stroke-current stroke-2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
                     />
                   </svg>
                 </button>
               </div>
-              <label class="input relative input-sm w-full pl-1 !outline-none">
-                <AutocompletionComponent
-                  v-model="tagInput"
-                  :disabled="!selectedImages.size"
-                  :id="'completion-list'"
-                  :placeholder="'Type to add a tag...'"
-                  :multiple="true"
-                  @on-complete="addTag()"
-                />
-              </label>
-              <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
-                <select
-                  v-model.lazy="sortMode"
-                  class="select relative w-fit select-sm !outline-none"
-                  :disabled="!displayedTags.size"
-                  @change="updateDisplayedTags"
+              <div v-if="openReplaceTagSection" class="flex">
+                <label
+                  ref="tagReplaceContainer"
+                  class="input relative input-sm w-full pl-1 !outline-none"
                 >
-                  <option value="none" selected>None</option>
-                  <option value="alphabetical">Alphabetical</option>
-                </select>
+                  <AutocompletionComponent
+                    v-model="tagReplaceInput"
+                    :disabled="!selectedImages.size"
+                    :id="'replace-completion-list'"
+                    :placeholder="'Type to add a tag...'"
+                    @on-complete="replaceTag"
+                  />
+                </label>
               </div>
-              <button
-                class="btn btn-circle overflow-hidden border-none btn-sm dark:bg-[#323841]"
-                :disabled="!displayedTags.size"
-                @click="((sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'), updateDisplayedTags())"
-              >
-                <svg
-                  class="swap-off h-full w-full fill-none transition-[transform] duration-[0.5s]"
-                  viewBox="0 0 24 24"
-                  :class="{
-                    'transform-[rotate(180deg)]': sortOrder === 'desc',
-                  }"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M12 4L12 20"
-                    class="stroke-current stroke-2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M18 10L12.0625 4.0625V4.0625C12.028 4.02798 11.972 4.02798 11.9375 4.0625V4.0625L6 10"
-                    class="stroke-current stroke-2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
             </div>
           </div>
         </div>
