@@ -480,6 +480,7 @@ onMounted(() => {
               :placeholder="'Type a tag to filter the images...'"
               :multiple="true"
               :custom-list="[...datasetStore.globalTags.keys()]"
+              :contains-mode="true"
               @on-complete="filterImages"
               @on-input="clearImageFilter"
             />

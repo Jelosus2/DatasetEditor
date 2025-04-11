@@ -10,6 +10,7 @@ const props = defineProps({
   placeholder: { type: String },
   multiple: { type: Boolean },
   customList: { type: Array<string> },
+  containsMode: { type: Boolean },
 });
 
 const settingsStore = useSettingsStore();
@@ -28,7 +29,9 @@ async function showSuggestions() {
     ? props.customList
         .filter((tag) => {
           if (!value) return false;
-          return tag.toLowerCase().startsWith(value!.toLowerCase());
+          return !props.containsMode
+            ? tag.toLowerCase().startsWith(value!.toLowerCase())
+            : tag.toLowerCase().includes(value!.toLowerCase());
         })
         .map((tag) => ({ tag, output: tag }))
     : ((await window.ipcRenderer.invoke('load_tag_suggestions', value)) as {
