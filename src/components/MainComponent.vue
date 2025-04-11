@@ -723,7 +723,14 @@ onMounted(() => {
             </div>
             <div class="h-[60%] overflow-auto border-t-3 dark:border-base-content/50">
               <div v-for="name in selectedTagGroups" :key="name">
-                <div class="divider my-2 text-sm">{{ name }}</div>
+                <div class="divider my-2 text-sm">
+                  {{ name }}
+                  <span
+                    class="cursor-pointer border-1 px-1 font-bold hover:text-error"
+                    @click="selectedTagGroups.delete(name)"
+                    >X</span
+                  >
+                </div>
                 <div class="flex flex-wrap content-start gap-2">
                   <div
                     v-for="tag in tagGroupsStore.tagGroups.get(name)"
