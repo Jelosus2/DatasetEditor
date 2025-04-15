@@ -573,7 +573,7 @@ onMounted(() => {
         <div class="flex w-[30%] items-center justify-center">
           <img
             v-if="selectedImages.size"
-            :src="datasetStore.images.get([...selectedImages][0])?.path"
+            :src="datasetStore.images.get([...selectedImages][0])?.filePath"
             class="max-h-full"
           />
         </div>

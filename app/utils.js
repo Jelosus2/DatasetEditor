@@ -115,7 +115,7 @@ export async function loadDatasetDirectory(mainWindow, isAllSaved, directory) {
 
     images.set(fileName, { tags: new Set(), path, filePath: pathToFileURL(path).href });
 
-    const txtPath = join(directoryPath, fileName.replace(ext, '.txt'));
+    const txtPath = join(directoryPath, fileName.replaceAll(ext, '.txt'));
 
     if (existsSync(txtPath)) {
       const tags = new Set(
@@ -258,7 +258,7 @@ export function saveDataset(dataset) {
     if (!existsSync(datasetDir)) mkdirSync(datasetDir, { recursive: true });
 
     const tags = props.tags.join(', ');
-    const filePath = props.path.replace(extname(props.path), '.txt');
+    const filePath = props.path.replaceAll(extname(image), '.txt');
 
     writeFileSync(filePath, tags);
   }
