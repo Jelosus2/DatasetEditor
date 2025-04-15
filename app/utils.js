@@ -8,7 +8,7 @@ import {
   readFileSync,
   writeFileSync,
 } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, extname, basename, join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { spawn } from 'node:child_process';
@@ -111,8 +111,9 @@ export async function loadDatasetDirectory(mainWindow, isAllSaved, directory) {
   for (const file of files) {
     const ext = extname(file);
     const fileName = basename(file);
+    const path = join(directoryPath, file);
 
-    images.set(fileName, { tags: new Set(), path: join(directoryPath, file) });
+    images.set(fileName, { tags: new Set(), path, filePath: pathToFileURL(path).href });
 
     const txtPath = join(directoryPath, fileName.replace(ext, '.txt'));
 

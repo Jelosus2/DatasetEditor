@@ -92,7 +92,7 @@ function displayFullImage(id: string) {
     imageModal.value = true;
     modalHtml.value = `
       <div class="flex justify-center">
-        <img src="file://${datasetStore.images.get(id)?.path}" class="max-h-screen" />
+        <img src="${datasetStore.images.get(id)?.filePath}" class="max-h-screen" />
       </div>
     `;
     modal.showModal();
@@ -516,7 +516,7 @@ onMounted(() => {
             }"
           >
             <img
-              :src="'file://' + image.path"
+              :src="image.filePath"
               :alt="name"
               @dblclick="displayFullImage(name)"
               draggable="false"
@@ -565,7 +565,7 @@ onMounted(() => {
         >
           <div class="bg-transparent p-2">
             <img
-              :src="'file://' + datasetStore.images.get(previewImage)?.path"
+              :src="datasetStore.images.get(previewImage)?.filePath"
               class="max-h-[80vh] max-w-[80vw] object-contain"
             />
           </div>

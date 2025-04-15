@@ -9,10 +9,21 @@ interface DatasetChangeRecord {
   previousState?: Map<string, Set<string>>;
 }
 
+interface Image {
+  tags: Set<string>;
+  path: string;
+  filePath: string;
+}
+
+interface TagDiff {
+  tagger: Set<string>;
+  original: Set<string>;
+}
+
 export const useDatasetStore = defineStore('dataset', () => {
-  const images = ref<Map<string, { tags: Set<string>; path: string }>>(new Map());
+  const images = ref<Map<string, Image>>(new Map());
   const globalTags = ref<Map<string, Set<string>>>(new Map());
-  const tagDiff = ref<Map<string, { tagger: Set<string>; original: Set<string> }>>(new Map());
+  const tagDiff = ref<Map<string, TagDiff>>(new Map());
   const datasetUndoStack = ref<DatasetChangeRecord[]>([]);
   const datasetRedoStack = ref<DatasetChangeRecord[]>([]);
   const directory = ref('');
