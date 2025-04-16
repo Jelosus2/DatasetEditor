@@ -50,8 +50,6 @@ export const useDatasetStore = defineStore('dataset', () => {
           if (imagesWithTag.size === 0) globalTags.value.delete(tag);
         }
       }
-
-      datasetRedoStack.value.push(change);
     } else if (change.type === 'add_global_tag') {
       for (const image of images.value.values()) {
         for (const tag of change.tags) {
@@ -59,8 +57,6 @@ export const useDatasetStore = defineStore('dataset', () => {
           globalTags.value.delete(tag);
         }
       }
-
-      datasetRedoStack.value.push(change);
     } else if (change.type === 'remove_tag') {
       for (const image of change.images!) {
         for (const tag of change.tags) {
@@ -73,12 +69,12 @@ export const useDatasetStore = defineStore('dataset', () => {
           }
         }
       }
-
-      datasetRedoStack.value.push(change);
     } else if (change.type === 'remove_global_tag') {
-      for (const [image, props] of images.value.entries()) {
+      for (const image of change.images!) {
+        const originalImage = images.value.get(image)!;
+
         for (const tag of change.tags) {
-          props.tags.add(tag);
+          originalImage.tags.add(tag);
           if (!globalTags.value.has(tag)) {
             globalTags.value.set(tag, new Set([image]));
           } else {
@@ -86,10 +82,9 @@ export const useDatasetStore = defineStore('dataset', () => {
           }
         }
       }
-
-      datasetRedoStack.value.push(change);
     }
 
+    datasetRedoStack.value.push(change);
     onChange.value.forEach((fn) => fn());
   }
 
@@ -115,8 +110,6 @@ export const useDatasetStore = defineStore('dataset', () => {
           }
         }
       }
-
-      datasetUndoStack.value.push(change);
     } else if (change.type === 'add_global_tag') {
       for (const [image, props] of images.value.entries()) {
         if (change.tagPosition === -1) {
@@ -135,8 +128,6 @@ export const useDatasetStore = defineStore('dataset', () => {
           }
         }
       }
-
-      datasetUndoStack.value.push(change);
     } else if (change.type === 'remove_tag') {
       for (const image of change.images!) {
         for (const tag of change.tags) {
@@ -145,19 +136,16 @@ export const useDatasetStore = defineStore('dataset', () => {
           if (globalTags.value.get(tag)?.size === 0) globalTags.value.delete(tag);
         }
       }
-
-      datasetUndoStack.value.push(change);
     } else if (change.type === 'remove_global_tag') {
-      for (const image of images.value.values()) {
+      for (const image of change.images!) {
         for (const tag of change.tags) {
-          image.tags.delete(tag);
+          images.value.get(image)?.tags.delete(tag);
           globalTags.value.delete(tag);
         }
       }
-
-      datasetUndoStack.value.push(change);
     }
 
+    datasetUndoStack.value.push(change);
     onChange.value.forEach((fn) => fn());
   }
 

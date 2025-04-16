@@ -302,7 +302,7 @@ function addGlobalTag() {
 
 function removeTag(tag: string, image?: string) {
   const imagesWithTag = datasetStore.globalTags.get(tag);
-  const images = image ? new Set([image]) : selectedImages.value;
+  const images = image ? new Set([image]) : new Set(selectedImages.value);
 
   datasetStore.pushDatasetChange({
     type: 'remove_tag',
@@ -328,12 +328,15 @@ function removeTag(tag: string, image?: string) {
 }
 
 function removeGlobalTag(tag: string) {
-  for (const image of datasetStore.images.keys()) {
+  const imagesWithTag = new Set(datasetStore.globalTags.get(tag) ?? []);
+
+  for (const image of imagesWithTag.values()) {
     datasetStore.images.get(image)?.tags.delete(tag);
   }
 
   datasetStore.pushDatasetChange({
     type: 'remove_global_tag',
+    images: imagesWithTag,
     tags: new Set([tag]),
   });
 
