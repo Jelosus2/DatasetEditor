@@ -85,9 +85,14 @@ def process_predictions(preds: np.ndarray, tag_data: LabelData, general_threshol
         final_tags = [tag.replace('_', ' ') for tag in final_tags]
 
     if remove_redudant_tags:
-        for tag in final_tags:
+        separator = ' ' if remove_underscores else '_'
+        for tag in final_tags.copy():
             for other_tag in final_tags:
-                if tag != other_tag and tag in other_tag:
+                if tag != other_tag and tag in other_tag and (
+                    other_tag.startswith(tag + separator) or
+                    other_tag.endswith(separator + tag) or
+                    (separator + tag + separator) in other_tag
+                ):
                     final_tags.remove(tag)
                     break
 
