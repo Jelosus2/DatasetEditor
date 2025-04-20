@@ -23,15 +23,17 @@ import {
   updateOriginalDatasetHash,
   compareTagGroupChanges,
 } from './utils.js';
+import { setPaths } from './paths.js';
 
 const __dirname = _dirname(import.meta.url);
 const DEBUG_FLAG = process.argv.includes('--debug-mode');
-const IS_DEBUG = process.env.NODE_ENV === 'debug';
-const appPath = IS_DEBUG ? app.getAppPath() : process.resourcesPath;
+const IS_DEBUG = !app.isPackaged;
+const paths = setPaths(IS_DEBUG);
 
-const dbPath = join(appPath, 'Data', 'TagAutocompletions');
-if (!existsSync(dbPath)) mkdirSync(dbPath, { recursive: true });
-const db = new Database(join(dbPath, 'tags.db'));
+if (!existsSync(paths.tagAutocompletionsPath))
+  mkdirSync(paths.tagAutocompletionsPath, { recursive: true });
+
+const db = new Database(join(paths.tagAutocompletionsPath, 'tags.db'));
 db.pragma('journal_mode = WAL');
 db.exec(`
   CREATE TABLE IF NOT EXISTS tags (
@@ -97,9 +99,9 @@ if (!IS_DEBUG && !DEBUG_FLAG) Menu.setApplicationMenu(null);
 app.disableHardwareAcceleration();
 
 app.whenReady().then(() => {
-  loadCSVIntoDatabase(dbPath, db);
+  loadCSVIntoDatabase(paths.tagAutocompletionsPath, db);
   createMainWindow();
-  saveSettings(appPath, null);
+  saveSettings(paths.dataPath, paths.tagAutocompletionsPath, null);
 });
 
 app.on('window-all-closed', () => {
@@ -120,14 +122,16 @@ ipcMain.handle(
   async (_, tagGroups) => await saveTagGroupFile(mainWindow, tagGroups),
 );
 ipcMain.handle('import_tag_group', async () => await importTagGroup(mainWindow));
-ipcMain.handle('save_tag_group', (_, tagGroups) => saveTagGroup(appPath, tagGroups));
-ipcMain.handle('load_tag_group', () => loadTagGroups(appPath));
+ipcMain.handle('save_tag_group', (_, tagGroups) => saveTagGroup(paths.tagGroupsPath, tagGroups));
+ipcMain.handle('load_tag_group', () => loadTagGroups(paths.tagGroupsPath));
 ipcMain.handle('load_tag_suggestions', (_, query) => loadTagCompletions(db, query));
 ipcMain.handle('save_dataset', (_, dataset) => saveDataset(dataset));
 ipcMain.handle('get_tagger_device', async () => await getTaggerDevice());
 ipcMain.handle('tag_images', async (_, props) => await autoTagImages(props));
-ipcMain.handle('save_settings', (_, settings) => saveSettings(appPath, settings));
-ipcMain.handle('load_settings', () => loadSettings(appPath));
+ipcMain.handle('save_settings', (_, settings) =>
+  saveSettings(paths.dataPath, paths.tagAutocompletionsPath, settings),
+);
+ipcMain.handle('load_settings', () => loadSettings(paths.dataPath));
 ipcMain.handle('change_autotag_file', async () => await changeAutocompleteFile(mainWindow, db));
 ipcMain.handle('compare_dataset_changes', (_, images) => compareDatasetChanges(images));
 ipcMain.handle('update_dataset_status', (_, images) => updateOriginalDatasetHash(images));
@@ -135,7 +139,7 @@ ipcMain.handle('compare_tag_group_changes', (_, tagGroups) => compareTagGroupCha
 ipcMain.handle('start_tagger_service', async () => {
   try {
     if (taggerProcess) taggerProcess.kill();
-    taggerProcess = await startTaggerServer(appPath, mainWindow);
+    taggerProcess = await startTaggerServer(paths.taggerPath, mainWindow);
     return true;
   } catch (err) {
     console.error('Error starting tagger server: ', err);

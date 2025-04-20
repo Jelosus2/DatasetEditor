@@ -1,6 +1,7 @@
 import { dialog } from 'electron';
 import stripAnsi from 'strip-ansi';
 import {
+  copyFileSync,
   createReadStream,
   existsSync,
   mkdirSync,
@@ -22,10 +23,7 @@ export const _dirname = (url) => dirname(fileURLToPath(url));
 export function loadCSVIntoDatabase(autocompletionsPath, database) {
   const rowCount = database.prepare('SELECT COUNT(*) as count FROM tags').get().count;
   if (rowCount === 0) {
-    insertTagsIntoDatabase(
-      database,
-      join(autocompletionsPath, 'danbooru_2025-02-16_pt25-ia-dd.csv'),
-    );
+    insertTagsIntoDatabase(database, join(autocompletionsPath, 'danbooru.csv'));
   }
 }
 
@@ -204,18 +202,17 @@ export async function importTagGroup(mainWindow) {
   return new Map(Object.entries(data).map(([name, tags]) => [name, new Set(tags)]));
 }
 
-export function saveTagGroup(appPath, tagGroups) {
-  const dataDirPath = join(appPath, 'Data', 'TagGroups');
-  const tagGroupFilePath = join(dataDirPath, 'tag_groups.json');
+export function saveTagGroup(tagGroupsPath, tagGroups) {
+  const tagGroupFilePath = join(tagGroupsPath, 'tag_groups.json');
 
-  if (!existsSync(dataDirPath)) mkdirSync(dataDirPath, { recursive: true });
+  if (!existsSync(tagGroupsPath)) mkdirSync(tagGroupsPath, { recursive: true });
   writeFileSync(tagGroupFilePath, JSON.stringify(tagGroups, null, 2));
 
   originalTagGroupsHash = createHash('md5').update(JSON.stringify(tagGroups)).digest('hex');
 }
 
-export function loadTagGroups(appPath) {
-  const tagGroupFilePath = join(appPath, 'Data', 'TagGroups', 'tag_groups.json');
+export function loadTagGroups(tagGroupsPath) {
+  const tagGroupFilePath = join(tagGroupsPath, 'tag_groups.json');
 
   if (!existsSync(tagGroupFilePath)) return null;
   const data = JSON.parse(readFileSync(tagGroupFilePath, 'utf-8'));
@@ -264,12 +261,11 @@ export function saveDataset(dataset) {
   }
 }
 
-export async function startTaggerServer(appPath, mainWindow) {
+export async function startTaggerServer(taggerPath, mainWindow) {
   const os = getOS();
   const scriptsDir = os === 'windows' ? 'Scripts' : 'bin';
   const executable = os === 'windows' ? 'python.exe' : 'python';
 
-  const taggerPath = join(appPath, 'tagger');
   const embeddedPythonDir = join(taggerPath, 'embedded_python');
   const venvPython = join(taggerPath, 'venv', scriptsDir, executable);
   const python = existsSync(embeddedPythonDir) ? join(embeddedPythonDir, 'python.exe') : venvPython;
@@ -393,31 +389,25 @@ export async function autoTagImages(props) {
   }
 }
 
-export function saveSettings(appPath, settings) {
+export function saveSettings(dataPath, tagAutocompletionsPath, settings) {
   const defaultSettings = {
     showTagCount: false,
     theme: 'auto',
     autocomplete: true,
-    autocompleteFile: join(
-      appPath,
-      'Data',
-      'TagAutocompletions',
-      'danbooru_2025-02-16_pt25-ia-dd.csv',
-    ),
+    autocompleteFile: join(tagAutocompletionsPath, 'danbooru.csv'),
   };
 
-  const settingsPath = join(appPath, 'Data', 'settings.json');
-  if (!existsSync(settingsPath)) {
-    writeFileSync(settingsPath, JSON.stringify(defaultSettings, null, 2));
-    return;
+  const settingsPath = join(dataPath, 'settings.json');
+  const settingsDir = dirname(settingsPath);
+  if (!existsSync(settingsDir)) {
+    mkdirSync(settingsDir, { recursive: true });
   }
 
-  if (!settings) return;
-  writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  writeFileSync(settingsPath, JSON.stringify(settings ?? defaultSettings, null, 2));
 }
 
-export function loadSettings(appPath) {
-  const settingsPath = join(appPath, 'Data', 'settings.json');
+export function loadSettings(dataPath) {
+  const settingsPath = join(dataPath, 'settings.json');
   if (!existsSync(settingsPath)) return null;
 
   const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
@@ -456,4 +446,28 @@ export function compareTagGroupChanges(tagGroups) {
   const currentTagGroupHash = createHash('md5').update(tagGroups).digest('hex');
   if (!originalTagGroupsHash) return true;
   return originalTagGroupsHash === currentTagGroupHash;
+}
+
+export function copyResourcesIfNeeded(tagAutocompletionsPath, taggerPath) {
+  const sourcePath = join(process.resourcesPath, 'resources');
+  const sourceTagAutocompletionsPath = join(sourcePath, 'Data', 'TagAutocompletions');
+  const sourceTaggerPath = join(sourcePath, 'tagger');
+
+  if (!tagAutocompletionsPath) mkdirSync(tagAutocompletionsPath, { recursive: true });
+  for (const entry of readdirSync(sourceTagAutocompletionsPath, {
+    recursive: true,
+    withFileTypes: true,
+  })) {
+    const file = entry.name;
+    if (existsSync(join(tagAutocompletionsPath, file))) continue;
+
+    const src = join(sourceTagAutocompletionsPath, file);
+    const dest = join(tagAutocompletionsPath, file);
+
+    if (entry.isDirectory()) {
+      mkdirSync(dest, { recursive: true });
+    } else {
+      copyFileSync(src, dest);
+    }
+  }
 }

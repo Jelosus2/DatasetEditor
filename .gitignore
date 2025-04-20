@@ -18,6 +18,7 @@ Data
 tagger/venv
 tagger/dependencies_installed
 embedded_python
+yarn.lock
 
 /cypress/videos/
 /cypress/screenshots/

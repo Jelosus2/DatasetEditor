@@ -872,7 +872,7 @@ onMounted(() => {
               </div>
             </div>
             <div
-              class="mt-auto flex gap-2 border-t-2 border-gray-400 pt-1 dark:border-[color-mix(in_oklab,_var(--color-base-content)_10%,_transparent);]"
+              class="mt-auto flex gap-2 border-t-2 border-gray-400 pt-1 dark:border-base-content/10"
             >
               <div
                 class="tooltip"

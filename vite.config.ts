@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [vue(), tailwindcss()],
   server: {
     watch: {
-      ignored: ['**/tagger/**', '**/app/**'],
+      ignored: ['**/tagger/**', '**/app/**', '**/embedded_python/**'],
     },
   },
   resolve: {

@@ -19,6 +19,7 @@
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
     "package": "vite build && electron-builder build --win",
+    "package:linux": "vite build && electron-builder build --linux",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -102,9 +103,16 @@
         }
       ]
     },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility"
+    },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "include": "builder/installer.nsh"
     }
   }
 }
