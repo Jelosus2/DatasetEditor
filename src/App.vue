@@ -7,7 +7,7 @@ import AutotaggerModalComponent from '@/components/AutotaggerModalComponent.vue'
 import SettingComponent from '@/components/SettingComponent.vue';
 
 import { ref, onMounted, onUnmounted } from 'vue';
-import { useDatasetStore } from '@/stores/datasetStore';
+import { useDatasetStore, type Image } from '@/stores/datasetStore';
 import { useTagGroupStore } from '@/stores/tagGroupStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 
@@ -28,7 +28,7 @@ async function loadDataset(reload = false) {
     isDatasetSaved,
     reload ? datasetStore.directory : null,
   )) as {
-    images: Map<string, { tags: Set<string>; path: string }>;
+    images: Map<string, Image>;
     globalTags: Map<string, Set<string>>;
     directoryPath: string;
   };

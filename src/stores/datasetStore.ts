@@ -9,7 +9,7 @@ interface DatasetChangeRecord {
   previousState?: Map<string, Set<string>>;
 }
 
-interface Image {
+export interface Image {
   tags: Set<string>;
   path: string;
   filePath: string;
