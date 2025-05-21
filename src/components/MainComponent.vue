@@ -8,7 +8,6 @@ import { useTagGroupStore } from '@/stores/tagGroupStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 
 const props = defineProps({
-  os: { type: String, required: true },
   arePreviewsEnabled: { type: Boolean, required: true },
 });
 
@@ -71,7 +70,7 @@ function toggleSelection(id: string, event: MouseEvent) {
     range.forEach((img) => {
       if (!isFiltering.value || filteredImages.value.has(img)) selectedImages.value.add(img);
     });
-  } else if (event.ctrlKey || (props.os === 'mac' && event.metaKey)) {
+  } else if (event.ctrlKey) {
     if (selectedImages.value.has(id) && selectedImages.value.size > 1)
       selectedImages.value.delete(id);
     else selectedImages.value.add(id);

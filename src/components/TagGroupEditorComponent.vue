@@ -5,12 +5,6 @@ import { ref } from 'vue';
 import { useTagGroupStore } from '@/stores/tagGroupStore';
 
 const emit = defineEmits(['trigger_alert']);
-defineProps({
-  os: {
-    type: String,
-    required: true,
-  },
-});
 
 const selectedGroup = ref('');
 const groupNameInput = ref('');

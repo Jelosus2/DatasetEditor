@@ -1,12 +1,6 @@
 <script setup lang="ts">
 const arePreviewsEnabled = defineModel({ required: true, type: Boolean });
 const emit = defineEmits(['load_dataset', 'undo', 'redo', 'save', 'reload_dataset']);
-defineProps({
-  os: {
-    type: String,
-    required: true,
-  },
-});
 </script>
 
 <template>
@@ -28,8 +22,7 @@ defineProps({
             <div class="justify-between">
               Load Dataset
               <div>
-                <kbd v-if="os === 'mac'" class="kbd kbd-xs">&#8984;</kbd>
-                <kbd v-else class="kbd kbd-xs">Ctrl</kbd>
+                <kbd class="kbd kbd-xs">Ctrl</kbd>
                 +
                 <kbd class="kbd kbd-xs">O</kbd>
               </div>
@@ -39,8 +32,7 @@ defineProps({
             <div class="justify-between">
               Reload Dataset
               <div>
-                <kbd v-if="os === 'mac'" class="kbd kbd-xs">&#8984;</kbd>
-                <kbd v-else class="kbd kbd-xs">Ctrl</kbd>
+                <kbd class="kbd kbd-xs">Ctrl</kbd>
                 +
                 <kbd class="kbd kbd-xs">R</kbd>
               </div>
@@ -50,8 +42,7 @@ defineProps({
             <div class="justify-between">
               Save
               <div>
-                <kbd v-if="os === 'mac'" class="kbd kbd-xs">&#8984;</kbd>
-                <kbd v-else class="kbd kbd-xs">Ctrl</kbd>
+                <kbd class="kbd kbd-xs">Ctrl</kbd>
                 +
                 <kbd class="kbd kbd-xs">S</kbd>
               </div>
@@ -75,8 +66,7 @@ defineProps({
             <div class="justify-between">
               Undo
               <div>
-                <kbd v-if="os === 'mac'" class="kbd kbd-xs">&#8984;</kbd>
-                <kbd v-else class="kbd kbd-xs">Ctrl</kbd>
+                <kbd class="kbd kbd-xs">Ctrl</kbd>
                 +
                 <kbd class="kbd kbd-xs">Z</kbd>
               </div>
@@ -86,8 +76,7 @@ defineProps({
             <div class="justify-between">
               Redo
               <div>
-                <kbd v-if="os === 'mac'" class="kbd kbd-xs">&#8984;</kbd>
-                <kbd v-else class="kbd kbd-xs">Ctrl</kbd>
+                <kbd class="kbd kbd-xs">Ctrl</kbd>
                 +
                 <kbd class="kbd kbd-xs">Y</kbd>
               </div>

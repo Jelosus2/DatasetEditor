@@ -11,7 +11,6 @@ import { useDatasetStore } from '@/stores/datasetStore';
 import { useTagGroupStore } from '@/stores/tagGroupStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 
-const os = ref('');
 const arePreviewsEnabled = ref(false);
 const alertMessage = ref('');
 const alertType = ref('info');
@@ -134,7 +133,7 @@ function showAlert(type: string, message: string) {
 async function handleGlobalShortcuts(e: KeyboardEvent) {
   if (e.repeat) return;
 
-  if (e.ctrlKey || (os.value === 'mac' && e.metaKey)) {
+  if (e.ctrlKey) {
     if (e.key === 'o') {
       e.preventDefault();
       await loadDataset();
@@ -201,15 +200,6 @@ onMounted(async () => {
 
   if (result) tagGroupsStore.tagGroups = result;
 
-  let osType = localStorage.getItem('os');
-  if (osType) {
-    os.value = osType;
-  } else {
-    osType = (await window.ipcRenderer.invoke('get_os_type')) as string;
-    localStorage.setItem('os', osType);
-    os.value = osType;
-  }
-
   window.ipcRenderer.receive('are_changes_saved', async () => {
     const allSaved = await isSaved('all');
     window.ipcRenderer.send('changes_saved', allSaved);
@@ -232,7 +222,6 @@ onUnmounted(() => {
   <AlertComponent :message="alertMessage" :timestamp="alertTimestamp" :type="alertType" />
   <NavbarComponent
     v-model="arePreviewsEnabled"
-    :os="os"
     @load_dataset="loadDataset"
     @undo="undoAction"
     @redo="redoAction"
@@ -240,8 +229,8 @@ onUnmounted(() => {
     @reload_dataset="loadDataset(true)"
   />
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
-    <MainComponent :os="os" :are-previews-enabled="arePreviewsEnabled" />
-    <TagGroupEditorComponent :os="os" @trigger_alert="showAlert" />
+    <MainComponent :are-previews-enabled="arePreviewsEnabled" />
+    <TagGroupEditorComponent @trigger_alert="showAlert" />
     <SettingComponent />
   </div>
   <AutotaggerModalComponent @trigger_alert="showAlert" />

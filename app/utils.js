@@ -1,7 +1,6 @@
 import { dialog } from 'electron';
 import stripAnsi from 'strip-ansi';
 import {
-  copyFileSync,
   createReadStream,
   existsSync,
   mkdirSync,
@@ -145,16 +144,6 @@ export async function loadDatasetDirectory(mainWindow, isAllSaved, directory) {
   return { images, globalTags, directoryPath };
 }
 
-export function getOS() {
-  const osTypes = {
-    darwin: 'mac',
-    win32: 'windows',
-    linux: 'linux',
-  };
-
-  return osTypes[process.platform] ?? 'linux';
-}
-
 export async function saveTagGroupFile(mainWindow, tagGroups) {
   const result = await dialog.showSaveDialog(mainWindow, {
     title: 'Save Tag Group File',
@@ -261,19 +250,11 @@ export function saveDataset(dataset) {
   }
 }
 
-export async function startTaggerServer(taggerPath, mainWindow) {
-  const os = getOS();
-  const scriptsDir = os === 'windows' ? 'Scripts' : 'bin';
-  const executable = os === 'windows' ? 'python.exe' : 'python';
-
-  const embeddedPythonDir = join(taggerPath, 'embedded_python');
-  const venvPython = join(taggerPath, 'venv', scriptsDir, executable);
-  const python = existsSync(embeddedPythonDir) ? join(embeddedPythonDir, 'python.exe') : venvPython;
+export function startTaggerServer(taggerPath, mainWindow) {
+  const python = join(taggerPath, 'embedded_python', 'python.exe');
   const filePath = join(taggerPath, 'main.py');
 
-  await installTaggerRequirements(taggerPath, mainWindow);
   const taggerProcess = spawn(python, ['-u', filePath]);
-
   taggerProcess.stdout.on('data', (data) => {
     const output = data.toString();
     mainWindow.webContents.send('tagger-output', clearOutputText(output));
@@ -289,37 +270,24 @@ export async function startTaggerServer(taggerPath, mainWindow) {
   return taggerProcess;
 }
 
-function installTaggerRequirements(taggerPath, mainWindow) {
-  return new Promise((resolve, reject) => {
-    const filePath = join(taggerPath, 'install.py');
-    const embeddedPythonDir = join(taggerPath, 'embedded_python');
-    const embeddedPythonExists = existsSync(embeddedPythonDir);
-    const python = embeddedPythonExists ? join(embeddedPythonDir, 'python.exe') : 'python';
+export function installTaggerRequirements(taggerPath, mainWindow) {
+  const python = join(taggerPath, 'embedded_python', 'python.exe');
+  const filePath = join(taggerPath, 'install.py');
 
-    const args = ['-u', filePath];
-    if (embeddedPythonExists) args.push('--skip-venv');
-
-    const installProcess = spawn(python, args);
-    installProcess.stdout.on('data', (data) => {
-      const output = data.toString();
-      mainWindow.webContents.send('tagger-output', clearOutputText(output));
-    });
-    installProcess.stderr.on('data', (data) => {
-      const output = data.toString();
-      mainWindow.webContents.send('tagger-output', clearOutputText(output));
-    });
-    installProcess.on('error', (err) => {
-      console.error(`Tagger install error: ${err}`);
-      reject(err);
-    });
-    installProcess.on('close', (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`Process exited with code ${code}`));
-      }
-    });
+  const installProcess = spawn(python, ['-u', filePath]);
+  installProcess.stdout.on('data', (data) => {
+    const output = data.toString();
+    mainWindow.webContents.send('tagger-output', clearOutputText(output));
   });
+  installProcess.stderr.on('data', (data) => {
+    const output = data.toString();
+    mainWindow.webContents.send('tagger-output', clearOutputText(output));
+  });
+  installProcess.on('error', (err) => {
+    console.error(`Tagger install error: ${err}`);
+  });
+
+  return installProcess;
 }
 
 function clearOutputText(str) {
@@ -446,28 +414,4 @@ export function compareTagGroupChanges(tagGroups) {
   const currentTagGroupHash = createHash('md5').update(tagGroups).digest('hex');
   if (!originalTagGroupsHash) return true;
   return originalTagGroupsHash === currentTagGroupHash;
-}
-
-export function copyResourcesIfNeeded(tagAutocompletionsPath, taggerPath) {
-  const sourcePath = join(process.resourcesPath, 'resources');
-  const sourceTagAutocompletionsPath = join(sourcePath, 'Data', 'TagAutocompletions');
-  const sourceTaggerPath = join(sourcePath, 'tagger');
-
-  if (!tagAutocompletionsPath) mkdirSync(tagAutocompletionsPath, { recursive: true });
-  for (const entry of readdirSync(sourceTagAutocompletionsPath, {
-    recursive: true,
-    withFileTypes: true,
-  })) {
-    const file = entry.name;
-    if (existsSync(join(tagAutocompletionsPath, file))) continue;
-
-    const src = join(sourceTagAutocompletionsPath, file);
-    const dest = join(tagAutocompletionsPath, file);
-
-    if (entry.isDirectory()) {
-      mkdirSync(dest, { recursive: true });
-    } else {
-      copyFileSync(src, dest);
-    }
-  }
 }

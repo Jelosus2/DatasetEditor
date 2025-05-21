@@ -4,7 +4,6 @@ import { join } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
 import {
   _dirname,
-  getOS,
   importTagGroup,
   loadCSVIntoDatabase,
   loadDatasetDirectory,
@@ -13,6 +12,7 @@ import {
   saveTagGroup,
   saveTagGroupFile,
   saveDataset,
+  installTaggerRequirements,
   startTaggerServer,
   getTaggerDevice,
   autoTagImages,
@@ -47,6 +47,7 @@ db.exec(`
 `);
 
 let mainWindow;
+let installProcess;
 let taggerProcess;
 
 async function createMainWindow() {
@@ -105,6 +106,7 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  if (installProcess) installProcess.kill();
   if (taggerProcess) taggerProcess.kill();
   if (process.platform !== 'darwin') app.quit();
 });
@@ -116,7 +118,6 @@ ipcMain.handle(
   'load_dataset',
   async (_, isAllSaved, directory) => await loadDatasetDirectory(mainWindow, isAllSaved, directory),
 );
-ipcMain.handle('get_os_type', getOS);
 ipcMain.handle(
   'save_tag_group_file',
   async (_, tagGroups) => await saveTagGroupFile(mainWindow, tagGroups),
@@ -136,10 +137,20 @@ ipcMain.handle('change_autotag_file', async () => await changeAutocompleteFile(m
 ipcMain.handle('compare_dataset_changes', (_, images) => compareDatasetChanges(images));
 ipcMain.handle('update_dataset_status', (_, images) => updateOriginalDatasetHash(images));
 ipcMain.handle('compare_tag_group_changes', (_, tagGroups) => compareTagGroupChanges(tagGroups));
-ipcMain.handle('start_tagger_service', async () => {
+ipcMain.handle('start_tagger_service', () => {
   try {
-    if (taggerProcess) taggerProcess.kill();
-    taggerProcess = await startTaggerServer(paths.taggerPath, mainWindow);
+    if (installProcess) return true;
+
+    installProcess = installTaggerRequirements(paths.taggerPath, mainWindow);
+    installProcess.on('close', () => {
+      if (installProcess) {
+        installProcess.kill();
+        installProcess = null;
+      }
+      if (taggerProcess) taggerProcess.kill();
+      taggerProcess = startTaggerServer(paths.taggerPath, mainWindow);
+    });
+
     return true;
   } catch (err) {
     console.error('Error starting tagger server: ', err);

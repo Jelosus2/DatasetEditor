@@ -141,4 +141,5 @@ def run():
     print('Tagger running')
     httpd.serve_forever()
 
-run()
+if __name__ == '__main__':
+    run()

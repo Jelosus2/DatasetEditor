@@ -18,8 +18,7 @@
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
-    "package": "vite build && electron-builder build --win",
-    "package:linux": "vite build && electron-builder build --linux",
+    "package:win": "vite build && electron-builder build --win",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -102,12 +101,6 @@
           ]
         }
       ]
-    },
-    "linux": {
-      "target": [
-        "AppImage"
-      ],
-      "category": "Utility"
     },
     "nsis": {
       "oneClick": false,

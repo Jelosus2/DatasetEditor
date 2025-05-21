@@ -142,11 +142,7 @@ onMounted(() => {
       isTaggerRunning.value = true;
       isInstalling.value = false;
     }
-    if (
-      output === 'Creating virtual environment...' ||
-      output.startsWith('Installing requirements')
-    )
-      isInstalling.value = true;
+    if (output.startsWith('Installing requirements')) isInstalling.value = true;
     taggerLogs.value.push(output);
 
     await nextTick();
