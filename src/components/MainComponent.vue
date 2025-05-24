@@ -213,20 +213,39 @@ function addTag(_tag?: string, image?: string) {
   validateTagPosition();
   for (const image of images.values()) {
     const imageWithTags = datasetStore.images.get(image);
+    const allTagsExist = tags.every((tag) => imageWithTags?.tags.has(tag));
+    const tagsCopy = [...imageWithTags!.tags];
+    let shouldSkip = false;
 
-    if (tags.every((tag) => imageWithTags?.tags.has(tag))) {
-      images.delete(image);
-      continue;
+    if (allTagsExist) {
+      if (tagPosition.value === -1) {
+        const endIndex = tagsCopy.length - tags.length;
+        shouldSkip = tags.every((tag, index) => {
+          return tagsCopy[endIndex + index] === tag;
+        });
+      } else {
+        const targetIndex = tagPosition.value - 1;
+        shouldSkip = tags.every((tag, index) => {
+          const currentIndex = tagsCopy.indexOf(tag);
+          return currentIndex === targetIndex + index;
+        });
+      }
+
+      if (shouldSkip) {
+        images.delete(image);
+        continue;
+      }
     }
-
     previousState.set(image, new Set(imageWithTags?.tags));
 
     for (const tag of tags) {
-      if (!datasetStore.globalTags.has(tag)) {
-        datasetStore.globalTags.set(tag, new Set(images));
-      } else {
-        const imagesWithTag = datasetStore.globalTags.get(tag)!;
-        datasetStore.globalTags.set(tag, new Set([...imagesWithTag, ...images]));
+      if (!imageWithTags?.tags.has(tag)) {
+        if (!datasetStore.globalTags.has(tag)) {
+          datasetStore.globalTags.set(tag, new Set([image]));
+        } else {
+          const imagesWithTag = datasetStore.globalTags.get(tag)!;
+          imagesWithTag.add(image);
+        }
       }
 
       if (datasetStore.tagDiff.size === 0) continue;
@@ -239,11 +258,18 @@ function addTag(_tag?: string, image?: string) {
       }
     }
 
+    for (const tag of tags) {
+      const existingIndex = tagsCopy.indexOf(tag);
+      if (existingIndex !== -1) {
+        tagsCopy.splice(existingIndex, 1);
+      }
+    }
+
     if (tagPosition.value === -1) {
-      imageWithTags!.tags = new Set([...imageWithTags!.tags, ...tags]);
+      imageWithTags!.tags = new Set([...tagsCopy, ...tags]);
     } else {
-      const tagsCopy = [...imageWithTags!.tags];
-      tagsCopy.splice(tagPosition.value - 1, 0, ...tags);
+      const insertIndex = Math.min(tagPosition.value - 1, tagsCopy.length);
+      tagsCopy.splice(insertIndex, 0, ...tags);
       imageWithTags!.tags = new Set(tagsCopy);
     }
   }
