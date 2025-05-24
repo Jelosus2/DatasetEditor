@@ -2,11 +2,13 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 interface DatasetChangeRecord {
-  type: 'add_tag' | 'remove_tag' | 'add_global_tag' | 'remove_global_tag';
+  type: 'add_tag' | 'remove_tag' | 'add_global_tag' | 'remove_global_tag' | 'replace_tag';
   images?: Set<string>;
   tags: Set<string>;
   tagPosition?: number;
   previousState?: Map<string, Set<string>>;
+  originalTag?: string;
+  newTag?: string;
 }
 
 export interface Image {
@@ -82,6 +84,26 @@ export const useDatasetStore = defineStore('dataset', () => {
           }
         }
       }
+    } else if (change.type === 'replace_tag') {
+      for (const [image, previousTags] of change.previousState!.entries()) {
+        images.value.get(image)!.tags = previousTags;
+      }
+
+      const originalTag = change.originalTag!;
+      const newTag = change.newTag!;
+
+      for (const image of change.images!) {
+        globalTags.value.get(newTag)?.delete(image);
+        if (globalTags.value.get(newTag)?.size === 0) {
+          globalTags.value.delete(newTag);
+        }
+
+        if (!globalTags.value.has(originalTag)) {
+          globalTags.value.set(originalTag, new Set([image]));
+        } else {
+          globalTags.value.get(originalTag)?.add(image);
+        }
+      }
     }
 
     datasetRedoStack.value.push(change);
@@ -141,6 +163,28 @@ export const useDatasetStore = defineStore('dataset', () => {
         for (const tag of change.tags) {
           images.value.get(image)?.tags.delete(tag);
           globalTags.value.delete(tag);
+        }
+      }
+    } else if (change.type === 'replace_tag') {
+      const originalTag = change.originalTag!;
+      const newTag = change.newTag!;
+
+      for (const image of change.images!) {
+        const imageWithTags = images.value.get(image)!;
+        const tagsCopy = [...imageWithTags.tags];
+        const tagIndex = tagsCopy.indexOf(originalTag);
+        tagsCopy.splice(tagIndex, 1, newTag);
+        imageWithTags.tags = new Set(tagsCopy);
+
+        globalTags.value.get(originalTag)?.delete(image);
+        if (globalTags.value.get(originalTag)?.size === 0) {
+          globalTags.value.delete(originalTag);
+        }
+
+        if (!globalTags.value.has(newTag)) {
+          globalTags.value.set(newTag, new Set([image]));
+        } else {
+          globalTags.value.get(newTag)?.add(image);
         }
       }
     }

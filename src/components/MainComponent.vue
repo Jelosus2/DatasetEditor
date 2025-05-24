@@ -200,7 +200,7 @@ function resizeTagGroupSection(moveEvent: MouseEvent) {
 
 function addTag(_tag?: string, image?: string) {
   const newTags = _tag || tagInput.value;
-  if (!newTags) return;
+  if (!newTags || openReplaceTagSection.value) return;
 
   const images = image ? new Set([image]) : new Set(selectedImages.value);
   const tags = newTags
@@ -443,8 +443,7 @@ function replaceTag(mode: 'selected' | 'all') {
   const tag = tagReplaceInput.value;
   if (!tag || !originalTag || tag === originalTag) return;
 
-  const images =
-    mode === 'selected' ? new Set(selectedImages.value) : new Set(datasetStore.images.keys());
+  const images = mode === 'selected' ? new Set(selectedImages.value) : new Set(datasetStore.images.keys());
 
   const previousState = new Map();
   for (const image of images.values()) {
@@ -467,7 +466,7 @@ function replaceTag(mode: 'selected' | 'all') {
       datasetStore.globalTags.set(tag, new Set(images));
     } else {
       const imagesWithTag = datasetStore.globalTags.get(tag)!;
-      datasetStore.globalTags.set(tag, new Set([...imagesWithTag, ...images]));
+      imagesWithTag.add(image);
     }
 
     if (datasetStore.tagDiff.size === 0) continue;
@@ -483,6 +482,15 @@ function replaceTag(mode: 'selected' | 'all') {
   tagInput.value = '';
   tagReplaceInput.value = '';
   if (images.size === 0) return;
+
+  datasetStore.pushDatasetChange({
+    type: 'replace_tag',
+    images: new Set(images),
+    tags: new Set([tag]),
+    originalTag,
+    newTag: tag,
+    previousState,
+  });
 
   updateDisplayedTags();
   updateGlobalTags();
