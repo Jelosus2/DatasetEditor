@@ -322,6 +322,7 @@ export async function autoTagImages(props) {
       removeUnderscores,
       selectedModels,
       removeRedundantTags,
+      tagsIgnored,
     } = props;
     const results = new Map();
 
@@ -333,6 +334,7 @@ export async function autoTagImages(props) {
         general_threshold: generalThreshold,
         remove_underscores: removeUnderscores,
         remove_redundant_tags: removeRedundantTags,
+        tags_ignored: [...new Set(tagsIgnored)],
       };
 
       const response = await fetch('http://localhost:3067/tagger', {
@@ -363,12 +365,17 @@ export function saveSettings(dataPath, tagAutocompletionsPath, settings) {
     theme: 'auto',
     autocomplete: true,
     autocompleteFile: join(tagAutocompletionsPath, 'danbooru.csv'),
+    tagsIgnored: [],
   };
 
   const settingsPath = join(dataPath, 'settings.json');
   const settingsDir = dirname(settingsPath);
+  if (!settings && existsSync(settingsPath)) return;
   if (!existsSync(settingsDir)) {
     mkdirSync(settingsDir, { recursive: true });
+  }
+  if (!settings && !existsSync(defaultSettings.autocompleteFile)) {
+    defaultSettings.autocompleteFile = '';
   }
 
   writeFileSync(settingsPath, JSON.stringify(settings ?? defaultSettings, null, 2));

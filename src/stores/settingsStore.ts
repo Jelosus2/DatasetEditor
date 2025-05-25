@@ -6,6 +6,7 @@ interface Settings {
   theme: string;
   autocomplete: boolean;
   autocompleteFile: string;
+  tagsIgnored: string[];
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -13,6 +14,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const theme = ref<string>('auto');
   const autocomplete = ref<boolean>(true);
   const autocompleteFile = ref<string>('');
+  const tagsIgnored = ref<string[]>([]);
 
   async function loadSettings() {
     const settings = (await window.ipcRenderer.invoke('load_settings')) as Settings;
@@ -20,6 +22,7 @@ export const useSettingsStore = defineStore('settings', () => {
     showTagCount.value = settings.showTagCount;
     autocomplete.value = settings.autocomplete;
     autocompleteFile.value = settings.autocompleteFile;
+    tagsIgnored.value = settings.tagsIgnored;
   }
 
   async function saveSettings() {
@@ -28,6 +31,7 @@ export const useSettingsStore = defineStore('settings', () => {
       theme: toRaw(theme.value),
       autocomplete: toRaw(autocomplete.value),
       autocompleteFile: toRaw(autocompleteFile.value),
+      tagsIgnored: toRaw(tagsIgnored.value),
     });
   }
 
@@ -59,6 +63,7 @@ export const useSettingsStore = defineStore('settings', () => {
     theme,
     autocomplete,
     autocompleteFile,
+    tagsIgnored,
     loadSettings,
     saveSettings,
     loadTheme,

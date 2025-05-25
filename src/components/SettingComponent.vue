@@ -1,10 +1,20 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useSettingsStore } from '@/stores/settingsStore';
 
 const isChangingFile = ref(false);
 
 const settingsStore = useSettingsStore();
+
+const tagsIgnoredText = computed({
+  get: () => settingsStore.tagsIgnored.join(', '),
+  set: (value: string) => {
+    settingsStore.tagsIgnored = value
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(tag => tag.length > 0);
+  }
+});
 
 async function changeAutocompleteFile() {
   isChangingFile.value = true;
@@ -59,10 +69,24 @@ async function changeAutocompleteFile() {
               </label>
               <div>
                 <button class="btn btn-sm btn-outline btn-info" @click="changeAutocompleteFile">
-                  {{ settingsStore.autocompleteFile.split(/\/|\\/).pop() }}
+                  {{ settingsStore.autocompleteFile.split(/\/|\\/).pop() || 'None' }}
                 </button>
                 <span v-if="isChangingFile" class="loading ml-2 loading-spinner"></span>
               </div>
+            </div>
+            <div class="w-full max-w-md">
+              <label class="label">
+                <span class="label-text">Ignored tags</span>
+              </label>
+              <p class="text-sm text-base-content/70 mb-2">
+                Tags to ignore in the autotagging process. Separate multiple tags with commas.
+              </p>
+              <textarea
+                class="textarea w-full resize-y !outline-none"
+                rows="3"
+                placeholder="tag1, tag2, tag3"
+                v-model="tagsIgnoredText"
+              ></textarea>
             </div>
           </div>
         </div>

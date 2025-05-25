@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, shallowRef, onMounted, onUnmounted, nextTick, toRaw } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 const emit = defineEmits(['trigger_alert']);
 
@@ -17,6 +18,7 @@ const isTagging = ref(false);
 const logsContainer = shallowRef<HTMLDivElement | null>(null);
 
 const datasetStore = useDatasetStore();
+const settingsStore = useSettingsStore();
 
 const taggerModels = [
   'wd-eva02-large-tagger-v3',
@@ -76,6 +78,7 @@ async function autoTagImages(type: 'insert' | 'diff') {
     removeUnderscores: toRaw(removeUnderscores.value),
     selectedModels: toRaw(selectedModels.value),
     removeRedundantTags: toRaw(removeRedundantTags.value),
+    tagsIgnored: toRaw(settingsStore.tagsIgnored),
   })) as Map<string, Set<string>> | null;
 
   if (!results) {
