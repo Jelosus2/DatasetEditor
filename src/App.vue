@@ -104,7 +104,6 @@ async function saveChanges(type?: 'all') {
     }
 
     await window.ipcRenderer.invoke('save_dataset', obj);
-    await window.ipcRenderer.invoke('update_dataset_status', imagesToString());
     showAlert('success', 'Dataset saved successfully');
   } else if (activeTab === 'Tag Groups') {
     if (tagGroupsStore.tagGroups.size === 0) {
@@ -153,35 +152,33 @@ async function handleGlobalShortcuts(e: KeyboardEvent) {
   }
 }
 
-function imagesToString() {
-  const images = [...datasetStore.images].map(([img, props]) => [
+function imagesToObject() {
+  return [...datasetStore.images].map(([img, props]) => [
     img,
     { tags: [...props.tags], path: props.path },
   ]);
-
-  return JSON.stringify(images);
 }
 
-function tagGroupsToString() {
+function tagGroupsToObject() {
   const obj: { [key: string]: string[] } = {};
   for (const [tagGroup, tags] of tagGroupsStore.tagGroups.entries()) {
     obj[tagGroup] = [...tags];
   }
 
-  return JSON.stringify(obj);
+  return obj;
 }
 
 async function isSaved(type: 'all' | 'dataset' | 'tag_group') {
   if (type === 'dataset') {
-    return await window.ipcRenderer.invoke('compare_dataset_changes', imagesToString());
+    return await window.ipcRenderer.invoke('compare_dataset_changes', imagesToObject());
   } else if (type === 'tag_group') {
-    return await window.ipcRenderer.invoke('compare_tag_group_changes', tagGroupsToString());
+    return await window.ipcRenderer.invoke('compare_tag_group_changes', tagGroupsToObject());
   }
 
-  const datasetSaved = await window.ipcRenderer.invoke('compare_dataset_changes', imagesToString());
+  const datasetSaved = await window.ipcRenderer.invoke('compare_dataset_changes', imagesToObject());
   const tagGroupSaved = await window.ipcRenderer.invoke(
     'compare_tag_group_changes',
-    tagGroupsToString(),
+    tagGroupsToObject(),
   );
 
   return datasetSaved && tagGroupSaved;
