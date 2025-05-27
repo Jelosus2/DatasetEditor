@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import { DatasetService } from '@/services/datasetService';
 
 interface DatasetChangeRecord {
   type: 'add_tag' | 'remove_tag' | 'add_global_tag' | 'remove_global_tag' | 'replace_tag';
@@ -30,6 +31,7 @@ export const useDatasetStore = defineStore('dataset', () => {
   const datasetRedoStack = ref<DatasetChangeRecord[]>([]);
   const directory = ref('');
   const onChange = ref<(() => void)[]>([]);
+  const datasetService = new DatasetService()
 
   function pushDatasetChange(change: DatasetChangeRecord) {
     datasetUndoStack.value.push(change);
@@ -198,6 +200,37 @@ export const useDatasetStore = defineStore('dataset', () => {
     datasetRedoStack.value = [];
   }
 
+  async function loadDataset(reload = false) {
+    const _isDatasetSaved = await isDatasetSaved();
+
+    const dataset = await datasetService.loadDataset(
+      _isDatasetSaved,
+      reload ? directory.value : null
+    );
+
+    if (!dataset) return;
+
+    images.value = dataset.images;
+    globalTags.value = dataset.globalTags;
+    directory.value = dataset.directoryPath;
+    resetDatasetStatus();
+  }
+
+  async function saveDataset() {
+    if (images.value.size === 0) {
+      throw new Error('The dataset has not been loaded yet');
+    }
+
+    const datasetObj = datasetService.datasetToSaveFormat(images.value);
+    await datasetService.saveDataset(datasetObj);
+  }
+
+  async function isDatasetSaved() {
+    return datasetService.compareDatasetChanges(
+      datasetService.imagesToObject(images.value)
+    );
+  }
+
   return {
     images,
     globalTags,
@@ -208,5 +241,8 @@ export const useDatasetStore = defineStore('dataset', () => {
     undoDatasetAction,
     redoDatasetAction,
     resetDatasetStatus,
+    loadDataset,
+    saveDataset,
+    isDatasetSaved
   };
 });

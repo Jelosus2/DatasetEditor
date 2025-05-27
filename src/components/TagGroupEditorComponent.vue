@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
-import { ref } from 'vue';
+import { ref, toRaw } from 'vue';
 import { useTagGroupStore } from '@/stores/tagGroupStore';
 
 const emit = defineEmits(['trigger_alert']);
@@ -24,9 +24,30 @@ function createGroup() {
     .filter((tag) => tag);
 
   tagGroupsStore.tagGroups.set(groupNameInput.value, new Set(tags));
+  tagGroupsStore.pushTagGroupChange({
+    type: 'add_group',
+    group: toRaw(groupNameInput.value),
+    tags,
+  });
 
   groupNameInput.value = '';
   groupTags.value = '';
+}
+
+function deleteGroup(mode: 'selected' | 'all') {
+  if (mode === 'selected') {
+    tagGroupsStore.pushTagGroupChange({
+      type: 'remove_group',
+      group: toRaw(selectedGroup.value),
+      tags: [...tagGroupsStore.tagGroups.get(selectedGroup.value)!]
+    });
+
+    tagGroupsStore.tagGroups.delete(selectedGroup.value);
+  } else {
+    tagGroupsStore.tagGroups.clear();
+  }
+
+  selectedGroup.value = '';
 }
 
 function addTag() {
@@ -244,7 +265,7 @@ function renameTagGroup(event: KeyboardEvent) {
               <button
                 class="btn btn-outline btn-error"
                 :disabled="!selectedGroup"
-                @click="(tagGroupsStore.tagGroups.delete(selectedGroup), (selectedGroup = ''))"
+                @click="deleteGroup('selected')"
               >
                 Delete This Group
               </button>
@@ -252,7 +273,7 @@ function renameTagGroup(event: KeyboardEvent) {
                 class="btn btn-outline btn-error"
                 type="button"
                 :disabled="!tagGroupsStore.tagGroups.size"
-                @click="(tagGroupsStore.tagGroups.clear(), (selectedGroup = ''))"
+                @click="deleteGroup('all')"
               >
                 Delete All Groups
               </button>

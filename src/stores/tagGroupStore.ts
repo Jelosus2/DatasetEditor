@@ -1,17 +1,18 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import { TagGroupService } from '@/services/tagGroupService';
 
 interface TagGroupChangeRecord {
-  type: 'add_tag' | 'remove_tag';
+  type: 'add_group' | 'remove_group' | 'add_tag' | 'remove_tag';
   group: string;
   tags: string[];
-  previousState?: Map<string, Set<string>>;
 }
 
 export const useTagGroupStore = defineStore('tagGroup', () => {
   const tagGroups = ref<Map<string, Set<string>>>(new Map());
   const tagGroupUndoStack = ref<TagGroupChangeRecord[]>([]);
   const tagGroupRedoStack = ref<TagGroupChangeRecord[]>([]);
+  const tagGroupService = new TagGroupService();
 
   function pushTagGroupChange(change: TagGroupChangeRecord) {
     tagGroupUndoStack.value.push(change);
@@ -22,54 +23,65 @@ export const useTagGroupStore = defineStore('tagGroup', () => {
     const change = tagGroupUndoStack.value.pop();
     if (!change) return;
 
-    if (change.type === 'add_tag') {
+    if (change.type === 'add_group') {
+      tagGroups.value.delete(change.group);
+    } else if (change.type ==='remove_group') {
+      tagGroups.value.set(change.group, new Set(change.tags));
+    } else if (change.type === 'add_tag') {
       for (const tag of change.tags) {
         tagGroups.value.get(change.group)?.delete(tag);
       }
-
-      tagGroupRedoStack.value.push({
-        type: 'add_tag',
-        group: change.group,
-        tags: change.tags,
-      });
     } else if (change.type === 'remove_tag') {
       for (const tag of change.tags) {
         tagGroups.value.get(change.group)?.add(tag);
       }
-
-      tagGroupRedoStack.value.push({
-        type: 'remove_tag',
-        group: change.group,
-        tags: change.tags,
-      });
     }
+
+    tagGroupRedoStack.value.push(change);
   }
 
   function redoTagGroupAction() {
     const change = tagGroupRedoStack.value.pop();
     if (!change) return;
 
-    if (change.type === 'add_tag') {
+    if (change.type === 'add_group') {
+      tagGroups.value.set(change.group, new Set(change.tags));
+    } else if (change.type ==='remove_group') {
+      tagGroups.value.delete(change.group);
+    } else if (change.type === 'add_tag') {
       for (const tag of change.tags) {
         tagGroups.value.get(change.group)?.add(tag);
       }
-
-      tagGroupUndoStack.value.push({
-        type: 'add_tag',
-        group: change.group,
-        tags: change.tags,
-      });
     } else if (change.type === 'remove_tag') {
       for (const tag of change.tags) {
         tagGroups.value.get(change.group)?.delete(tag);
       }
-
-      tagGroupUndoStack.value.push({
-        type: 'remove_tag',
-        group: change.group,
-        tags: change.tags,
-      });
     }
+
+    tagGroupUndoStack.value.push(change);
+  }
+
+  function resetTagGroupStatus() {
+    tagGroupUndoStack.value = [];
+    tagGroupRedoStack.value = [];
+  }
+
+  async function loadTagGroups() {
+    const result = await tagGroupService.loadTagGroups();
+    if (result) {
+      tagGroups.value = result;
+      resetTagGroupStatus();
+    }
+  }
+
+  async function saveTagGroups() {
+    const tagGroupsObj = tagGroupService.tagGroupsToObject(tagGroups.value);
+    await tagGroupService.saveTagGroup(tagGroupsObj);
+  }
+
+  async function areTagGroupsSaved() {
+    const tagGroupsObj = tagGroupService.tagGroupsToObject(tagGroups.value);
+    return tagGroupService.compareTagGroupChanges(tagGroupsObj);
   }
 
   return {
@@ -78,5 +90,8 @@ export const useTagGroupStore = defineStore('tagGroup', () => {
     pushTagGroupChange,
     undoTagGroupAction,
     redoTagGroupAction,
+    loadTagGroups,
+    saveTagGroups,
+    areTagGroupsSaved
   };
 });

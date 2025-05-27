@@ -69,7 +69,7 @@ export class TagGroupManager {
         mkdirSync(this.tagGroupsPath, { recursive: true });
       }
 
-      writeFileSync(tagGroupFilePath, JSON.stringify(tagGroups));
+      writeFileSync(tagGroupFilePath, JSON.stringify(tagGroups, null, 2));
 
       this.originalTagGroups = tagGroups;
     } catch (error) {
