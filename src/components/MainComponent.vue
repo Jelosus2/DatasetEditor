@@ -7,6 +7,7 @@ import { useDatasetStore } from '@/stores/datasetStore';
 import { useTagGroupStore } from '@/stores/tagGroupStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useTagOperations } from '@/composables/useTagOperations';
+import { useTagDisplay } from '@/composables/useTagDisplay';
 
 const props = defineProps({
   arePreviewsEnabled: { type: Boolean, required: true },
@@ -14,16 +15,13 @@ const props = defineProps({
 
 const selectedImages = ref<Set<string>>(new Set());
 const lastSelectedIndex = ref<number>(0);
-const displayedTags = ref<Set<string>>(new Set());
-const displayedGlobalTags = ref<Set<string>>(new Set());
 const modalHtml = ref('');
 const imageModal = ref(false);
 const tagInput = ref('');
 const globalTagInput = ref('');
 const filterMode = ref('or');
 const filterInput = ref('');
-const isFiltering = ref(false);
-const filteredImages = ref<Set<string>>(new Set());
+const isFiltering = computed(() => !!filterInput.value);
 const container = shallowRef<HTMLDivElement | null>(null);
 const containerWidth = ref(0);
 const tagGroupSectionTopHeight = ref(55);
@@ -45,6 +43,20 @@ const datasetStore = useDatasetStore();
 const tagGroupsStore = useTagGroupStore();
 const settingsStore = useSettingsStore();
 const tagOperations = useTagOperations();
+const {
+  displayedTags,
+  displayedGlobalTags,
+  filteredImages,
+  triggerUpdate
+} = useTagDisplay(
+  selectedImages,
+  filterInput,
+  filterMode,
+  sortMode,
+  sortOrder,
+  globalSortMode,
+  globalSortOrder,
+);
 
 const imageKeys = computed(() => Array.from(datasetStore.images.keys()));
 
@@ -54,13 +66,28 @@ watch(
     if (newKeys.length > 0) {
       const firstImage = newKeys[0];
       selectedImages.value = new Set([firstImage]);
-      updateDisplayedTags();
-      updateGlobalTags();
+      triggerUpdate();
       datasetStore.resetDatasetStatus();
     }
   },
   { immediate: true },
 );
+
+watch(filteredImages, (newSet) => {
+  if (isFiltering.value) {
+    selectedImages.value = new Set(newSet.size ? [[...newSet][0]] : []);
+    lastSelectedIndex.value = !newSet.has(imageKeys.value[lastSelectedIndex.value])
+      ? 0
+      : lastSelectedIndex.value;
+  }
+});
+
+watch(filterInput, (val) => {
+  if (!val && !selectedImages.value.size && datasetStore.images.size) {
+    const first = datasetStore.images.keys().next().value as string | undefined;
+    if (first) selectedImages.value.add(first);
+  }
+});
 
 function toggleSelection(id: string, event: MouseEvent) {
   const index = imageKeys.value.indexOf(id);
@@ -81,7 +108,7 @@ function toggleSelection(id: string, event: MouseEvent) {
   }
 
   lastSelectedIndex.value = index;
-  updateDisplayedTags();
+  triggerUpdate();
 }
 
 function displayFullImage(id: string) {
@@ -98,59 +125,6 @@ function displayFullImage(id: string) {
     `;
     modal.showModal();
   }
-}
-
-function updateDisplayedTags() {
-  displayedTags.value.clear();
-
-  const allTags = new Set<string>();
-  for (const imageName of selectedImages.value) {
-    const image = datasetStore.images.get(imageName);
-    if (image && image.tags) image.tags.forEach((tag) => allTags.add(tag));
-  }
-
-  if (allTags.size === 0) {
-    displayedTags.value.clear();
-    return;
-  }
-
-  const [firstTag, ...remainingTags] = allTags;
-
-  if (remainingTags.length === 0) {
-    displayedTags.value = new Set([firstTag]);
-    return;
-  }
-
-  if (sortMode.value === 'alphabetical') {
-    remainingTags.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-  }
-
-  const sortedTags = [
-    firstTag,
-    ...(sortOrder.value === 'desc' ? remainingTags.reverse() : remainingTags),
-  ];
-  displayedTags.value = new Set(sortedTags);
-}
-
-function updateGlobalTags() {
-  const allTags: string[] = Array.from(datasetStore.globalTags.keys());
-
-  if (allTags.length === 0) {
-    displayedGlobalTags.value.clear();
-    return;
-  }
-
-  if (globalSortMode.value === 'alphabetical') {
-    allTags.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-  } else {
-    allTags.sort(
-      (a, b) => datasetStore.globalTags.get(b)!.size - datasetStore.globalTags.get(a)!.size,
-    );
-  }
-
-  if (globalSortOrder.value === 'desc') allTags.reverse();
-
-  displayedGlobalTags.value = new Set(allTags);
 }
 
 function resizeContainer(event: MouseEvent) {
@@ -220,70 +194,13 @@ function removeGlobalTag(tag: string) {
   tagOperations.removeGlobalTag(tag);
 }
 
-function filterImages() {
-  filteredImages.value.clear();
-  isFiltering.value = false;
-  if (!filterInput.value) return;
-
-  const tags = filterInput.value.split(',').map((tag) => tag.trim());
-
-  if (filterMode.value === 'or') {
-    tags.forEach((tag) => {
-      datasetStore.globalTags.get(tag)?.forEach((image) => filteredImages.value.add(image));
-    });
-  } else if (filterMode.value === 'and') {
-    const imageCount = new Map();
-    const requiredTagCount = tags.length;
-
-    for (const tag of tags) {
-      const imagesWithTag = datasetStore.globalTags.get(tag);
-      if (!imagesWithTag) {
-        isFiltering.value = true;
-        selectedImages.value.clear();
-        filteredImages.value.clear();
-        updateDisplayedTags();
-        return;
-      }
-
-      imagesWithTag.forEach((image) => {
-        imageCount.set(image, (imageCount.get(image) || 0) + 1);
-      });
-    }
-
-    filteredImages.value = new Set(
-      [...imageCount.entries()]
-        .filter(([, count]) => count === requiredTagCount)
-        .map(([image]) => image),
-    );
-  } else if (filterMode.value === 'no') {
-    const excludedImages = new Set();
-
-    tags.forEach((tag) => {
-      datasetStore.globalTags.get(tag)?.forEach((image) => excludedImages.add(image));
-    });
-
-    filteredImages.value = new Set(
-      [...datasetStore.images.keys()].filter((image) => !excludedImages.has(image)),
-    );
-  }
-
-  isFiltering.value = true;
-  selectedImages.value = new Set(filteredImages.value.size ? [[...filteredImages.value][0]] : []);
-  lastSelectedIndex.value = !filteredImages.value.has(imageKeys.value[lastSelectedIndex.value])
-    ? 0
-    : lastSelectedIndex.value;
-  updateDisplayedTags();
-}
-
 function clearImageFilter() {
   if (filterInput.value) return;
 
   if (!filteredImages.value.size && !selectedImages.value.size) {
-    selectedImages.value.add(datasetStore.images.keys().next().value!);
-    updateDisplayedTags();
+    const first = datasetStore.images.keys().next().value as string | undefined;
+    if (first) selectedImages.value.add(first);
   }
-  isFiltering.value = false;
-  filteredImages.value.clear();
 }
 
 function addOrRemoveTag(tag: string) {
@@ -324,7 +241,7 @@ function replaceTag(mode: 'selected' | 'all') {
 }
 
 onMounted(() => {
-  datasetStore.onChange = [updateDisplayedTags, updateGlobalTags];
+  datasetStore.onChange = [triggerUpdate];
 });
 </script>
 
@@ -372,7 +289,6 @@ onMounted(() => {
               :multiple="true"
               :custom-list="[...datasetStore.globalTags.keys()]"
               :contains-mode="true"
-              @on-complete="filterImages"
               @on-input="clearImageFilter"
             />
             <span
@@ -550,7 +466,6 @@ onMounted(() => {
                     v-model.lazy="sortMode"
                     class="select relative w-fit select-sm !outline-none"
                     :disabled="!displayedTags.size"
-                    @change="updateDisplayedTags"
                   >
                     <option value="none" selected>None</option>
                     <option value="alphabetical">Alphabetical</option>
@@ -559,9 +474,7 @@ onMounted(() => {
                 <button
                   class="btn btn-circle overflow-hidden border-none btn-sm dark:bg-[#323841]"
                   :disabled="!displayedTags.size"
-                  @click="
-                    ((sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'), updateDisplayedTags())
-                  "
+                  @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
                 >
                   <svg
                     class="swap-off h-full w-full fill-none transition-[transform] duration-[0.5s]"
@@ -747,7 +660,6 @@ onMounted(() => {
                   v-model.lazy="globalSortMode"
                   class="select relative w-fit select-sm !outline-none"
                   :disabled="!displayedGlobalTags.size"
-                  @change="updateGlobalTags"
                 >
                   <option value="alphabetical" selected>Alphabetical</option>
                   <option value="tag_count">Tag Count</option>
@@ -756,10 +668,7 @@ onMounted(() => {
               <button
                 class="btn btn-circle overflow-hidden border-none btn-sm dark:bg-[#323841]"
                 :disabled="!displayedGlobalTags.size"
-                @click="
-                  ((globalSortOrder = globalSortOrder === 'asc' ? 'desc' : 'asc'),
-                  updateGlobalTags())
-                "
+                @click="globalSortOrder = globalSortOrder === 'asc' ? 'desc' : 'asc'"
               >
                 <svg
                   class="swap-off h-full w-full fill-none transition-[transform] duration-[0.5s]"
