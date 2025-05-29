@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ModalComponent from '@/components/ModalComponent.vue';
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
+import ImageGridComponent from '@/components/ImageGridComponent.vue';
 
 import { ref, watch, computed, shallowRef, onMounted } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
@@ -254,58 +255,17 @@ onMounted(() => {
         :style="{ width: containerWidth + 'px' }"
         ref="container"
       >
-        <div
-          class="grid h-fit grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-auto scroll-smooth"
-        >
-          <div
-            v-for="[name, image] in datasetStore.images"
-            :key="name"
-            @click="toggleSelection(name, $event)"
-            @mouseenter="previewImage = name"
-            @mouseleave="previewImage = ''"
-            class="flex cursor-pointer items-center justify-center rounded-md border-1 border-black bg-base-200 select-none dark:border-white"
-            :class="{
-              'border-3 !border-blue-600 bg-blue-400': selectedImages.has(name),
-              hidden: !filteredImages.has(name) && isFiltering,
-            }"
-          >
-            <img
-              :src="image.filePath"
-              :alt="name"
-              @dblclick="displayFullImage(name)"
-              draggable="false"
-              loading="lazy"
-              class="h-full w-full rounded-md object-scale-down"
-            />
-          </div>
-        </div>
-        <div class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
-          <label class="input input-sm w-full border-r-0 pr-0 pl-1 !outline-none">
-            <AutocompletionComponent
-              v-model="filterInput"
-              :disabled="!datasetStore.images.size"
-              :id="'filter-completion-list'"
-              :placeholder="'Type a tag to filter the images...'"
-              :multiple="true"
-              :custom-list="[...datasetStore.globalTags.keys()]"
-              :contains-mode="true"
-              @on-input="clearImageFilter"
-            />
-            <span
-              v-if="filterInput"
-              class="cursor-pointer"
-              @click="((filterInput = ''), clearImageFilter())"
-              >X</span
-            >
-            <div class="not-focus-within:hover:tooltip" data-tip="Mode to filter the images">
-              <select v-model.lazy="filterMode" class="select w-fit select-sm !outline-none">
-                <option value="or" selected>OR</option>
-                <option value="no">NO</option>
-                <option value="and">AND</option>
-              </select>
-            </div>
-          </label>
-        </div>
+        <ImageGridComponent
+          v-model:selected-images="selectedImages"
+          v-model:filter-input="filterInput"
+          v-model:filter-mode="filterMode"
+          :filtered-images="filteredImages"
+          :is-filtering="isFiltering"
+          @toggle-selection="toggleSelection"
+          @hover-image="(id) => (previewImage = id || '')"
+          @display-full-image="displayFullImage"
+          @clear-filter="clearImageFilter"
+        />
       </div>
       <div class="relative flex flex-1">
         <div
