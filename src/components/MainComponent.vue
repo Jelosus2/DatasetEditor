@@ -2,10 +2,11 @@
 import ModalComponent from '@/components/ModalComponent.vue';
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
-import { ref, watch, computed, shallowRef, onMounted, toRaw } from 'vue';
+import { ref, watch, computed, shallowRef, onMounted } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
 import { useTagGroupStore } from '@/stores/tagGroupStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useTagOperations } from '@/composables/useTagOperations';
 
 const props = defineProps({
   arePreviewsEnabled: { type: Boolean, required: true },
@@ -43,6 +44,7 @@ const tagReplaceInput = ref('');
 const datasetStore = useDatasetStore();
 const tagGroupsStore = useTagGroupStore();
 const settingsStore = useSettingsStore();
+const tagOperations = useTagOperations();
 
 const imageKeys = computed(() => Array.from(datasetStore.images.keys()));
 
@@ -131,13 +133,7 @@ function updateDisplayedTags() {
 }
 
 function updateGlobalTags() {
-  const allTags: string[] = [];
-  for (const image of datasetStore.images.values()) {
-    if (image?.tags.size > 0)
-      image.tags.forEach((tag) => {
-        if (!allTags.includes(tag)) allTags.push(tag);
-      });
-  }
+  const allTags: string[] = Array.from(datasetStore.globalTags.keys());
 
   if (allTags.length === 0) {
     displayedGlobalTags.value.clear();
@@ -203,171 +199,25 @@ function addTag(_tag?: string, image?: string) {
   if (!newTags || openReplaceTagSection.value) return;
 
   const images = image ? new Set([image]) : new Set(selectedImages.value);
-  const tags = newTags
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter((tag) => tag);
-
-  const previousState = new Map();
-
-  validateTagPosition();
-  for (const image of images.values()) {
-    const imageWithTags = datasetStore.images.get(image);
-    const allTagsExist = tags.every((tag) => imageWithTags?.tags.has(tag));
-    const tagsCopy = [...imageWithTags!.tags];
-    let shouldSkip = false;
-
-    if (allTagsExist) {
-      if (tagPosition.value === -1) {
-        const endIndex = tagsCopy.length - tags.length;
-        shouldSkip = tags.every((tag, index) => {
-          return tagsCopy[endIndex + index] === tag;
-        });
-      } else {
-        const targetIndex = tagPosition.value - 1;
-        shouldSkip = tags.every((tag, index) => {
-          const currentIndex = tagsCopy.indexOf(tag);
-          return currentIndex === targetIndex + index;
-        });
-      }
-
-      if (shouldSkip) {
-        images.delete(image);
-        continue;
-      }
-    }
-    previousState.set(image, new Set(imageWithTags?.tags));
-
-    for (const tag of tags) {
-      if (!imageWithTags?.tags.has(tag)) {
-        if (!datasetStore.globalTags.has(tag)) {
-          datasetStore.globalTags.set(tag, new Set([image]));
-        } else {
-          const imagesWithTag = datasetStore.globalTags.get(tag)!;
-          imagesWithTag.add(image);
-        }
-      }
-
-      if (datasetStore.tagDiff.size === 0) continue;
-
-      const diff = datasetStore.tagDiff.get(image);
-      if (diff?.tagger.has(tag)) {
-        diff?.tagger.delete(tag);
-      } else {
-        diff?.original.add(tag);
-      }
-    }
-
-    for (const tag of tags) {
-      const existingIndex = tagsCopy.indexOf(tag);
-      if (existingIndex !== -1) {
-        tagsCopy.splice(existingIndex, 1);
-      }
-    }
-
-    if (tagPosition.value === -1) {
-      imageWithTags!.tags = new Set([...tagsCopy, ...tags]);
-    } else {
-      const insertIndex = Math.min(tagPosition.value - 1, tagsCopy.length);
-      tagsCopy.splice(insertIndex, 0, ...tags);
-      imageWithTags!.tags = new Set(tagsCopy);
-    }
-  }
-
+  tagPosition.value = tagOperations.validateTagPosition(tagPosition.value);
+  tagOperations.addTag(newTags, images, tagPosition.value);
   tagInput.value = '';
-  if (images.size === 0) return;
-
-  datasetStore.pushDatasetChange({
-    type: 'add_tag',
-    images: new Set(images.values()),
-    tags: new Set(tags),
-    tagPosition: toRaw(tagPosition.value),
-    previousState,
-  });
-
-  updateDisplayedTags();
-  updateGlobalTags();
 }
 
 function addGlobalTag() {
-  const tags = globalTagInput.value
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter((tag) => tag);
-  if (tags.length === 0) return;
-
-  validateTagPosition();
-  for (const image of datasetStore.images.keys()) {
-    const imageWithTags = datasetStore.images.get(image);
-
-    for (const tag of tags) {
-      if (tagPosition.value === -1) {
-        imageWithTags?.tags.add(tag);
-      } else {
-        const tagsCopy = [...imageWithTags!.tags];
-        tagsCopy.splice(tagPosition.value - 1, 0, tag);
-        imageWithTags!.tags = new Set(tagsCopy);
-      }
-
-      datasetStore.globalTags.set(tag, new Set([...datasetStore.images.keys()]));
-    }
-  }
-
-  datasetStore.pushDatasetChange({
-    type: 'add_global_tag',
-    tags: new Set(tags),
-    tagPosition: toRaw(tagPosition.value),
-  });
-
-  updateDisplayedTags();
-  updateGlobalTags();
-
+  if (!globalTagInput.value) return;
+  tagPosition.value = tagOperations.validateTagPosition(tagPosition.value);
+  tagOperations.addGlobalTag(globalTagInput.value, tagPosition.value);
   globalTagInput.value = '';
 }
 
 function removeTag(tag: string, image?: string) {
-  const imagesWithTag = datasetStore.globalTags.get(tag);
   const images = image ? new Set([image]) : new Set(selectedImages.value);
-
-  datasetStore.pushDatasetChange({
-    type: 'remove_tag',
-    images,
-    tags: new Set([tag]),
-  });
-
-  for (const image of images.values()) {
-    datasetStore.images.get(image)?.tags.delete(tag);
-    imagesWithTag?.delete(image);
-
-    if (datasetStore.tagDiff.size > 0) {
-      datasetStore.tagDiff.get(image)?.original.delete(tag);
-    }
-  }
-
-  updateDisplayedTags();
-
-  if (!imagesWithTag?.size) {
-    datasetStore.globalTags.delete(tag);
-    updateGlobalTags();
-  }
+  tagOperations.removeTag(tag, images);
 }
 
 function removeGlobalTag(tag: string) {
-  const imagesWithTag = new Set(datasetStore.globalTags.get(tag) ?? []);
-
-  for (const image of imagesWithTag.values()) {
-    datasetStore.images.get(image)?.tags.delete(tag);
-  }
-
-  datasetStore.pushDatasetChange({
-    type: 'remove_global_tag',
-    images: imagesWithTag,
-    tags: new Set([tag]),
-  });
-
-  updateDisplayedTags();
-  datasetStore.globalTags.delete(tag);
-  updateGlobalTags();
+  tagOperations.removeGlobalTag(tag);
 }
 
 function filterImages() {
@@ -453,10 +303,7 @@ function copyTextToClipboard(tags: Set<string>) {
 }
 
 function validateTagPosition() {
-  if (isNaN(tagPosition.value)) tagPosition.value = -1;
-  if (!tagPosition.value || tagPosition.value < -1) tagPosition.value = -1;
-  if (!Number.isInteger(tagPosition.value))
-    tagPosition.value = parseInt(tagPosition.value.toString());
+  tagPosition.value = tagOperations.validateTagPosition(tagPosition.value);
 }
 
 function handleTagGroupChange(tagGroup: string) {
@@ -470,56 +317,10 @@ function replaceTag(mode: 'selected' | 'all') {
   if (!tag || !originalTag || tag === originalTag) return;
 
   const images = mode === 'selected' ? new Set(selectedImages.value) : new Set(datasetStore.images.keys());
-
-  const previousState = new Map();
-  for (const image of images.values()) {
-    const imageWithTags = datasetStore.images.get(image)!;
-    if (imageWithTags.tags.has(tag) || !imageWithTags.tags.has(originalTag)) {
-      images.delete(image);
-      continue;
-    }
-
-    previousState.set(image, new Set(imageWithTags.tags));
-
-    const tagsCopy = [...imageWithTags.tags];
-    const tagIndex = tagsCopy.indexOf(originalTag);
-    tagsCopy.splice(tagIndex, 1, tag);
-    imageWithTags.tags = new Set(tagsCopy);
-
-    datasetStore.globalTags.get(originalTag)?.delete(image);
-
-    if (!datasetStore.globalTags.has(tag)) {
-      datasetStore.globalTags.set(tag, new Set(images));
-    } else {
-      const imagesWithTag = datasetStore.globalTags.get(tag)!;
-      imagesWithTag.add(image);
-    }
-
-    if (datasetStore.tagDiff.size === 0) continue;
-
-    const diff = datasetStore.tagDiff.get(image);
-    if (diff?.tagger.has(tag)) {
-      diff?.tagger.delete(tag);
-    } else {
-      diff?.original.add(tag);
-    }
-  }
+  tagOperations.replaceTag(originalTag, tag, images);
 
   tagInput.value = '';
   tagReplaceInput.value = '';
-  if (images.size === 0) return;
-
-  datasetStore.pushDatasetChange({
-    type: 'replace_tag',
-    images: new Set(images),
-    tags: new Set([tag]),
-    originalTag,
-    newTag: tag,
-    previousState,
-  });
-
-  updateDisplayedTags();
-  updateGlobalTags();
 }
 
 onMounted(() => {
