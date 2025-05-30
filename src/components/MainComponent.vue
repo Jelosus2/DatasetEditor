@@ -109,7 +109,7 @@ function toggleSelection(id: string, event: MouseEvent) {
   }
 
   lastSelectedIndex.value = index;
-  triggerUpdate();
+  selectedImages.value = new Set(selectedImages.value);
 }
 
 function displayFullImage(id: string) {
