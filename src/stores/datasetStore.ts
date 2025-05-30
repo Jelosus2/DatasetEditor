@@ -33,6 +33,81 @@ export const useDatasetStore = defineStore('dataset', () => {
   const onChange = ref<(() => void)[]>([]);
   const datasetService = new DatasetService()
 
+  function setImageTags(image: string, newTags: Set<string>) {
+    const current = images.value.get(image)!.tags;
+    for (const tag of current) {
+      if (!newTags.has(tag)) {
+        const imagesWithTag = globalTags.value.get(tag);
+        imagesWithTag?.delete(image);
+        if (imagesWithTag?.size === 0) globalTags.value.delete(tag);
+      }
+    }
+
+    for (const tag of newTags) {
+      if (!globalTags.value.has(tag)) {
+        globalTags.value.set(tag, new Set([image]));
+      } else {
+        globalTags.value.get(tag)!.add(image);
+      }
+    }
+
+    images.value.get(image)!.tags = new Set(newTags);
+  }
+
+  function addTagsToImages(imgs: Iterable<string>, tags: Set<string>, position = -1, previousState?: Map<string, Set<string>>) {
+    for (const image of imgs) {
+      const base = previousState?.get(image) ?? images.value.get(image)!.tags;
+      const tagArray = [...base];
+      if (position === -1) {
+        images.value.get(image)!.tags = new Set([...tagArray, ...tags]);
+      } else {
+        const copy = [...tagArray];
+        copy.splice(position - 1, 0, ...tags);
+        images.value.get(image)!.tags = new Set(copy);
+      }
+
+      for (const tag of tags) {
+        if (!globalTags.value.has(tag)) {
+          globalTags.value.set(tag, new Set([image]));
+        } else {
+          globalTags.value.get(tag)!.add(image);
+        }
+      }
+    }
+  }
+
+  function removeTagsFromImages(imgs: Iterable<string>, tags: Set<string>) {
+    for (const image of imgs) {
+      for (const tag of tags) {
+        images.value.get(image)?.tags.delete(tag);
+        const imagesWithTag = globalTags.value.get(tag);
+        imagesWithTag?.delete(image);
+        if (imagesWithTag?.size === 0) globalTags.value.delete(tag);
+      }
+    }
+  }
+
+  function replaceTagForImages(imgs: Iterable<string>, originalTag: string, newTag: string) {
+    for (const image of imgs) {
+      const imageWithTags = images.value.get(image)!;
+      const tagsCopy = [...imageWithTags.tags];
+      const tagIndex = tagsCopy.indexOf(originalTag);
+      if (tagIndex === -1) continue;
+      tagsCopy.splice(tagIndex, 1, newTag);
+      imageWithTags.tags = new Set(tagsCopy);
+
+      const originalImages = globalTags.value.get(originalTag);
+      originalImages?.delete(image);
+      if (originalImages?.size === 0) globalTags.value.delete(originalTag);
+
+      if (!globalTags.value.has(newTag)) {
+        globalTags.value.set(newTag, new Set([image]));
+      } else {
+        globalTags.value.get(newTag)!.add(image);
+      }
+    }
+  }
+
   function pushDatasetChange(change: DatasetChangeRecord) {
     datasetUndoStack.value.push(change);
     datasetRedoStack.value = [];
@@ -42,70 +117,26 @@ export const useDatasetStore = defineStore('dataset', () => {
     const change = datasetUndoStack.value.pop();
     if (!change) return;
 
-    if (change.type === 'add_tag') {
-      for (const [image, previousTags] of change.previousState!.entries()) {
-        images.value.get(image)!.tags = previousTags;
-      }
-
-      for (const tag of change.tags) {
-        const imagesWithTag = globalTags.value.get(tag);
-        if (imagesWithTag) {
-          change.images?.forEach((img) => imagesWithTag.delete(img));
-          if (imagesWithTag.size === 0) globalTags.value.delete(tag);
+    switch (change.type) {
+      case 'add_tag':
+        for (const [image, previousTags] of change.previousState!.entries()) {
+          setImageTags(image, previousTags);
         }
-      }
-    } else if (change.type === 'add_global_tag') {
-      for (const image of images.value.values()) {
-        for (const tag of change.tags) {
-          image.tags.delete(tag);
-          globalTags.value.delete(tag);
+        break;
+      case 'add_global_tag':
+        removeTagsFromImages(images.value.keys(), change.tags);
+        break;
+      case 'remove_tag':
+        addTagsToImages(change.images!, change.tags);
+        break;
+      case 'remove_global_tag':
+        addTagsToImages(change.images!, change.tags);
+        break;
+      case 'replace_tag':
+        for (const [image, previousTags] of change.previousState!.entries()) {
+          setImageTags(image, previousTags);
         }
-      }
-    } else if (change.type === 'remove_tag') {
-      for (const image of change.images!) {
-        for (const tag of change.tags) {
-          images.value.get(image)!.tags.add(tag);
-
-          if (!globalTags.value.has(tag)) {
-            globalTags.value.set(tag, new Set([image]));
-          } else {
-            globalTags.value.get(tag)?.add(image);
-          }
-        }
-      }
-    } else if (change.type === 'remove_global_tag') {
-      for (const image of change.images!) {
-        const originalImage = images.value.get(image)!;
-
-        for (const tag of change.tags) {
-          originalImage.tags.add(tag);
-          if (!globalTags.value.has(tag)) {
-            globalTags.value.set(tag, new Set([image]));
-          } else {
-            globalTags.value.get(tag)?.add(image);
-          }
-        }
-      }
-    } else if (change.type === 'replace_tag') {
-      for (const [image, previousTags] of change.previousState!.entries()) {
-        images.value.get(image)!.tags = previousTags;
-      }
-
-      const originalTag = change.originalTag!;
-      const newTag = change.newTag!;
-
-      for (const image of change.images!) {
-        globalTags.value.get(newTag)?.delete(image);
-        if (globalTags.value.get(newTag)?.size === 0) {
-          globalTags.value.delete(newTag);
-        }
-
-        if (!globalTags.value.has(originalTag)) {
-          globalTags.value.set(originalTag, new Set([image]));
-        } else {
-          globalTags.value.get(originalTag)?.add(image);
-        }
-      }
+        break;
     }
 
     datasetRedoStack.value.push(change);
@@ -116,79 +147,22 @@ export const useDatasetStore = defineStore('dataset', () => {
     const change = datasetRedoStack.value.pop();
     if (!change) return;
 
-    if (change.type === 'add_tag') {
-      for (const [image, previousTags] of change.previousState!.entries()) {
-        if (change.tagPosition === -1) {
-          images.value.get(image)!.tags = new Set([...previousTags, ...change.tags]);
-        } else {
-          const tagsCopy = [...previousTags];
-          tagsCopy.splice(change.tagPosition! - 1, 0, ...change.tags);
-          images.value.get(image)!.tags = new Set(tagsCopy);
-        }
-
-        for (const tag of change.tags) {
-          if (!globalTags.value.has(tag)) {
-            globalTags.value.set(tag, new Set([image]));
-          } else {
-            globalTags.value.get(tag)!.add(image);
-          }
-        }
-      }
-    } else if (change.type === 'add_global_tag') {
-      for (const [image, props] of images.value.entries()) {
-        if (change.tagPosition === -1) {
-          images.value.get(image)!.tags = new Set([...props.tags, ...change.tags]);
-        } else {
-          const tagsCopy = [...props.tags];
-          tagsCopy.splice(change.tagPosition! - 1, 0, ...change.tags);
-          images.value.get(image)!.tags = new Set(tagsCopy);
-        }
-
-        for (const tag of change.tags) {
-          if (!globalTags.value.has(tag)) {
-            globalTags.value.set(tag, new Set([image]));
-          } else {
-            globalTags.value.get(tag)?.add(image);
-          }
-        }
-      }
-    } else if (change.type === 'remove_tag') {
-      for (const image of change.images!) {
-        for (const tag of change.tags) {
-          images.value.get(image)!.tags.delete(tag);
-          globalTags.value.get(tag)?.delete(image);
-          if (globalTags.value.get(tag)?.size === 0) globalTags.value.delete(tag);
-        }
-      }
-    } else if (change.type === 'remove_global_tag') {
-      for (const image of change.images!) {
-        for (const tag of change.tags) {
-          images.value.get(image)?.tags.delete(tag);
-          globalTags.value.delete(tag);
-        }
-      }
-    } else if (change.type === 'replace_tag') {
-      const originalTag = change.originalTag!;
-      const newTag = change.newTag!;
-
-      for (const image of change.images!) {
-        const imageWithTags = images.value.get(image)!;
-        const tagsCopy = [...imageWithTags.tags];
-        const tagIndex = tagsCopy.indexOf(originalTag);
-        tagsCopy.splice(tagIndex, 1, newTag);
-        imageWithTags.tags = new Set(tagsCopy);
-
-        globalTags.value.get(originalTag)?.delete(image);
-        if (globalTags.value.get(originalTag)?.size === 0) {
-          globalTags.value.delete(originalTag);
-        }
-
-        if (!globalTags.value.has(newTag)) {
-          globalTags.value.set(newTag, new Set([image]));
-        } else {
-          globalTags.value.get(newTag)?.add(image);
-        }
-      }
+    switch (change.type) {
+      case 'add_tag':
+        addTagsToImages(change.images!, change.tags, change.tagPosition, change.previousState);
+        break;
+      case 'add_global_tag':
+        addTagsToImages(images.value.keys(), change.tags, change.tagPosition);
+        break;
+      case 'remove_tag':
+        removeTagsFromImages(change.images!, change.tags);
+        break;
+      case 'remove_global_tag':
+        removeTagsFromImages(change.images!, change.tags);
+        break;
+      case 'replace_tag':
+        replaceTagForImages(change.images!, change.originalTag!, change.newTag!);
+        break;
     }
 
     datasetUndoStack.value.push(change);
