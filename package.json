@@ -89,6 +89,7 @@
       }
     ],
     "win": {
+      "icon": "public/doro.ico",
       "target": [
         "nsis",
         "zip"
@@ -106,7 +107,9 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "include": "builder/installer.nsh"
+      "installerIcon": "build/yes_doro.ico",
+      "uninstallerIcon": "build/no_doro.ico",
+      "include": "build/installer.nsh"
     }
   }
 }

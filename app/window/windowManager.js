@@ -1,6 +1,7 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { join } from 'node:path';
 import { _dirname } from '../utils/helpers.js';
+import { existsSync } from 'node:fs';
 
 const __dirname = _dirname(import.meta.url);
 
@@ -12,6 +13,9 @@ export class WindowManager {
   }
 
   async createMainWindow() {
+    const distPath = join(__dirname, '..', '..', 'dist');
+    const publicPath = join(__dirname, '..', '..', 'public');
+
     this.mainWindow = new BrowserWindow({
       backgroundColor: '#1d232a',
       autoHideMenuBar: true,
@@ -19,6 +23,7 @@ export class WindowManager {
       width: 1280,
       height: 800,
       show: false,
+      icon: existsSync(distPath) ? join(distPath, 'doro.ico') : join(publicPath, 'doro.ico'),
       webPreferences: {
         preload: join(__dirname, '..', 'preload.js'),
         webSecurity: !this.isDebug,
