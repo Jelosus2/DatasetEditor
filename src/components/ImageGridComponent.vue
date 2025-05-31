@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
+import VirtualImage from './VirtualImage.vue';
 
 import { useDatasetStore, type Image } from '@/stores/datasetStore';
 import { computed } from 'vue';
@@ -8,7 +9,7 @@ const selectedImages = defineModel<Set<string>>('selectedImages', { required: tr
 const filterInput = defineModel<string>('filterInput', { required: true });
 const filterMode = defineModel<string>('filterMode', { required: true });
 
-const props = defineProps({
+defineProps({
   filteredImages: { type: Set<string>, required: true },
   isFiltering: { type: Boolean, required: true },
 });
@@ -21,14 +22,7 @@ const emit = defineEmits<{
 }>();
 
 const datasetStore = useDatasetStore();
-const imagesToShow = computed(() => {
-  if (props.isFiltering) {
-    const result: Array<[string, Image]> = [];
-    for (const [name, image] of datasetStore.images) {
-      if (props.filteredImages.has(name)) result.push([name, image]);
-    }
-    return result;
-  }
+const imageEntries = computed(() => {
   return [...datasetStore.images] as Array<[string, Image]>;
 });
 </script>
@@ -37,26 +31,18 @@ const imagesToShow = computed(() => {
   <div
     class="grid h-fit grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-auto scroll-smooth"
   >
-    <div
-      v-for="[name, image] in imagesToShow"
+    <VirtualImage
+      v-for="[name, image] in imageEntries"
+      v-show="!isFiltering || filteredImages.has(name)"
       :key="name"
+      :name="name"
+      :image="image"
+      :selected="selectedImages.has(name)"
       @click="emit('toggle-selection', name, $event)"
       @mouseenter="emit('hover-image', name)"
       @mouseleave="emit('hover-image', null)"
-      class="flex cursor-pointer items-center justify-center rounded-md border-1 border-black bg-base-200 select-none dark:border-white"
-      :class="{
-        'border-3 !border-blue-600 bg-blue-400': selectedImages.has(name),
-      }"
-    >
-      <img
-        :src="image.filePath"
-        :alt="name"
-        @dblclick="emit('display-full-image', name)"
-        draggable="false"
-        loading="lazy"
-        class="h-full w-full rounded-md object-scale-down"
-      />
-    </div>
+      @dblclick="emit('display-full-image', name)"
+    />
   </div>
   <div class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
     <label class="input input-sm w-full border-r-0 pr-0 pl-1 !outline-none">

@@ -95,7 +95,7 @@
       ],
       "extraResources": [
         {
-          "from": "tagger/embedded_python",
+          "from": "embedded_python",
           "to": "tagger/embedded_python",
           "filter": [
             "**/*"
