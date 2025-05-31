@@ -68,6 +68,10 @@ export class IpcHandlers {
       this.tagGroupManager.compareTagGroupChanges(tagGroups)
     );
 
+    ipcMain.handle('compare_settings_changes', (_, settings) =>
+      this.settingsManager.compareSettingsChanges(settings)
+    );
+
     ipcMain.handle('start_tagger_service', () =>
       this.taggerProcessManager.startTaggerService()
     );

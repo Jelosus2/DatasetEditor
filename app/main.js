@@ -1,4 +1,4 @@
-import { app, Menu } from 'electron';
+import { app, nativeTheme, Menu } from 'electron';
 import Database from 'better-sqlite3';
 import { join } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
@@ -84,7 +84,7 @@ async function onAppReady() {
     });
 
     ipcHandlers.registerHandlers();
-    settingsManager.initializeDefaultSettings();
+    settingsManager.initializeDefaultSettings(nativeTheme.shouldUseDarkColors);
   } catch (error) {
     console.error('Error during app initialization:', error);
   }

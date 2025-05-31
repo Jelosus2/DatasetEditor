@@ -1,4 +1,5 @@
 import { dialog } from 'electron';
+import { default as _ } from 'lodash';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 
@@ -6,19 +7,20 @@ export class SettingsManager {
   constructor(dataPath, tagAutocompletionsPath) {
     this.dataPath = dataPath;
     this.tagAutocompletionsPath = tagAutocompletionsPath;
+    this.originalSettings = null;
   }
 
   getDefaultSettings() {
     return {
       showTagCount: false,
-      theme: 'auto',
+      theme: 'dark',
       autocomplete: true,
       autocompleteFile: join(this.tagAutocompletionsPath, 'danbooru.csv'),
       tagsIgnored: [],
     };
   }
 
-  saveSettings(settings) {
+  saveSettings(settings, shouldDarkBeDefault) {
     const settingsPath = join(this.dataPath, 'settings.json');
     const settingsDir = dirname(settingsPath);
 
@@ -30,12 +32,18 @@ export class SettingsManager {
       }
 
       const defaultSettings = this.getDefaultSettings();
-      if (!settings && !existsSync(defaultSettings.autocompleteFile)) {
-        defaultSettings.autocompleteFile = '';
+      if (!settings) {
+        if (!existsSync(defaultSettings.autocompleteFile)) {
+          defaultSettings.autocompleteFile = '';
+        }
+        if (!shouldDarkBeDefault) {
+          defaultSettings.theme = 'winter';
+        }
       }
 
       const finalSettings = settings ?? defaultSettings;
       writeFileSync(settingsPath, JSON.stringify(finalSettings, null, 2));
+      this.originalSettings = finalSettings;
     } catch (error) {
       console.error('Error saving settings:', error);
       throw error;
@@ -49,11 +57,17 @@ export class SettingsManager {
 
     try {
       const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
+      this.originalSettings = settings;
       return settings;
     } catch (error) {
       console.error('Error loading settings:', error);
       return null;
     }
+  }
+
+  compareSettingsChanges(settings) {
+    if (!this.originalSettings) return true;
+    return _.isEqual(this.originalSettings, settings);
   }
 
   async changeAutocompleteFile(mainWindow, database) {
@@ -80,7 +94,7 @@ export class SettingsManager {
     }
   }
 
-  initializeDefaultSettings() {
-    this.saveSettings(null);
+  initializeDefaultSettings(shouldDarkBeDefault) {
+    this.saveSettings(null, shouldDarkBeDefault);
   }
 }

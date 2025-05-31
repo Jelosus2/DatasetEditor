@@ -39,6 +39,8 @@ export class AppController {
       this.deps.datasetStore.undoDatasetAction();
     } else if (activeTab === 'Tag Groups') {
       this.deps.tagGroupsStore.undoTagGroupAction();
+    } else if (activeTab === 'Settings') {
+      this.deps.settingsStore.undoSettingsAction();
     }
   }
 
@@ -49,6 +51,8 @@ export class AppController {
       this.deps.datasetStore.redoDatasetAction();
     } else if (activeTab === 'Tag Groups') {
       this.deps.tagGroupsStore.redoTagGroupAction();
+    } else if (activeTab === 'Settings') {
+      this.deps.settingsStore.redoSettingsAction();
     }
   }
 
@@ -85,12 +89,13 @@ export class AppController {
   }
 
   async areAllChangesSaved() {
-    const [datasetSaved, tagGroupsSaved] = await Promise.all([
+    const [datasetSaved, tagGroupsSaved, settingsSaved] = await Promise.all([
       this.deps.datasetStore.isDatasetSaved(),
-      this.deps.tagGroupsStore.areTagGroupsSaved()
+      this.deps.tagGroupsStore.areTagGroupsSaved(),
+      this.deps.settingsStore.areSettingsSaved()
     ]);
 
-    return datasetSaved && tagGroupsSaved;
+    return datasetSaved && tagGroupsSaved && settingsSaved;
   }
 
   private getActiveTab() {
