@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn } from 'node-pty';
 import { join } from 'node:path';
 import stripAnsi from 'strip-ansi';
 
@@ -38,32 +38,41 @@ export class TaggerProcessManager {
     const python = join(this.taggerPath, 'embedded_python', 'python.exe');
     const filePath = join(this.taggerPath, 'install.py');
 
-    const process = spawn(python, ['-u', filePath]);
-    this.attachProcessListeners(process, 'Tagger install error');
-    return process;
+    const ptyProcess = spawn(python, ['-u', filePath], {
+      name: 'xterm-color',
+      cols: 80,
+      rows: 30,
+      cwd: this.taggerPath,
+      env: process.env
+    });
+    this.attachProcessListeners(ptyProcess, 'Tagger install error');
+    return ptyProcess;
   }
 
   startTaggerServer() {
     const python = join(this.taggerPath, 'embedded_python', 'python.exe');
     const filePath = join(this.taggerPath, 'main.py');
 
-    this.taggerProcess = spawn(python, ['-u', filePath]);
+    this.taggerProcess = spawn(python, ['-u', filePath], {
+      name: 'xterm-color',
+      cols: 80,
+      rows: 30,
+      cwd: this.taggerPath,
+      env: process.env
+    });
     this.attachProcessListeners(this.taggerProcess, 'Tagger error');
   }
 
   attachProcessListeners(process, errorPrefix) {
-    process.stdout.on('data', (data) => {
+    process.onData((data) => {
       const output = this.clearOutputText(data.toString());
       this.mainWindow.webContents.send('tagger-output', output);
     });
 
-    process.stderr.on('data', (data) => {
-      const output = this.clearOutputText(data.toString());
-      this.mainWindow.webContents.send('tagger-output', output);
-    });
-
-    process.on('error', (err) => {
-      console.error(`${errorPrefix}: ${err}`);
+    process.onExit(({ exitCode }) => {
+      if (exitCode !== 0) {
+        console.error(`${errorPrefix}: exited with code ${exitCode}`);
+      }
     });
   }
 

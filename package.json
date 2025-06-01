@@ -9,7 +9,6 @@
   "scripts": {
     "dev": "vite",
     "electron": "electron .",
-    "build-bsql3": "electron-rebuild -f -w better-sqlite3",
     "e-dev": "set NODE_ENV=debug&& run-p dev electron",
     "e-prod": "run-p dev electron",
     "build": "run-p type-check \"build-only {@}\" --",
@@ -25,6 +24,7 @@
     "@tailwindcss/vite": "^4.0.6",
     "better-sqlite3": "^11.8.1",
     "lodash": "^4.17.21",
+    "node-pty": "^1.0.0",
     "pinia": "^3.0.1",
     "strip-ansi": "^7.1.0",
     "tailwindcss": "^4.0.6",
