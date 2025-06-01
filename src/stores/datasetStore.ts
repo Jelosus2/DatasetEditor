@@ -93,7 +93,19 @@ export const useDatasetStore = defineStore('dataset', () => {
       const tagsCopy = [...imageWithTags.tags];
       const tagIndex = tagsCopy.indexOf(originalTag);
       if (tagIndex === -1) continue;
-      tagsCopy.splice(tagIndex, 1, newTag);
+
+      tagsCopy.splice(tagIndex, 1);
+      const existingIndex = tagsCopy.indexOf(newTag);
+      if (existingIndex !== -1) {
+        tagsCopy.splice(existingIndex, 1);
+        if (existingIndex < tagIndex) {
+          tagsCopy.splice(tagIndex - 1, 0, newTag);
+        } else {
+          tagsCopy.splice(tagIndex, 0, newTag);
+        }
+      } else {
+        tagsCopy.splice(tagIndex, 0, newTag);
+      }
       imageWithTags.tags = new Set(tagsCopy);
 
       const originalImages = globalTags.value.get(originalTag);

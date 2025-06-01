@@ -177,7 +177,7 @@ export function useTagOperations() {
 
     for (const image of Array.from(images)) {
       const imageWithTags = datasetStore.images.get(image)!;
-      if (imageWithTags.tags.has(newTag) || !imageWithTags.tags.has(originalTag)) {
+      if (!imageWithTags.tags.has(originalTag)) {
         images.delete(image);
         continue;
       }
@@ -186,13 +186,31 @@ export function useTagOperations() {
 
       const tagsCopy = [...imageWithTags.tags];
       const tagIndex = tagsCopy.indexOf(originalTag);
-      tagsCopy.splice(tagIndex, 1, newTag);
+
+      tagsCopy.splice(tagIndex, 1);
+      const existingIndex = tagsCopy.indexOf(newTag);
+      if (existingIndex !== -1) {
+        tagsCopy.splice(existingIndex, 1);
+        if (existingIndex < tagIndex) {
+          tagsCopy.splice(tagIndex - 1, 0, newTag);
+        } else {
+          tagsCopy.splice(tagIndex, 0, newTag);
+        }
+      } else {
+        tagsCopy.splice(tagIndex, 0, newTag);
+      }
       imageWithTags.tags = new Set(tagsCopy);
+
+      const originalImages = datasetStore.globalTags.get(originalTag);
+      originalImages?.delete(image);
+      if (originalImages?.size === 0) {
+        datasetStore.globalTags.delete(originalTag);
+      }
 
       datasetStore.globalTags.get(originalTag)?.delete(image);
 
       if (!datasetStore.globalTags.has(newTag)) {
-        datasetStore.globalTags.set(newTag, new Set(images));
+        datasetStore.globalTags.set(newTag, new Set([image]));
       } else {
         datasetStore.globalTags.get(newTag)!.add(image);
       }
