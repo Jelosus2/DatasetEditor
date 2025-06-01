@@ -3,9 +3,10 @@ import { ref } from 'vue';
 import { TagGroupService } from '@/services/tagGroupService';
 
 interface TagGroupChangeRecord {
-  type: 'add_group' | 'remove_group' | 'add_tag' | 'remove_tag';
-  group: string;
-  tags: string[];
+  type: 'add_group' | 'remove_group' | 'add_tag' | 'remove_tag' | 'clear_groups';
+  group?: string;
+  tags?: string[];
+  previousGroups?: Map<string, Set<string>>;
 }
 
 export const useTagGroupStore = defineStore('tagGroup', () => {
@@ -24,17 +25,19 @@ export const useTagGroupStore = defineStore('tagGroup', () => {
     if (!change) return;
 
     if (change.type === 'add_group') {
-      tagGroups.value.delete(change.group);
+      tagGroups.value.delete(change.group!);
     } else if (change.type ==='remove_group') {
-      tagGroups.value.set(change.group, new Set(change.tags));
+      tagGroups.value.set(change.group!, new Set(change.tags));
     } else if (change.type === 'add_tag') {
-      for (const tag of change.tags) {
-        tagGroups.value.get(change.group)?.delete(tag);
+      for (const tag of change.tags!) {
+        tagGroups.value.get(change.group!)?.delete(tag);
       }
     } else if (change.type === 'remove_tag') {
-      for (const tag of change.tags) {
-        tagGroups.value.get(change.group)?.add(tag);
+      for (const tag of change.tags!) {
+        tagGroups.value.get(change.group!)?.add(tag);
       }
+    } else if (change.type === 'clear_groups') {
+      tagGroups.value = new Map(change.previousGroups!);
     }
 
     tagGroupRedoStack.value.push(change);
@@ -45,17 +48,19 @@ export const useTagGroupStore = defineStore('tagGroup', () => {
     if (!change) return;
 
     if (change.type === 'add_group') {
-      tagGroups.value.set(change.group, new Set(change.tags));
+      tagGroups.value.set(change.group!, new Set(change.tags));
     } else if (change.type ==='remove_group') {
-      tagGroups.value.delete(change.group);
+      tagGroups.value.delete(change.group!);
     } else if (change.type === 'add_tag') {
-      for (const tag of change.tags) {
-        tagGroups.value.get(change.group)?.add(tag);
+      for (const tag of change.tags!) {
+        tagGroups.value.get(change.group!)?.add(tag);
       }
     } else if (change.type === 'remove_tag') {
-      for (const tag of change.tags) {
-        tagGroups.value.get(change.group)?.delete(tag);
+      for (const tag of change.tags!) {
+        tagGroups.value.get(change.group!)?.delete(tag);
       }
+    } else if (change.type === 'clear_groups') {
+      tagGroups.value.clear();
     }
 
     tagGroupUndoStack.value.push(change);

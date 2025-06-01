@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { APP_VERSION } from '@/version';
+
 const arePreviewsEnabled = defineModel({ required: true, type: Boolean });
 const emit = defineEmits(['load_dataset', 'undo', 'redo', 'save', 'reload_dataset']);
 </script>
@@ -121,6 +123,11 @@ const emit = defineEmits(['load_dataset', 'undo', 'redo', 'save', 'reload_datase
           </li>
         </ul>
       </div>
+    </div>
+    <div class="navbar-end">
+      <span class="rounded border border-gray-400 px-2 text-sm dark:border-base-content/20">
+        Version {{ APP_VERSION }}
+      </span>
     </div>
   </div>
 </template>

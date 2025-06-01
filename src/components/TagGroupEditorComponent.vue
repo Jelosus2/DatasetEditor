@@ -44,6 +44,8 @@ function deleteGroup(mode: 'selected' | 'all') {
 
     tagGroupsStore.tagGroups.delete(selectedGroup.value);
   } else {
+    const previousGroups = new Map(tagGroupsStore.tagGroups);
+    tagGroupsStore.pushTagGroupChange({ type: 'clear_groups', previousGroups });
     tagGroupsStore.tagGroups.clear();
   }
 
