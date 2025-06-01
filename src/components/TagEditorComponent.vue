@@ -62,7 +62,7 @@ function resizeTagGroupSection(moveEvent: MouseEvent) {
 
 function addTag(_tag?: string, image?: string) {
   const newTags = _tag || tagInput.value;
-  if (!newTags || openReplaceTagSection.value) return;
+  if (!newTags || (openReplaceTagSection.value && !_tag)) return;
 
   const images = image ? new Set([image]) : new Set(props.selectedImages);
   tagPosition.value = tagOperations.validateTagPosition(tagPosition.value);
