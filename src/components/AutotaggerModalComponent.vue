@@ -87,6 +87,7 @@ async function autoTagImages(type: 'insert' | 'diff') {
   }
 
   if (type === 'insert') {
+    datasetStore.tagDiff.clear();
     insertTags(results);
   } else {
     loadDiff(results);
