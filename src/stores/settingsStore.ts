@@ -8,6 +8,7 @@ export interface Settings {
   autocomplete: boolean;
   autocompleteFile: string;
   tagsIgnored: string[];
+  taggerPort: number;
 }
 
 interface SettingsChangeRecord {
@@ -22,6 +23,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const autocomplete = ref<boolean>(true);
   const autocompleteFile = ref<string>('');
   const tagsIgnored = ref<string[]>([]);
+  const taggerPort = ref<number>(3067);
   const settingsUndoStack = ref<SettingsChangeRecord[]>([]);
   const settingsRedoStack = ref<SettingsChangeRecord[]>([]);
   const isInitialized = ref(false);
@@ -32,6 +34,7 @@ export const useSettingsStore = defineStore('settings', () => {
     autocomplete,
     autocompleteFile,
     tagsIgnored,
+    taggerPort,
   };
 
   function pushSettingsChange(change: SettingsChangeRecord) {
@@ -93,14 +96,20 @@ export const useSettingsStore = defineStore('settings', () => {
     pushSettingsChange({ key: 'tagsIgnored', previous: [...oldVal], value: [...newVal] });
   });
 
+  watch(taggerPort, (newVal, oldVal) => {
+    if (!isInitialized.value) return;
+    pushSettingsChange({ key: 'taggerPort', previous: oldVal, value: newVal });
+  });
+
   async function loadSettings() {
     isInitialized.value = false;
     const settings = (await settingsService.loadSettings()) as Settings;
-    theme.value = settings.theme;
-    showTagCount.value = settings.showTagCount;
-    autocomplete.value = settings.autocomplete;
-    autocompleteFile.value = settings.autocompleteFile;
-    tagsIgnored.value = settings.tagsIgnored;
+    theme.value = settings.theme ?? theme.value;
+    showTagCount.value = settings.showTagCount ?? showTagCount.value;
+    autocomplete.value = settings.autocomplete ?? autocomplete.value;
+    autocompleteFile.value = settings.autocompleteFile ?? autocompleteFile.value;
+    tagsIgnored.value = settings.tagsIgnored ?? tagsIgnored.value;
+    taggerPort.value = settings.taggerPort ?? taggerPort.value;
     resetSettingsStatus();
     isInitialized.value = true;
   }
@@ -112,6 +121,7 @@ export const useSettingsStore = defineStore('settings', () => {
       autocomplete: toRaw(autocomplete.value),
       autocompleteFile: toRaw(autocompleteFile.value),
       tagsIgnored: toRaw(tagsIgnored.value),
+      taggerPort: toRaw(taggerPort.value),
     });
     resetSettingsStatus();
   }
@@ -123,6 +133,7 @@ export const useSettingsStore = defineStore('settings', () => {
       autocomplete: toRaw(autocomplete.value),
       autocompleteFile: toRaw(autocompleteFile.value),
       tagsIgnored: toRaw(tagsIgnored.value),
+      taggerPort: toRaw(taggerPort.value),
     });
   }
 
@@ -146,6 +157,7 @@ export const useSettingsStore = defineStore('settings', () => {
     autocomplete,
     autocompleteFile,
     tagsIgnored,
+    taggerPort,
     undoSettingsAction,
     redoSettingsAction,
     loadSettings,

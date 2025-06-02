@@ -1,11 +1,11 @@
 export class TaggerApiClient {
-  constructor(baseUrl = 'http://localhost:3067') {
-    this.baseUrl = baseUrl;
+  constructor(host = 'http://localhost') {
+    this.host = host;
   }
 
-  async getTaggerDevice() {
+  async getTaggerDevice(port) {
     try {
-      const response = await fetch(`${this.baseUrl}/device`, {
+      const response = await fetch(`${this.host}:${port}/device`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -24,7 +24,7 @@ export class TaggerApiClient {
     }
   }
 
-  async autoTagImages(props) {
+  async autoTagImages(props, port) {
     try {
       const {
         images,
@@ -49,7 +49,7 @@ export class TaggerApiClient {
           tags_ignored: [...new Set(tagsIgnored)],
         };
 
-        const response = await fetch(`${this.baseUrl}/tagger`, {
+        const response = await fetch(`${this.host}:${port}/tagger`, {
           method: 'POST',
           body: JSON.stringify(body),
           headers: {

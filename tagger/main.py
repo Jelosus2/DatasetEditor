@@ -7,6 +7,7 @@ import numpy as np
 import huggingface_hub
 import torch
 import json
+import sys
 
 def tag_images(images: list[str], tagger_model: str, general_threshold: float, character_threshold: float, remove_underscores: bool, remove_redudant_tags: bool, tags_ignored: list[str]) -> dict[str, list[str]]:
     final_dict = {}
@@ -140,11 +141,12 @@ class ServerHandle(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b'Invalid endpoint')
 
-def run():
-    server_address = ('', 3067)
+def run(port: int = 3067):
+    server_address = ('', port)
     httpd = HTTPServer(server_address, ServerHandle)
-    print('Tagger running')
+    print(f'Service running on port {port}')
     httpd.serve_forever()
 
 if __name__ == '__main__':
-    run()
+    port_arg = int(sys.argv[1]) if len(sys.argv) > 1 else 3067
+    run(port_arg)

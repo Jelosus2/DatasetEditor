@@ -40,13 +40,17 @@ export class IpcHandlers {
       this.datasetManager.saveDataset(dataset, sort)
     );
 
-    ipcMain.handle('get_tagger_device', async () =>
-      await this.taggerApiClient.getTaggerDevice()
-    );
+    ipcMain.handle('get_tagger_device', async () => {
+      const settings = this.settingsManager.loadSettings();
+      const port = settings?.taggerPort ?? 3067;
+      return await this.taggerApiClient.getTaggerDevice(port);
+    });
 
-    ipcMain.handle('tag_images', async (_, props) =>
-      await this.taggerApiClient.autoTagImages(props)
-    );
+    ipcMain.handle('tag_images', async (_, props) => {
+      const settings = this.settingsManager.loadSettings();
+      const port = settings?.taggerPort ?? 3067;
+      return await this.taggerApiClient.autoTagImages(props, port);
+    });
 
     ipcMain.handle('save_settings', (_, settings) =>
       this.settingsManager.saveSettings(settings)
@@ -72,9 +76,11 @@ export class IpcHandlers {
       this.settingsManager.compareSettingsChanges(settings)
     );
 
-    ipcMain.handle('start_tagger_service', () =>
-      this.taggerProcessManager.startTaggerService()
-    );
+    ipcMain.handle('start_tagger_service', () => {
+      const settings = this.settingsManager.loadSettings();
+      const port = settings?.taggerPort ?? 3067;
+      return this.taggerProcessManager.startTaggerService(port);
+    });
 
     ipcMain.handle('stop_tagger_service', () =>
       this.taggerProcessManager.stopTaggerService()

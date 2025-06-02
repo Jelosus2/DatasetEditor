@@ -59,7 +59,6 @@ async function stopAutotagger() {
 }
 
 async function autoTagImages(type: 'insert' | 'diff') {
-  if (!taggerLogs.value.includes('Tagger running')) return;
   if (!datasetStore.images.size) {
     emit('trigger_alert', 'error', 'Dataset not loaded');
     return;
@@ -141,7 +140,7 @@ function scrollToBottom() {
 
 onMounted(() => {
   window.ipcRenderer.receive('tagger-output', async (output: string) => {
-    if (output === 'Tagger running') {
+    if (output.startsWith('Service running')) {
       device.value = (await window.ipcRenderer.invoke('get_tagger_device')) as string;
       isTaggerRunning.value = true;
       isInstalling.value = false;

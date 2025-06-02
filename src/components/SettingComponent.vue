@@ -74,6 +74,18 @@ async function changeAutocompleteFile() {
                 <span v-if="isChangingFile" class="loading ml-2 loading-spinner"></span>
               </div>
             </div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="space-y-2">
+          <h2 class="text-xl font-semibold">Autotagger</h2>
+          <div class="space-y-4 pt-2">
+            <div class="form-control w-full max-w-xs">
+              <label class="label">
+                <span class="label-text">Service port</span>
+              </label>
+              <input type="number" class="input input-bordered !outline-none" v-model.number="settingsStore.taggerPort" />
+            </div>
             <div class="w-full max-w-md">
               <label class="label">
                 <span class="label-text">Ignored tags</span>

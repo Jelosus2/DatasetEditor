@@ -10,14 +10,14 @@ export class TaggerProcessManager {
     this.taggerProcess = null;
   }
 
-  startTaggerService() {
+  startTaggerService(port) {
     try {
       if (this.installProcess) return true;
 
       this.installProcess = this.createInstallProcess();
       this.installProcess.on('close', () => {
         this.cleanupInstallProcess();
-        this.startTaggerServer();
+        this.startTaggerServer(port);
       });
 
       return true;
@@ -43,11 +43,13 @@ export class TaggerProcessManager {
     return process;
   }
 
-  startTaggerServer() {
+  startTaggerServer(port) {
     const python = join(this.taggerPath, 'embedded_python', 'python.exe');
     const filePath = join(this.taggerPath, 'main.py');
 
-    this.taggerProcess = spawn(python, ['-u', filePath]);
+    const args = ['-u', filePath];
+    if (port) args.push(port.toString());
+    this.taggerProcess = spawn(python, args);
     this.attachProcessListeners(this.taggerProcess, 'Tagger error');
   }
 
