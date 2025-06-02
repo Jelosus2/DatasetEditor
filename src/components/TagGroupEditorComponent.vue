@@ -297,12 +297,14 @@ function renameTagGroup(event: KeyboardEvent) {
                   placeholder="Name for the tag group..."
                 />
               </label>
-              <div class="relative">
+              <div class="relative flex-1">
                 <AutocompletionComponent
                   v-model="groupTags"
-                  class="textarea w-full flex-1 resize-none !outline-none"
+                  class="textarea w-full h-full resize-none !outline-none"
+                  :id="'tag-group-creation-list'"
                   :textarea="true"
                   :multiple="true"
+                  :dropdown-below="true"
                   :placeholder="'Tags separated by comma to be added to the group...'"
                 />
               </div>

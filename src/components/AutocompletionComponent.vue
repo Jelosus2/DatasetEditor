@@ -14,6 +14,7 @@ const props = defineProps({
   containsMode: { type: Boolean },
   textarea: { type: Boolean, default: false },
   rows: { type: [Number, String] },
+  dropdownBelow: { type: Boolean, default: false },
 });
 
 const attrs = useAttrs();
@@ -134,13 +135,16 @@ async function handleSuggestionClick(tag: string) {
     @input="showSuggestions"
     @focus="active = true"
     @blur="((completions = []), (selectedIndex = -1), (active = false))"
-    @keyup.enter="onKeyEnter"
+    @keydown.enter.prevent="onKeyEnter"
     @keydown.prevent.arrow-up="onArrowUp"
     @keydown.prevent.arrow-down="onArrowDown"
   ></textarea>
   <ul
     v-if="active"
-    class="absolute bottom-full left-0 max-h-60 w-full overflow-y-auto text-xs dark:bg-[#1e1f2c]"
+    :class="[
+      'absolute left-0 max-h-60 w-full overflow-y-auto text-xs dark:bg-[#1e1f2c]',
+      dropdownBelow ? 'top-full' : 'bottom-full'
+    ]"
     :id="id"
   >
     <li

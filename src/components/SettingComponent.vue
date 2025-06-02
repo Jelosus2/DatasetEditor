@@ -1,21 +1,19 @@
 <script setup lang="ts">
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
-import { ref, computed } from 'vue';
+import { ref, watch } from 'vue';
 import { useSettingsStore } from '@/stores/settingsStore';
 
 const isChangingFile = ref(false);
 
 const settingsStore = useSettingsStore();
 
-const tagsIgnoredText = computed({
-  get: () => settingsStore.tagsIgnored.join(', '),
-  set: (value: string) => {
-    settingsStore.tagsIgnored = value
-      .split(',')
-      .map(tag => tag.trim())
-      .filter(tag => tag.length > 0);
-  }
+const tagsIgnoredInput = ref(settingsStore.tagsIgnored.join(', '));
+watch(tagsIgnoredInput, value => {
+  settingsStore.tagsIgnored = value
+    .split(',')
+    .map(t => t.trim())
+    .filter(tag => tag.length > 0);
 });
 
 async function changeAutocompleteFile() {
@@ -85,7 +83,7 @@ async function changeAutocompleteFile() {
               </p>
               <div class="relative">
                 <AutocompletionComponent
-                  v-model="tagsIgnoredText"
+                  v-model="tagsIgnoredInput"
                   class="textarea w-full resize-y !outline-none"
                   :rows="3"
                   :id="'ignore-tags-list'"
