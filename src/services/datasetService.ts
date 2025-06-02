@@ -1,6 +1,10 @@
 import type { Image } from '@/stores/datasetStore';
 import { useIpcRenderer } from '@/composables/useIpcRenderer';
 
+export function sortTags(tags: Iterable<string>): string[] {
+  return [...tags].sort((a, b) => a.localeCompare(b));
+}
+
 export class DatasetService {
   private ipc = useIpcRenderer([]);
 
@@ -12,25 +16,25 @@ export class DatasetService {
     }>('load_dataset', isAllSaved, directory);
   }
 
-  async saveDataset(dataset: Record<string, { path: string; tags: string[] }>) {
-    return this.ipc.invoke('save_dataset', dataset);
+  async saveDataset(dataset: Record<string, { path: string; tags: string[] }>, sort = false) {
+    return this.ipc.invoke('save_dataset', dataset, sort);
   }
 
   async compareDatasetChanges(images: Array<Array<string | { tags: string[]; path: string }>>) {
     return this.ipc.invoke<boolean>('compare_dataset_changes', images);
   }
 
-  imagesToObject(images: Map<string, Image>) {
+  imagesToObject(images: Map<string, Image>, sort = false) {
     return [...images].map(([img, props]) => [
       img,
-      { tags: [...props.tags], path: props.path }
+      { tags: sort ? sortTags(props.tags) : [...props.tags], path: props.path }
     ]);
   }
 
-  datasetToSaveFormat(images: Map<string, Image>) {
+  datasetToSaveFormat(images: Map<string, Image>, sort = false) {
     const obj: Record<string, { path: string; tags: string[] }> = {};
     for (const [image, props] of images.entries()) {
-      obj[image] = { path: props.path, tags: [...props.tags] }
+      obj[image] = { path: props.path, tags: sort ? sortTags(props.tags) : [...props.tags] }
     }
     return obj;
   }

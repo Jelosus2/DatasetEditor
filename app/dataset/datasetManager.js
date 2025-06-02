@@ -4,6 +4,10 @@ import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 
 import { extname, basename, join, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+function sortTags(tags) {
+  return Array.from(tags).sort((a, b) => a.localeCompare(b));
+}
+
 const SUPPORTED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png'];
 
 export class DatasetManager {
@@ -104,7 +108,7 @@ export class DatasetManager {
     }
   }
 
-  saveDataset(dataset) {
+  saveDataset(dataset, sort = false) {
     for (const [imageName, props] of Object.entries(dataset)) {
       try {
         const datasetDir = dirname(props.path);
@@ -121,7 +125,10 @@ export class DatasetManager {
       }
     }
 
-    this.originalDataset = Object.entries(dataset).map(([img, props]) => [img, props]);
+    this.originalDataset = Object.entries(dataset).map(([img, props]) => [
+      img,
+      { tags: sort ? sortTags(props.tags) : [...props.tags], path: props.path }
+    ]);
   }
 
   compareDatasetChanges(images) {
@@ -129,10 +136,10 @@ export class DatasetManager {
     return _.isEqual(this.originalDataset, images);
   }
 
-  serializeDatasetImages(images) {
+  serializeDatasetImages(images, sort = false) {
     return [...images].map(([img, props]) => [
       img,
-      { tags: [...props.tags], path: props.path }
+      { tags: sort ? sortTags(props.tags) : [...props.tags], path: props.path }
     ]);
   }
 }

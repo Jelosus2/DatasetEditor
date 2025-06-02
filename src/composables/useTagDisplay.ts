@@ -5,7 +5,6 @@ export function useTagDisplay(
   selectedImages: Ref<Set<string>>,
   filterInput: Ref<string>,
   filterMode: Ref<string>,
-  sortMode: Ref<string>,
   sortOrder: Ref<string>,
   globalSortMode: Ref<string>,
   globalSortOrder: Ref<string>
@@ -31,7 +30,7 @@ export function useTagDisplay(
     const [firstTag, ...remainingTags] = allTags;
 
     let rest = remainingTags;
-    if (sortMode.value === 'alphabetical') {
+    if (datasetStore.sortMode === 'alphabetical') {
       rest = [...rest].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
     }
 

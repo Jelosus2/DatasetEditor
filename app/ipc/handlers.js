@@ -36,8 +36,8 @@ export class IpcHandlers {
       this.tagDatabase.loadTagCompletions(query)
     );
 
-    ipcMain.handle('save_dataset', (_, dataset) =>
-      this.datasetManager.saveDataset(dataset)
+    ipcMain.handle('save_dataset', (_, dataset, sort) =>
+      this.datasetManager.saveDataset(dataset, sort)
     );
 
     ipcMain.handle('get_tagger_device', async () =>

@@ -15,7 +15,6 @@ const props = defineProps({
   filterInput: { type: String, required: true },
 });
 
-const sortMode = defineModel<string>('sortMode', { required: true });
 const sortOrder = defineModel<string>('sortOrder', { required: true });
 const globalSortMode = defineModel<string>('globalSortMode', { required: true });
 const globalSortOrder = defineModel<string>('globalSortOrder', { required: true });
@@ -218,7 +217,7 @@ function replaceTag(mode: 'selected' | 'all') {
             />
           </label>
           <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
-            <select v-model.lazy="sortMode" class="select relative w-fit select-sm !outline-none" :disabled="!displayedTags.size">
+            <select v-model.lazy="datasetStore.sortMode" class="select relative w-fit select-sm !outline-none" :disabled="!displayedTags.size">
               <option value="none" selected>None</option>
               <option value="alphabetical">Alphabetical</option>
             </select>

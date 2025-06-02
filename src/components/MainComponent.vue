@@ -20,7 +20,6 @@ const filterInput = ref('');
 const isFiltering = computed(() => !!filterInput.value);
 const container = shallowRef<HTMLDivElement | null>(null);
 const containerWidth = ref(0);
-const sortMode = ref('none');
 const sortOrder = ref('asc');
 const globalSortMode = ref('alphabetical');
 const globalSortOrder = ref('asc');
@@ -36,7 +35,6 @@ const {
   selectedImages,
   filterInput,
   filterMode,
-  sortMode,
   sortOrder,
   globalSortMode,
   globalSortOrder,
@@ -193,7 +191,6 @@ onMounted(() => {
           :displayed-global-tags="displayedGlobalTags"
           :is-filtering="isFiltering"
           :filter-input="filterInput"
-          v-model:sort-mode="sortMode"
           v-model:sort-order="sortOrder"
           v-model:global-sort-mode="globalSortMode"
           v-model:global-sort-order="globalSortOrder"

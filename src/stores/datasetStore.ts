@@ -30,6 +30,7 @@ export const useDatasetStore = defineStore('dataset', () => {
   const datasetUndoStack = ref<DatasetChangeRecord[]>([]);
   const datasetRedoStack = ref<DatasetChangeRecord[]>([]);
   const directory = ref('');
+  const sortMode = ref('none');
   const onChange = ref<(() => void)[]>([]);
   const datasetService = new DatasetService()
 
@@ -207,13 +208,15 @@ export const useDatasetStore = defineStore('dataset', () => {
       throw new Error('The dataset has not been loaded yet');
     }
 
-    const datasetObj = datasetService.datasetToSaveFormat(images.value);
-    await datasetService.saveDataset(datasetObj);
+    const shouldSort = sortMode.value === 'alphabetical';
+    const datasetObj = datasetService.datasetToSaveFormat(images.value, shouldSort);
+    await datasetService.saveDataset(datasetObj, shouldSort);
   }
 
   async function isDatasetSaved() {
+    const shouldSort = sortMode.value === 'alphabetical';
     return datasetService.compareDatasetChanges(
-      datasetService.imagesToObject(images.value)
+      datasetService.imagesToObject(images.value, shouldSort)
     );
   }
 
@@ -221,6 +224,7 @@ export const useDatasetStore = defineStore('dataset', () => {
     images,
     globalTags,
     directory,
+    sortMode,
     tagDiff,
     onChange,
     pushDatasetChange,
