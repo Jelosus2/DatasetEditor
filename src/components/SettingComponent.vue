@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
+
 import { ref, computed } from 'vue';
 import { useSettingsStore } from '@/stores/settingsStore';
 
@@ -81,12 +83,17 @@ async function changeAutocompleteFile() {
               <p class="text-sm text-base-content/70 mb-2">
                 Tags to ignore in the autotagging process. Separate multiple tags with commas.
               </p>
-              <textarea
-                class="textarea w-full resize-y !outline-none"
-                rows="3"
-                placeholder="tag1, tag2, tag3"
-                v-model="tagsIgnoredText"
-              ></textarea>
+              <div class="relative">
+                <AutocompletionComponent
+                  v-model="tagsIgnoredText"
+                  class="textarea w-full resize-y !outline-none"
+                  :rows="3"
+                  :id="'ignore-tags-list'"
+                  :textarea="true"
+                  :multiple="true"
+                  placeholder="tag1, tag2, tag3"
+                />
+              </div>
             </div>
           </div>
         </div>

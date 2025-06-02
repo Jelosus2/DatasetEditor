@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, shallowRef, nextTick } from 'vue';
+import { ref, shallowRef, nextTick, useAttrs } from 'vue';
 import { useSettingsStore } from '@/stores/settingsStore';
 
+defineOptions({ inheritAttrs: false });
 const tagInput = defineModel({ required: true, type: String });
 const emit = defineEmits(['on-complete', 'on-input']);
 const props = defineProps({
@@ -11,15 +12,18 @@ const props = defineProps({
   multiple: { type: Boolean },
   customList: { type: Array<string> },
   containsMode: { type: Boolean },
+  textarea: { type: Boolean, default: false },
+  rows: { type: [Number, String] },
 });
 
+const attrs = useAttrs();
 const settingsStore = useSettingsStore();
 
 const completions = ref<{ tag: string; type?: number; output: string }[]>([]);
 const completionList = shallowRef<HTMLLIElement[]>([]);
 const selectedIndex = ref(-1);
 const active = ref(false);
-const input = shallowRef<HTMLInputElement | null>(null);
+const input = shallowRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
 async function showSuggestions() {
   if (!settingsStore.autocomplete) return;
@@ -105,11 +109,13 @@ async function handleSuggestionClick(tag: string) {
 
 <template>
   <input
+    v-if="!textarea"
     ref="input"
     v-model.trim="tagInput"
     type="text"
     :placeholder="placeholder"
     :disabled="disabled"
+    v-bind="attrs"
     @input="showSuggestions"
     @focus="active = true"
     @blur="((completions = []), (selectedIndex = -1), (active = false))"
@@ -117,6 +123,21 @@ async function handleSuggestionClick(tag: string) {
     @keydown.prevent.arrow-up="onArrowUp"
     @keydown.prevent.arrow-down="onArrowDown"
   />
+  <textarea
+    v-else
+    ref="input"
+    v-model.trim="tagInput"
+    :rows="rows"
+    :placeholder="placeholder"
+    :disabled="disabled"
+    v-bind="attrs"
+    @input="showSuggestions"
+    @focus="active = true"
+    @blur="((completions = []), (selectedIndex = -1), (active = false))"
+    @keyup.enter="onKeyEnter"
+    @keydown.prevent.arrow-up="onArrowUp"
+    @keydown.prevent.arrow-down="onArrowDown"
+  ></textarea>
   <ul
     v-if="active"
     class="absolute bottom-full left-0 max-h-60 w-full overflow-y-auto text-xs dark:bg-[#1e1f2c]"
