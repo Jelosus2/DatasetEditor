@@ -5,7 +5,11 @@ import { extname, basename, join, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 function sortTags(tags) {
-  return Array.from(tags).sort((a, b) => a.localeCompare(b));
+  const arr = Array.from(tags);
+  if (arr.length <= 1) return arr;
+  const [first, ...rest] = arr;
+  rest.sort((a, b) => a.localeCompare(b));
+  return [first, ...rest];
 }
 
 const SUPPORTED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png'];

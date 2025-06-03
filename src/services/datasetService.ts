@@ -2,7 +2,11 @@ import type { Image } from '@/stores/datasetStore';
 import { useIpcRenderer } from '@/composables/useIpcRenderer';
 
 export function sortTags(tags: Iterable<string>): string[] {
-  return [...tags].sort((a, b) => a.localeCompare(b));
+  const arr = [...tags];
+  if (arr.length <= 1) return arr;
+  const [first, ...rest] = arr;
+  rest.sort((a, b) => a.localeCompare(b));
+  return [first, ...rest];
 }
 
 export class DatasetService {
