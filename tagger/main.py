@@ -9,7 +9,7 @@ import torch
 import json
 import sys
 
-def tag_images(images: list[str], tagger_model: str, general_threshold: float, character_threshold: float, remove_underscores: bool, remove_redudant_tags: bool, tags_ignored: list[str]) -> dict[str, list[str]]:
+def tag_images(images: list[str], tagger_model: str, general_threshold: float, character_threshold: float, remove_underscores: bool, tags_ignored: list[str]) -> dict[str, list[str]]:
     final_dict = {}
 
     model, tag_data, target_size = load_model(tagger_model)
@@ -26,7 +26,7 @@ def tag_images(images: list[str], tagger_model: str, general_threshold: float, c
             processed_image = prepare_image(img, target_size)
             preds = model.run(None, { model.get_inputs()[0].name: processed_image })[0]
 
-            processed_tags = process_predictions(preds, tag_data, general_threshold, character_threshold, remove_underscores, remove_redudant_tags, tags_ignored)
+            processed_tags = process_predictions(preds, tag_data, general_threshold, character_threshold, remove_underscores, tags_ignored)
             final_dict[Path(image.replace('\\', '/')).name] = processed_tags
 
     print('Tagging finished')
@@ -75,7 +75,7 @@ def prepare_image(image: ImageFile.ImageFile, target_size: int) -> np.ndarray:
 
     return np.expand_dims(image_array, axis=0)
 
-def process_predictions(preds: np.ndarray, tag_data: LabelData, general_threshold: float, character_threshold: float, remove_underscores: bool, remove_redudant_tags: bool, tags_ignored: list[str]) -> list[str]:
+def process_predictions(preds: np.ndarray, tag_data: LabelData, general_threshold: float, character_threshold: float, remove_underscores: bool, tags_ignored: list[str]) -> list[str]:
     scores = preds.flatten()
 
     character_tags = [tag_data.names[i] for i in tag_data.character if scores[i] >= character_threshold]
@@ -88,18 +88,6 @@ def process_predictions(preds: np.ndarray, tag_data: LabelData, general_threshol
     if tags_ignored:
         ignored_set = set(tag.lower().strip() for tag in tags_ignored)
         final_tags = [tag for tag in final_tags if tag.lower() not in ignored_set]
-
-    if remove_redudant_tags:
-        separator = ' ' if remove_underscores else '_'
-        for tag in final_tags.copy():
-            for other_tag in final_tags:
-                if tag != other_tag and tag in other_tag and (
-                    other_tag.startswith(tag + separator) or
-                    other_tag.endswith(separator + tag) or
-                    (separator + tag + separator) in other_tag
-                ):
-                    final_tags.remove(tag)
-                    break
 
     return final_tags
 
@@ -128,10 +116,9 @@ class ServerHandle(BaseHTTPRequestHandler):
             character_threshold: float = float(data['character_threshold'])
             general_threshold: float = float(data['general_threshold'])
             remove_underscores: bool = data['remove_underscores']
-            remove_redudant_tags: bool = data['remove_redundant_tags']
             tags_ignored: list[str] = data.get('tags_ignored', [])
 
-            tagged_images = tag_images(images, tagger_model, general_threshold, character_threshold, remove_underscores, remove_redudant_tags, tags_ignored)
+            tagged_images = tag_images(images, tagger_model, general_threshold, character_threshold, remove_underscores, tags_ignored)
 
             self.good_response(tagged_images)
         elif self.path == '/device':

@@ -1,3 +1,27 @@
+export function removeRedundantTagsHelper(tags, removeUnderscores) {
+  const separator = removeUnderscores ? ' ' : '_';
+  const tagArray = Array.from(tags);
+  const cleaned = [...tagArray];
+
+  for (const tag of [...cleaned]) {
+    for (const otherTag of cleaned) {
+      if (
+        tag !== otherTag &&
+        otherTag.includes(tag) &&
+        (otherTag.startsWith(tag + separator) ||
+          otherTag.endsWith(separator + tag) ||
+          otherTag.includes(separator + tag + separator))
+      ) {
+        const index = cleaned.indexOf(tag);
+        if (index !== -1) cleaned.splice(index, 1);
+        break;
+      }
+    }
+  }
+
+  return new Set(cleaned);
+}
+
 export class TaggerApiClient {
   constructor(host = 'http://localhost') {
     this.host = host;
@@ -45,7 +69,6 @@ export class TaggerApiClient {
           character_threshold: characterThreshold,
           general_threshold: generalThreshold,
           remove_underscores: removeUnderscores,
-          remove_redundant_tags: removeRedundantTags,
           tags_ignored: [...new Set(tagsIgnored)],
         };
 
@@ -64,10 +87,18 @@ export class TaggerApiClient {
         const data = await response.json();
 
         for (const key in data) {
+          const incoming = new Set(data[key]);
           if (!results.has(key)) {
-            results.set(key, new Set(data[key]));
+            const finalSet = removeRedundantTags
+              ? removeRedundantTagsHelper(incoming, removeUnderscores)
+              : incoming;
+            results.set(key, finalSet);
           } else {
-            results.set(key, new Set([...results.get(key), ...data[key]]));
+            const combined = new Set([...results.get(key), ...incoming]);
+            const finalSet = removeRedundantTags
+              ? removeRedundantTagsHelper(combined, removeUnderscores)
+              : combined;
+            results.set(key, finalSet);
           }
         }
       }
