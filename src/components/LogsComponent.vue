@@ -46,7 +46,7 @@ function exportLogs() {
 <template>
   <input type="radio" name="editor_tabs" class="tab" aria-label="Logs" />
 
-  <div class="tab-content border-t-base-300 bg-base-100 flex h-full flex-col p-4">
+  <div class="tab-content border-t-base-300 bg-base-100 h-full p-4">
     <div
       ref="logsContainer"
       class="h-full flex flex-col rounded-box bg-base-300 font-mono"
