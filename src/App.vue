@@ -5,6 +5,7 @@ import TagGroupEditorComponent from '@/components/TagGroupEditorComponent.vue';
 import AlertComponent from '@/components/AlertComponent.vue';
 import AutotaggerModalComponent from '@/components/AutotaggerModalComponent.vue';
 import SettingComponent from '@/components/SettingComponent.vue';
+import LogsComponent from '@/components/LogsComponent.vue';
 
 import { ref, onMounted } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
@@ -73,6 +74,7 @@ onMounted(async () => {
     <MainComponent :are-previews-enabled="arePreviewsEnabled" />
     <TagGroupEditorComponent @trigger_alert="showAlert" />
     <SettingComponent />
+    <LogsComponent />
   </div>
   <AutotaggerModalComponent @trigger_alert="showAlert" />
 </template>

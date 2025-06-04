@@ -2,6 +2,7 @@ import type { AlertType } from '@/composables/useAlert';
 import type { useDatasetStore } from '@/stores/datasetStore';
 import type { useTagGroupStore } from '@/stores/tagGroupStore';
 import type { useSettingsStore } from '@/stores/settingsStore';
+import { useLogStore } from '@/stores/logStore';
 
 export interface AppControllerDependencies {
   datasetStore: ReturnType<typeof useDatasetStore>;
@@ -11,6 +12,8 @@ export interface AppControllerDependencies {
 }
 
 export class AppController {
+  private logStore = useLogStore();
+
   constructor(private deps: AppControllerDependencies) {}
 
   async initialize() {
@@ -24,7 +27,7 @@ export class AppController {
       await this.deps.datasetStore.loadDataset(reload);
     } catch (error) {
       this.deps.showAlert('error', 'Failed to load dataset');
-      console.error('Error loading dataset:', error);
+      this.logStore.addLog('error', `Error loading dataset: ${(error as Error).message}`);
     }
   }
 
@@ -61,18 +64,24 @@ export class AppController {
 
     try {
       if (activeTab === 'Dataset') {
+        this.logStore.addLog('info', 'Saving dataset');
         await this.deps.datasetStore.saveDataset();
         this.deps.showAlert('success', 'Dataset saved successfully');
+        this.logStore.addLog('info', 'Dataset saved');
       } else if (activeTab === 'Tag Groups') {
+        this.logStore.addLog('info', 'Saving tag groups');
         await this.deps.tagGroupsStore.saveTagGroups();
         this.deps.showAlert('success', 'Tag groups saved successfully');
+        this.logStore.addLog('info', 'Tag groups saved');
       } else if (activeTab === 'Settings') {
+        this.logStore.addLog('info', 'Saving settings');
         await this.deps.settingsStore.saveSettings();
         this.deps.showAlert('success', 'Settings saved successfully');
+        this.logStore.addLog('info', 'Settings saved');
       }
     } catch (error) {
       this.deps.showAlert('error', (error as Error).message);
-      console.error('Error saving:', error);
+      this.logStore.addLog('error', `Error saving: ${(error as Error).message}`);
     }
   }
 
@@ -84,7 +93,7 @@ export class AppController {
         this.deps.settingsStore.saveSettings()
       ]);
     } catch (error) {
-      console.error('Error saving all changes:', error);
+      this.logStore.addLog('error', `Error saving all changes: ${(error as Error).message}`);
     }
   }
 

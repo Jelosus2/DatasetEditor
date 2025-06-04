@@ -22,7 +22,8 @@ export class TaggerProcessManager {
 
       return true;
     } catch (error) {
-      console.error('Error starting tagger server:', error);
+      const message = `Error starting tagger server: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      this.mainWindow?.webContents.send('app-log', { type: 'error', message });
       return false;
     }
   }
@@ -65,7 +66,8 @@ export class TaggerProcessManager {
     });
 
     process.on('error', (err) => {
-      console.error(`${errorPrefix}: ${err}`);
+      const message = `${errorPrefix}: ${err.message ?? err}`;
+      this.mainWindow.webContents.send('app-log', { type: 'error', message });
     });
   }
 

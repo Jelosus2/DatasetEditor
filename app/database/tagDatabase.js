@@ -8,17 +8,17 @@ export class TagDatabase {
     this.db = database;
   }
 
-  loadCSVIntoDatabase(settingsManager) {
+  loadCSVIntoDatabase(settingsManager, mainWindow) {
     const rowCount = this.db.prepare('SELECT COUNT(*) as count FROM tags').get().count;
     if (rowCount === 0) {
       const settings = settingsManager.loadSettings();
       if (settings && settings.autocompleteFile && existsSync(settings.autocompleteFile)) {
-        this.insertTagsFromCSV(settings.autocompleteFile, true);
+        this.insertTagsFromCSV(settings.autocompleteFile, true, mainWindow);
       }
     }
   }
 
-  async insertTagsFromCSV(csvFile, resetTable = false) {
+  async insertTagsFromCSV(csvFile, resetTable = false, mainWindow) {
     if (!csvFile || !existsSync(csvFile)) {
       throw new Error(`CSV file not found: ${csvFile}`);
     }
@@ -61,7 +61,8 @@ export class TagDatabase {
             }
           }
         } catch (error) {
-          console.warn(`Error parsing line: ${line}`, error);
+          const message = `Error parsing line ${line} of the CSV: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+          mainWindow?.webContents.send('app-log', { type: 'error', message });
         }
       });
 
@@ -71,6 +72,8 @@ export class TagDatabase {
           console.log('CSV import completed successfully');
           resolve();
         } catch (error) {
+          const message = `Error importing the tags from the CSV file: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+          mainWindow?.webContents.send('app-log', { type: 'error', message });
           reject(error);
         }
       });

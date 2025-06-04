@@ -23,8 +23,9 @@ export function removeRedundantTagsHelper(tags, removeUnderscores) {
 }
 
 export class TaggerApiClient {
-  constructor(host = 'http://localhost') {
+  constructor(host = 'http://localhost', mainWindow) {
     this.host = host;
+    this.mainWindow = mainWindow;
   }
 
   async getTaggerDevice(port) {
@@ -43,7 +44,8 @@ export class TaggerApiClient {
       const data = await response.json();
       return data.device;
     } catch (error) {
-      console.error('Error getting tagger device:', error);
+      const message = `Error getting tagger device: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      this.mainWindow?.webContents.send('app-log', { type: 'error', message });
       return 'Unknown';
     }
   }
@@ -105,7 +107,8 @@ export class TaggerApiClient {
 
       return results;
     } catch (error) {
-      console.error('Error auto tagging images:', error);
+      const message = `Error auto tagging images: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      this.mainWindow?.webContents.send('app-log', { type: 'error', message });
       return null;
     }
   }

@@ -28,13 +28,13 @@ export class DatasetManager {
     if (!directoryPath) return null;
 
     try {
-      const { images, globalTags } = await this.processDatasetDirectory(directoryPath);
+      const { images, globalTags } = await this.processDatasetDirectory(directoryPath, mainWindow);
       this.originalDataset = this.serializeDatasetImages(images);
 
       return { images, globalTags, directoryPath };
     } catch (error) {
-      console.error('Error loading dataset directory:', error);
-      throw error;
+      const message = `Error loading dataset directory: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      mainWindow?.webContents.send('app-log', { type: 'error', message });
     }
   }
 
@@ -58,7 +58,7 @@ export class DatasetManager {
     return result.canceled ? null : result.filePaths[0];
   }
 
-  async processDatasetDirectory(directoryPath) {
+  async processDatasetDirectory(directoryPath, mainWindow) {
     const images = new Map();
     const globalTags = new Map();
 
@@ -68,7 +68,7 @@ export class DatasetManager {
     for (const file of files) {
       const fileName = basename(file);
       const imagePath = join(directoryPath, file);
-      const tags = this.loadImageTags(directoryPath, fileName);
+      const tags = this.loadImageTags(directoryPath, fileName, mainWindow);
 
       images.set(fileName, {
         tags,
@@ -82,7 +82,7 @@ export class DatasetManager {
     return { images, globalTags };
   }
 
-  loadImageTags(directoryPath, fileName) {
+  loadImageTags(directoryPath, fileName, mainWindow) {
     const txtPath = join(directoryPath, fileName.replace(/\.[^.]+$/, '.txt'));
 
     if (!existsSync(txtPath)) {
@@ -98,7 +98,8 @@ export class DatasetManager {
           .filter(tag => tag.length > 0)
       );
     } catch (error) {
-      console.warn(`Error reading tags for ${fileName}:`, error);
+      const message = `Error reading tags for ${fileName}: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      mainWindow?.webContents.send('app-log', { type: 'warning', message });
       return new Set();
     }
   }
@@ -112,7 +113,7 @@ export class DatasetManager {
     }
   }
 
-  saveDataset(dataset, sort = false) {
+  saveDataset(dataset, sort = false, mainWindow) {
     for (const [imageName, props] of Object.entries(dataset)) {
       try {
         const datasetDir = dirname(props.path);
@@ -125,7 +126,8 @@ export class DatasetManager {
 
         writeFileSync(filePath, tags);
       } catch (error) {
-        console.error(`Error saving tags for ${imageName}:`, error);
+        const message = `Error saving tags for ${imageName}: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+        mainWindow?.webContents.send('app-log', { type: 'error', message });
       }
     }
 

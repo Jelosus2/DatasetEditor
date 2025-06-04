@@ -27,8 +27,8 @@ export class TagGroupManager {
       writeFileSync(result.filePath, JSON.stringify(tagGroups, null, 2));
       return true;
     } catch (error) {
-      console.error('Error saving tag group file:', error);
-      throw error;
+      const message = `Error saving tag group file: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      mainWindow?.webContents.send('app-log', { type: 'error', message });
     }
   }
 
@@ -56,12 +56,13 @@ export class TagGroupManager {
 
       return new Map(Object.entries(data).map(([name, tags]) => [name, new Set(tags)]));
     } catch (error) {
-      console.error('Error importing tag group:', error);
+      const message = `Error importing tag group: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      mainWindow?.webContents.send('app-log', { type: 'error', message });
       return false;
     }
   }
 
-  saveTagGroup(tagGroups) {
+  saveTagGroup(tagGroups, mainWindow) {
     const tagGroupFilePath = join(this.tagGroupsPath, 'tag_groups.json');
 
     try {
@@ -73,12 +74,12 @@ export class TagGroupManager {
 
       this.originalTagGroups = tagGroups;
     } catch (error) {
-      console.error('Error saving tag group:', error);
-      throw error;
+      const message = `Error saving tag group: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      mainWindow?.webContents.send('app-log', { type: 'error', message });
     }
   }
 
-  loadTagGroups() {
+  loadTagGroups(mainWindow) {
     const tagGroupFilePath = join(this.tagGroupsPath, 'tag_groups.json');
 
     if (!existsSync(tagGroupFilePath)) return null;
@@ -88,7 +89,8 @@ export class TagGroupManager {
       this.originalTagGroups = data;
       return new Map(Object.entries(data).map(([name, tags]) => [name, new Set(tags)]));
     } catch (error) {
-      console.error('Error loading tag groups:', error);
+      const message = `Error loading tag groups: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      mainWindow?.webContents.send('app-log', { type: 'error', message });
       return null;
     }
   }

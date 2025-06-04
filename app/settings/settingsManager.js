@@ -21,7 +21,7 @@ export class SettingsManager {
     };
   }
 
-  saveSettings(settings, shouldDarkBeDefault) {
+  saveSettings(settings, shouldDarkBeDefault, mainWindow) {
     const settingsPath = join(this.dataPath, 'settings.json');
     const settingsDir = dirname(settingsPath);
 
@@ -46,12 +46,12 @@ export class SettingsManager {
       writeFileSync(settingsPath, JSON.stringify(finalSettings, null, 2));
       this.originalSettings = finalSettings;
     } catch (error) {
-      console.error('Error saving settings:', error);
-      throw error;
+      const message = `Error saving settings: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      mainWindow?.webContents.send('app-log', { type: 'error', message });
     }
   }
 
-  loadSettings() {
+  loadSettings(mainWindow) {
     const settingsPath = join(this.dataPath, 'settings.json');
 
     if (!existsSync(settingsPath)) return null;
@@ -61,7 +61,8 @@ export class SettingsManager {
       this.originalSettings = settings;
       return settings;
     } catch (error) {
-      console.error('Error loading settings:', error);
+      const message = `Error loading settings: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      mainWindow?.webContents.send('app-log', { type: 'error', message });
       return null;
     }
   }
@@ -87,15 +88,15 @@ export class SettingsManager {
 
     try {
       const tagDatabase = new (await import('../database/tagDatabase.js')).TagDatabase(database);
-      await tagDatabase.insertTagsFromCSV(result.filePaths[0], true);
+      await tagDatabase.insertTagsFromCSV(result.filePaths[0], true, mainWindow);
       return result.filePaths[0];
     } catch (error) {
-      console.error('Error changing autocomplete file:', error);
-      throw error;
+      const message = `Error changing autocomplete file: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      mainWindow?.webContents.send('app-log', { type: 'error', message });
     }
   }
 
-  initializeDefaultSettings(shouldDarkBeDefault) {
-    this.saveSettings(null, shouldDarkBeDefault);
+  initializeDefaultSettings(shouldDarkBeDefault, mainWindow) {
+    this.saveSettings(null, shouldDarkBeDefault, mainWindow);
   }
 }

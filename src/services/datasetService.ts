@@ -1,5 +1,6 @@
 import type { Image } from '@/stores/datasetStore';
 import { useIpcRenderer } from '@/composables/useIpcRenderer';
+import { useLogStore } from '@/stores/logStore';
 
 export function sortTags(tags: Iterable<string>): string[] {
   const arr = [...tags];
@@ -11,13 +12,18 @@ export function sortTags(tags: Iterable<string>): string[] {
 
 export class DatasetService {
   private ipc = useIpcRenderer([]);
+  private logStore = useLogStore();
 
   async loadDataset(isAllSaved: boolean, directory?: string | null) {
-    return this.ipc.invoke<{
+    this.logStore.addLog('info', 'Requesting dataset load');
+    const result = await this.ipc.invoke<{
       images: Map<string, Image>
       globalTags: Map<string, Set<string>>
       directoryPath: string
     }>('load_dataset', isAllSaved, directory);
+    if (result) this.logStore.addLog('info', 'Dataset loaded');
+    else this.logStore.addLog('info', 'Dataset not loaded');
+    return result;
   }
 
   async saveDataset(dataset: Record<string, { path: string; tags: string[] }>, sort = false) {

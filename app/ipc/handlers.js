@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, shell } from 'electron';
 
 export class IpcHandlers {
   constructor(managers) {
@@ -25,11 +25,11 @@ export class IpcHandlers {
     );
 
     ipcMain.handle('save_tag_group', (_, tagGroups) =>
-      this.tagGroupManager.saveTagGroup(tagGroups)
+      this.tagGroupManager.saveTagGroup(tagGroups, this.windowManager.getMainWindow())
     );
 
     ipcMain.handle('load_tag_group', () =>
-      this.tagGroupManager.loadTagGroups()
+      this.tagGroupManager.loadTagGroups(this.windowManager.getMainWindow())
     );
 
     ipcMain.handle('load_tag_suggestions', (_, query) =>
@@ -37,27 +37,27 @@ export class IpcHandlers {
     );
 
     ipcMain.handle('save_dataset', (_, dataset, sort) =>
-      this.datasetManager.saveDataset(dataset, sort)
+      this.datasetManager.saveDataset(dataset, sort, this.windowManager.getMainWindow())
     );
 
     ipcMain.handle('get_tagger_device', async () => {
-      const settings = this.settingsManager.loadSettings();
+      const settings = this.settingsManager.loadSettings(this.windowManager.getMainWindow());
       const port = settings?.taggerPort ?? 3067;
       return await this.taggerApiClient.getTaggerDevice(port);
     });
 
     ipcMain.handle('tag_images', async (_, props) => {
-      const settings = this.settingsManager.loadSettings();
+      const settings = this.settingsManager.loadSettings(this.windowManager.getMainWindow());
       const port = settings?.taggerPort ?? 3067;
       return await this.taggerApiClient.autoTagImages(props, port);
     });
 
     ipcMain.handle('save_settings', (_, settings) =>
-      this.settingsManager.saveSettings(settings)
+      this.settingsManager.saveSettings(settings, undefined, this.windowManager.getMainWindow())
     );
 
     ipcMain.handle('load_settings', () =>
-      this.settingsManager.loadSettings()
+      this.settingsManager.loadSettings(this.windowManager.getMainWindow())
     );
 
     ipcMain.handle('change_autotag_file', async () =>
@@ -84,6 +84,10 @@ export class IpcHandlers {
 
     ipcMain.handle('stop_tagger_service', () =>
       this.taggerProcessManager.stopTaggerService()
+    );
+
+    ipcMain.handle('open-url', (_, url) =>
+      shell.openExternal(url)
     );
   }
 }

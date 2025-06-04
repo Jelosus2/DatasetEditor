@@ -68,9 +68,10 @@ function setupApp() {
 
 async function onAppReady() {
   try {
-    await tagDatabase.loadCSVIntoDatabase(settingsManager);
+    await tagDatabase.loadCSVIntoDatabase(settingsManager, windowManager.getMainWindow());
 
     const mainWindow = await windowManager.createMainWindow();
+    taggerApiClient.mainWindow = mainWindow;
     taggerProcessManager = new TaggerProcessManager(paths.taggerPath, mainWindow);
 
     ipcHandlers = new IpcHandlers({
@@ -84,9 +85,14 @@ async function onAppReady() {
     });
 
     ipcHandlers.registerHandlers();
-    settingsManager.initializeDefaultSettings(nativeTheme.shouldUseDarkColors);
+    settingsManager.initializeDefaultSettings(
+      nativeTheme.shouldUseDarkColors,
+      windowManager.getMainWindow()
+    );
   } catch (error) {
-    console.error('Error during app initialization:', error);
+    const message = `Error during app initialization: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+    windowManager.getMainWindow()?.webContents.send('app-log', { type: 'error', message });
+    console.error(error);
   }
 }
 
