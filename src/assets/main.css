@@ -10,3 +10,7 @@
 }
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+.scrollbar-stable {
+  scrollbar-gutter: stable;
+}

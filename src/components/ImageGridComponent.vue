@@ -29,7 +29,7 @@ const imageEntries = computed(() => {
 
 <template>
   <div
-    class="grid h-fit grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-auto scroll-smooth"
+    class="grid h-fit grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-y-auto overflow-x-hidden scroll-smooth scrollbar-stable"
   >
     <VirtualImage
       v-for="[name, image] in imageEntries"
