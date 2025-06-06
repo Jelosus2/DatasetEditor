@@ -29,6 +29,7 @@ const imageEntries = computed(() => {
 
 <template>
   <div
+    v-if="datasetStore.images.size"
     class="grid h-fit grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-y-auto overflow-x-hidden scroll-smooth scrollbar-stable"
   >
     <VirtualImage
@@ -43,6 +44,9 @@ const imageEntries = computed(() => {
       @mouseleave="emit('hover-image', null)"
       @dblclick="emit('display-full-image', name)"
     />
+  </div>
+  <div v-else class="flex flex-1 items-center justify-center">
+    <p class="text-center text-lg text-base-content/50">Start by clicking<br />File &gt; Load Dataset</p>
   </div>
   <div class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
     <label class="input input-sm w-full border-r-0 pr-0 pl-1 !outline-none">
