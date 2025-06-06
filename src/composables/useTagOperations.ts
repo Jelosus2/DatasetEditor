@@ -52,7 +52,9 @@ export function useTagOperations() {
       previousState.set(image, new Set(imageWithTags.tags));
 
       for (const tag of tags) {
-        if (!imageWithTags.tags.has(tag)) {
+        const hadTag = imageWithTags.tags.has(tag);
+
+        if (!hadTag) {
           if (!datasetStore.globalTags.has(tag)) {
             datasetStore.globalTags.set(tag, new Set([image]));
           } else {
@@ -63,7 +65,7 @@ export function useTagOperations() {
         const existingIndex = tagsCopy.indexOf(tag);
         if (existingIndex !== -1) tagsCopy.splice(existingIndex, 1);
 
-        if (datasetStore.tagDiff.size > 0) {
+        if (datasetStore.tagDiff.size > 0 && !hadTag) {
           const diff = datasetStore.tagDiff.get(image);
           if (diff?.tagger.has(tag)) diff.tagger.delete(tag);
           else diff?.original.add(tag);
