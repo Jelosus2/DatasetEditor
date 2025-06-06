@@ -57,7 +57,10 @@ watch(
 
 watch(filteredImages, (newSet) => {
   if (isFiltering.value) {
-    selectedImages.value = new Set(newSet.size ? [[...newSet][0]] : []);
+    const keptSelection = [...selectedImages.value].filter((id) => newSet.has(id));
+    selectedImages.value = new Set(
+      keptSelection.length ? keptSelection : newSet.size ? [[...newSet][0]] : []
+    );
     lastSelectedIndex.value = !newSet.has(imageKeys.value[lastSelectedIndex.value])
       ? 0
       : lastSelectedIndex.value;
