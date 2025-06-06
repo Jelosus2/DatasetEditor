@@ -23,6 +23,7 @@ const containerWidth = ref(0);
 const sortOrder = ref('asc');
 const globalSortMode = ref('alphabetical');
 const globalSortOrder = ref('asc');
+const globalTagFilterInput = ref('');
 const previewImage = ref('');
 
 const datasetStore = useDatasetStore();
@@ -38,6 +39,7 @@ const {
   sortOrder,
   globalSortMode,
   globalSortOrder,
+  globalTagFilterInput,
 );
 
 const imageKeys = computed(() => Array.from(datasetStore.images.keys()));
@@ -197,6 +199,7 @@ onMounted(() => {
           v-model:sort-order="sortOrder"
           v-model:global-sort-mode="globalSortMode"
           v-model:global-sort-order="globalSortOrder"
+          v-model:global-tag-filter-input="globalTagFilterInput"
         />
         </div>
       </div>

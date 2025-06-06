@@ -7,7 +7,8 @@ export function useTagDisplay(
   filterMode: Ref<string>,
   sortOrder: Ref<string>,
   globalSortMode: Ref<string>,
-  globalSortOrder: Ref<string>
+  globalSortOrder: Ref<string>,
+  globalTagFilterInput: Ref<string>,
 ) {
   const datasetStore = useDatasetStore();
   const updateTrigger = ref(0);
@@ -54,7 +55,17 @@ export function useTagDisplay(
 
     if (globalSortOrder.value === 'desc') allTags.reverse();
 
-    return new Set(allTags);
+    let filtered = allTags;
+    const filterTags = globalTagFilterInput.value
+      .split(',')
+      .map((t) => t.trim().toLowerCase())
+      .filter((t) => t);
+
+    if (filterTags.length) {
+      filtered = allTags.filter((tag) => filterTags.some((filterTag) => tag.toLowerCase().includes(filterTag)));
+    }
+
+    return new Set(filtered);
   });
 
   const filteredImages = computed<Set<string>>(() => {

@@ -18,6 +18,7 @@ const props = defineProps({
 const sortOrder = defineModel<string>('sortOrder', { required: true });
 const globalSortMode = defineModel<string>('globalSortMode', { required: true });
 const globalSortOrder = defineModel<string>('globalSortOrder', { required: true });
+const globalTagFilterInput = defineModel<string>('globalTagFilterInput', { required: true });
 
 const tagInput = ref('');
 const globalTagInput = ref('');
@@ -133,10 +134,10 @@ function replaceTag(mode: 'selected' | 'all') {
         </div>
         <div v-if="selectedImages.size === 1" class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth pt-2">
           <div
-            v-for="tag in datasetStore.tagDiff.get([...props.selectedImages][0])?.tagger"
+            v-for="tag in datasetStore.tagDiff.get([...selectedImages][0])?.tagger"
             :key="tag"
             class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer dark:bg-gray-700"
-            @click="addTag(tag, [...props.selectedImages][0])"
+            @click="addTag(tag, [...selectedImages][0])"
           >
             {{ tag }}
           </div>
@@ -149,10 +150,10 @@ function replaceTag(mode: 'selected' | 'all') {
         </div>
         <div v-if="selectedImages.size === 1" class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth pt-2">
           <div
-            v-for="tag in datasetStore.tagDiff.get([...props.selectedImages][0])?.original"
+            v-for="tag in datasetStore.tagDiff.get([...selectedImages][0])?.original"
             :key="tag"
             class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer dark:bg-rose-900"
-            @click="removeTag(tag, [...props.selectedImages][0])"
+            @click="removeTag(tag, [...selectedImages][0])"
           >
             {{ tag }}
           </div>
@@ -161,7 +162,7 @@ function replaceTag(mode: 'selected' | 'all') {
     </div>
     <div class="flex h-[50%] flex-col border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
       <div class="border-b-2 border-gray-400 pb-1 dark:border-base-content/10">
-        <div class="flex w-[50%] gap-2">
+        <div class="flex w-full gap-2">
           <label class="input input-sm gap-0 !outline-none">
             <span class="label">Tag Position</span>
             <input type="text" v-model.trim.number.lazy="tagPosition" @blur="validateTagPosition" />
@@ -169,6 +170,9 @@ function replaceTag(mode: 'selected' | 'all') {
           <div class="tooltip" data-tip="Resets the tag position back to -1">
             <button class="btn btn-sm btn-outline btn-error" @click="tagPosition = -1">Reset</button>
           </div>
+          <label class="input input-sm w-full !outline-none">
+            <input v-model="globalTagFilterInput" type="text" placeholder="Filter global tags..." :disabled="!displayedGlobalTags.size" />
+          </label>
         </div>
       </div>
       <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth pt-1">
@@ -205,11 +209,11 @@ function replaceTag(mode: 'selected' | 'all') {
           </div>
           <label class="input relative input-sm w-full pl-1 !outline-none">
             <div class="tooltip" data-tip="Click to open or close the tag replace section">
-              <span class="inline-block cursor-pointer text-sm" :class="{ 'rotate-90': openReplaceTagSection }" @click="openReplaceTagSection = !openReplaceTagSection">></span>
+              <span class="inline-block cursor-pointer text-sm" :class="{ 'rotate-90': openReplaceTagSection }" @click="openReplaceTagSection = !openReplaceTagSection">&gt;</span>
             </div>
             <AutocompletionComponent
               v-model="tagInput"
-              :disabled="!props.selectedImages.size"
+              :disabled="!selectedImages.size"
               :id="'completion-list'"
               :placeholder="openReplaceTagSection ? 'Type a tag to replace...' : 'Type to add a tag...'"
               :multiple="openReplaceTagSection ? false : true"
@@ -231,7 +235,7 @@ function replaceTag(mode: 'selected' | 'all') {
         </div>
         <div v-if="openReplaceTagSection" class="flex gap-2">
           <label ref="tagReplaceContainer" class="input relative input-sm w-full pl-1 !outline-none">
-            <AutocompletionComponent v-model="tagReplaceInput" :disabled="!props.selectedImages.size" :id="'replace-completion-list'" :placeholder="'Type the replacement of the tag...'" />
+            <AutocompletionComponent v-model="tagReplaceInput" :disabled="!selectedImages.size" :id="'replace-completion-list'" :placeholder="'Type the replacement of the tag...'" />
           </label>
           <div class="tooltip shrink-0" data-tip="Replace the tags from the selected images">
             <button class="btn btn-sm btn-outline btn-info" @click="replaceTag('selected')">Replace Selected</button>
