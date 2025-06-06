@@ -131,7 +131,7 @@ function replaceTag(mode: 'selected' | 'all') {
         <div class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-base-content/10">
           <p>Tags detected by autotagger but not in the captions</p>
         </div>
-        <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth pt-2">
+        <div v-if="selectedImages.size === 1" class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth pt-2">
           <div
             v-for="tag in datasetStore.tagDiff.get([...props.selectedImages][0])?.tagger"
             :key="tag"
@@ -147,7 +147,7 @@ function replaceTag(mode: 'selected' | 'all') {
         <div class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-base-content/10">
           <p>Tags in captions but not detected by the autotagger</p>
         </div>
-        <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth pt-2">
+        <div v-if="selectedImages.size === 1" class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth pt-2">
           <div
             v-for="tag in datasetStore.tagDiff.get([...props.selectedImages][0])?.original"
             :key="tag"
