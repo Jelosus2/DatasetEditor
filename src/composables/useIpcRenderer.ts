@@ -16,7 +16,6 @@ export function useIpcRenderer(listeners: IpcListener[]) {
       window.ipcRenderer.receive(channel, handler);
     });
     if (!subscribedToLogs) {
-      console.log('hello')
       window.ipcRenderer.receive('app-log', (entry: { type: 'info' | 'warning' | 'error'; message: string }) => {
         logStore.addLog(entry.type, entry.message);
       });
@@ -29,7 +28,6 @@ export function useIpcRenderer(listeners: IpcListener[]) {
       window.ipcRenderer.unsubscribe(channel);
     });
     if (subscribedToLogs) {
-      console.log('unsubs')
       window.ipcRenderer.unsubscribe('app-log');
       subscribedToLogs = false;
     }
