@@ -57,9 +57,15 @@ export class SettingsManager {
     if (!existsSync(settingsPath)) return null;
 
     try {
-      const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
-      this.originalSettings = settings;
-      return settings;
+      const loaded = JSON.parse(readFileSync(settingsPath, 'utf-8'));
+      const merged = { ...this.getDefaultSettings(), ...loaded };
+
+      if (!_.isEqual(merged, loaded)) {
+        this.saveSettings(merged, undefined, mainWindow);
+      }
+
+      this.originalSettings = merged;
+      return merged;
     } catch (error) {
       const message = `Error loading settings: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
       mainWindow?.webContents.send('app-log', { type: 'error', message });
