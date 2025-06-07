@@ -6,6 +6,8 @@ export interface IpcListener {
   handler: (...args: unknown[]) => void;
 }
 
+let subscribedToLogs = false;
+
 export function useIpcRenderer(listeners: IpcListener[]) {
   const logStore = useLogStore();
 
@@ -13,16 +15,24 @@ export function useIpcRenderer(listeners: IpcListener[]) {
     listeners.forEach(({ channel, handler }) => {
       window.ipcRenderer.receive(channel, handler);
     });
-    window.ipcRenderer.receive('app-log', (entry: { type: 'info' | 'warning' | 'error'; message: string }) => {
-      logStore.addLog(entry.type, entry.message);
-    });
+    if (!subscribedToLogs) {
+      console.log('hello')
+      window.ipcRenderer.receive('app-log', (entry: { type: 'info' | 'warning' | 'error'; message: string }) => {
+        logStore.addLog(entry.type, entry.message);
+      });
+      subscribedToLogs = true;
+    }
   });
 
   onUnmounted(() => {
     listeners.forEach(({ channel }) => {
       window.ipcRenderer.unsubscribe(channel);
     });
-    window.ipcRenderer.unsubscribe('app-log');
+    if (subscribedToLogs) {
+      console.log('unsubs')
+      window.ipcRenderer.unsubscribe('app-log');
+      subscribedToLogs = false;
+    }
   });
 
   const invoke = async <T>(channel: string, ...args: unknown[]): Promise<T> => {
