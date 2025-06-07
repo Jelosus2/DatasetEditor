@@ -20,8 +20,9 @@ export class DatasetService {
       images: Map<string, Image>
       globalTags: Map<string, Set<string>>
       directoryPath: string
-    }>('load_dataset', isAllSaved, directory);
-    if (result) this.logStore.addLog('info', 'Dataset loaded');
+    } | null>('load_dataset', isAllSaved, directory);
+    if (result && result.images.size > 0) this.logStore.addLog('info', 'Dataset loaded');
+    else if (result && result.images.size === 0) this.logStore.addLog('info', 'Attempted to load dataset but no images were found')
     else this.logStore.addLog('info', 'Dataset not loaded');
     return result;
   }
