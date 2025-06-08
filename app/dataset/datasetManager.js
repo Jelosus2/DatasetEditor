@@ -1,5 +1,6 @@
 import { dialog } from 'electron';
 import { default as _ } from 'lodash';
+import sharp from 'sharp';
 import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { extname, join, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -73,7 +74,7 @@ export class DatasetManager {
       images.set(file.fileName, {
         tags,
         path: file.filePath,
-        filePath: pathToFileURL(file.filePath).href
+        filePath: `${pathToFileURL(file.filePath).href}?v=${Date.now()}`
       });
 
       this.updateGlobalTags(globalTags, tags, file.fileName);
@@ -147,5 +148,24 @@ export class DatasetManager {
       img,
       { tags: sort ? sortTags(props.tags) : [...props.tags], path: props.path }
     ]);
+  }
+
+  async applyBackgroundColor(images, color, mainWindow) {
+    for (const image of images) {
+      try {
+        const outputBuffer = await sharp(image)
+          .flatten({ background: color })
+          .toBuffer();
+
+        writeFileSync(image, outputBuffer);
+      } catch (error) {
+        const message = `Error applying background color for ${image}: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+        mainWindow?.webContents.send('app-log', { type: 'error', message });
+        return { error: true, message: 'Failed to change background color, check the logs for more information.' };
+      }
+    }
+
+    mainWindow?.webContents.send('app-log', { type: 'info', message: 'Changed background color successfully' });
+    return { error: false, message: 'Changed background color successfully' };
   }
 }

@@ -71,7 +71,7 @@ onMounted(async () => {
     @reload_dataset="appController.reloadDataset()"
   />
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
-    <MainComponent :are-previews-enabled="arePreviewsEnabled" />
+    <MainComponent :are-previews-enabled="arePreviewsEnabled" @trigger_alert="showAlert" />
     <TagGroupEditorComponent @trigger_alert="showAlert" />
     <SettingComponent />
     <LogsComponent />

@@ -2,6 +2,7 @@
 import ModalComponent from '@/components/ModalComponent.vue';
 import ImageGridComponent from '@/components/ImageGridComponent.vue';
 import TagEditorComponent from '@/components/TagEditorComponent.vue';
+import BackgroundColorModalComponent from '@/components/BackgroundColorModalComponent.vue';
 
 import { ref, watch, computed, shallowRef, onMounted } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
@@ -10,6 +11,7 @@ import { useTagDisplay } from '@/composables/useTagDisplay';
 const props = defineProps({
   arePreviewsEnabled: { type: Boolean, required: true },
 });
+const emit = defineEmits(['trigger_alert']);
 
 const selectedImages = ref<Set<string>>(new Set());
 const lastSelectedIndex = ref<number>(0);
@@ -205,4 +207,5 @@ onMounted(() => {
       </div>
     </div>
   <ModalComponent :html="modalHtml" :is-image="imageModal" />
+  <BackgroundColorModalComponent :selected-images="selectedImages" @trigger_alert="(t, m) => emit('trigger_alert', t, m)" />
 </template>

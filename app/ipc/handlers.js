@@ -89,5 +89,9 @@ export class IpcHandlers {
     ipcMain.handle('open-url', (_, url) =>
       shell.openExternal(url)
     );
+
+    ipcMain.handle('apply_background_color', async (_, images, color) =>
+      await this.datasetManager.applyBackgroundColor(images, color, this.windowManager.getMainWindow())
+    );
   }
 }

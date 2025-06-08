@@ -116,10 +116,13 @@ const emit = defineEmits(['load_dataset', 'undo', 'redo', 'save', 'reload_datase
         </div>
         <ul
           tabindex="0"
-          class="dropdown-content menu z-1 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
+          class="dropdown-content menu z-1 w-70 menu-sm rounded-box bg-base-100 p-2 shadow"
         >
           <li>
             <label for="autotagger_modal">Autotag Images</label>
+          </li>
+          <li>
+            <label for="background_color_modal">Add background color to selected images</label>
           </li>
         </ul>
       </div>
