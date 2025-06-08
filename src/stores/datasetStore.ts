@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { DatasetService } from '@/services/datasetService';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 interface DatasetChangeRecord {
   type: 'add_tag' | 'remove_tag' | 'add_global_tag' | 'remove_global_tag' | 'replace_tag';
@@ -32,7 +33,8 @@ export const useDatasetStore = defineStore('dataset', () => {
   const directory = ref('');
   const sortMode = ref('none');
   const onChange = ref<(() => void)[]>([]);
-  const datasetService = new DatasetService()
+  const datasetService = new DatasetService();
+  const settingsStore = useSettingsStore();
 
   function setImageTags(image: string, newTags: Set<string>) {
     const current = images.value.get(image)!.tags;
@@ -192,7 +194,8 @@ export const useDatasetStore = defineStore('dataset', () => {
 
     const dataset = await datasetService.loadDataset(
       _isDatasetSaved,
-      reload ? directory.value : null
+      reload ? directory.value : null,
+      settingsStore.recursiveDatasetLoad,
     );
 
     if (!dataset) return;

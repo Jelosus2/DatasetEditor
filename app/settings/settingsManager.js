@@ -18,6 +18,7 @@ export class SettingsManager {
       autocompleteFile: join(this.tagAutocompletionsPath, 'danbooru.csv'),
       tagsIgnored: [],
       taggerPort: 3067,
+      recursiveDatasetLoad: false,
     };
   }
 

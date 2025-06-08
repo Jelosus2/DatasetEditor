@@ -9,6 +9,7 @@ export interface Settings {
   autocompleteFile: string;
   tagsIgnored: string[];
   taggerPort: number;
+  recursiveDatasetLoad: boolean;
 }
 
 interface SettingsChangeRecord {
@@ -24,6 +25,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const autocompleteFile = ref<string>('');
   const tagsIgnored = ref<string[]>([]);
   const taggerPort = ref<number>(3067);
+  const recursiveDatasetLoad = ref<boolean>(false);
   const settingsUndoStack = ref<SettingsChangeRecord[]>([]);
   const settingsRedoStack = ref<SettingsChangeRecord[]>([]);
   const isInitialized = ref(false);
@@ -35,6 +37,7 @@ export const useSettingsStore = defineStore('settings', () => {
     autocompleteFile,
     tagsIgnored,
     taggerPort,
+    recursiveDatasetLoad,
   };
 
   function pushSettingsChange(change: SettingsChangeRecord) {
@@ -101,6 +104,11 @@ export const useSettingsStore = defineStore('settings', () => {
     pushSettingsChange({ key: 'taggerPort', previous: oldVal, value: newVal });
   });
 
+  watch(recursiveDatasetLoad, (newVal, oldVal) => {
+    if (!isInitialized.value) return;
+    pushSettingsChange({ key: 'recursiveDatasetLoad', previous: oldVal, value: newVal });
+  });
+
   async function loadSettings() {
     isInitialized.value = false;
     const settings = (await settingsService.loadSettings()) as Settings;
@@ -110,6 +118,7 @@ export const useSettingsStore = defineStore('settings', () => {
     autocompleteFile.value = settings.autocompleteFile ?? autocompleteFile.value;
     tagsIgnored.value = settings.tagsIgnored ?? tagsIgnored.value;
     taggerPort.value = settings.taggerPort ?? taggerPort.value;
+    recursiveDatasetLoad.value = settings.recursiveDatasetLoad ?? recursiveDatasetLoad.value;
     resetSettingsStatus();
     isInitialized.value = true;
   }
@@ -122,6 +131,7 @@ export const useSettingsStore = defineStore('settings', () => {
       autocompleteFile: toRaw(autocompleteFile.value),
       tagsIgnored: toRaw(tagsIgnored.value),
       taggerPort: toRaw(taggerPort.value),
+      recursiveDatasetLoad: toRaw(recursiveDatasetLoad.value),
     });
     resetSettingsStatus();
   }
@@ -134,6 +144,7 @@ export const useSettingsStore = defineStore('settings', () => {
       autocompleteFile: toRaw(autocompleteFile.value),
       tagsIgnored: toRaw(tagsIgnored.value),
       taggerPort: toRaw(taggerPort.value),
+      recursiveDatasetLoad: toRaw(recursiveDatasetLoad.value),
     });
   }
 
@@ -158,6 +169,7 @@ export const useSettingsStore = defineStore('settings', () => {
     autocompleteFile,
     tagsIgnored,
     taggerPort,
+    recursiveDatasetLoad,
     undoSettingsAction,
     redoSettingsAction,
     loadSettings,

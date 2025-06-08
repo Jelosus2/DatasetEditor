@@ -1,7 +1,7 @@
 import { dialog } from 'electron';
 import { default as _ } from 'lodash';
 import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { extname, basename, join, dirname } from 'node:path';
+import { extname, join, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 function sortTags(tags) {
@@ -19,7 +19,7 @@ export class DatasetManager {
     this.originalDataset = null;
   }
 
-  async loadDatasetDirectory(mainWindow, isAllSaved, directory = null) {
+  async loadDatasetDirectory(mainWindow, isAllSaved, directory = null, recursive = false) {
     if (!isAllSaved && !await this.confirmUnsavedChanges(mainWindow)) {
       return null;
     }
@@ -28,7 +28,7 @@ export class DatasetManager {
     if (!directoryPath) return null;
 
     try {
-      const { images, globalTags } = await this.processDatasetDirectory(directoryPath, mainWindow);
+      const { images, globalTags } = await this.processDatasetDirectory(directoryPath, mainWindow, recursive);
       this.originalDataset = this.serializeDatasetImages(images);
 
       return { images, globalTags, directoryPath };
@@ -58,25 +58,25 @@ export class DatasetManager {
     return result.canceled ? null : result.filePaths[0];
   }
 
-  async processDatasetDirectory(directoryPath, mainWindow) {
+  async processDatasetDirectory(directoryPath, mainWindow, recursive = false) {
     const images = new Map();
     const globalTags = new Map();
 
-    const files = readdirSync(directoryPath)
-      .filter(file => SUPPORTED_IMAGE_EXTENSIONS.includes(extname(file).toLowerCase()));
+    const entries = readdirSync(directoryPath, { withFileTypes: true, recursive });
+    const files = entries
+      .filter((entry) => entry.isFile() && SUPPORTED_IMAGE_EXTENSIONS.includes(extname(entry.name).toLowerCase()))
+      .map((entry) => ({ fileName: entry.name, parentPath: entry.parentPath, filePath: join(entry.parentPath, entry.name) }));
 
     for (const file of files) {
-      const fileName = basename(file);
-      const imagePath = join(directoryPath, file);
-      const tags = this.loadImageTags(directoryPath, fileName, mainWindow);
+      const tags = this.loadImageTags(file.parentPath, file.fileName, mainWindow);
 
-      images.set(fileName, {
+      images.set(file.fileName, {
         tags,
-        path: imagePath,
-        filePath: pathToFileURL(imagePath).href
+        path: file.filePath,
+        filePath: pathToFileURL(file.filePath).href
       });
 
-      this.updateGlobalTags(globalTags, tags, fileName);
+      this.updateGlobalTags(globalTags, tags, file.fileName);
     }
 
     return { images, globalTags };

@@ -74,6 +74,12 @@ async function changeAutocompleteFile() {
                 <span v-if="isChangingFile" class="loading ml-2 loading-spinner"></span>
               </div>
             </div>
+            <div class="form-control">
+              <label class="label cursor-pointer justify-start gap-4">
+                <input type="checkbox" class="toggle" v-model="settingsStore.recursiveDatasetLoad" />
+                <span class="label-text">Load subdirectories</span>
+              </label>
+            </div>
           </div>
         </div>
         <div class="divider"></div>
