@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
-import { ref, watch } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 import { useSettingsStore } from '@/stores/settingsStore';
 
 const isChangingFile = ref(false);
@@ -9,12 +9,27 @@ const isChangingFile = ref(false);
 const settingsStore = useSettingsStore();
 
 const tagsIgnoredInput = ref(settingsStore.tagsIgnored.join(', '));
-watch(tagsIgnoredInput, value => {
+const updatingFromInput = ref(false);
+
+watch(tagsIgnoredInput, async value => {
+  updatingFromInput.value = true;
   settingsStore.tagsIgnored = value
     .split(',')
     .map(t => t.trim())
     .filter(tag => tag.length > 0);
+  await nextTick();
+  updatingFromInput.value = false;
 });
+
+watch(
+  () => settingsStore.tagsIgnored,
+  tags => {
+    if (!updatingFromInput.value) {
+      tagsIgnoredInput.value = tags.join(', ');
+    }
+  },
+  { immediate: true }
+);
 
 async function changeAutocompleteFile() {
   isChangingFile.value = true;
