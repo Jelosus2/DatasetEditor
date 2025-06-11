@@ -6,6 +6,7 @@ import AlertComponent from '@/components/AlertComponent.vue';
 import AutotaggerModalComponent from '@/components/AutotaggerModalComponent.vue';
 import SettingComponent from '@/components/SettingComponent.vue';
 import LogsComponent from '@/components/LogsComponent.vue';
+import WikiSearchModalComponent from '@/components/WikiSearchModalComponent.vue';
 
 import { ref, onMounted } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
@@ -77,4 +78,5 @@ onMounted(async () => {
     <LogsComponent />
   </div>
   <AutotaggerModalComponent @trigger_alert="showAlert" />
+  <WikiSearchModalComponent />
 </template>

@@ -124,6 +124,9 @@ const emit = defineEmits(['load_dataset', 'undo', 'redo', 'save', 'reload_datase
           <li>
             <label for="background_color_modal">Add background color to selected images</label>
           </li>
+          <li>
+            <label for="danbooru_wiki_modal">Search Danbooru Wiki</label>
+          </li>
         </ul>
       </div>
     </div>

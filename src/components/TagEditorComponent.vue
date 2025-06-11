@@ -171,7 +171,7 @@ function replaceTag(mode: 'selected' | 'all') {
             <button class="btn btn-sm btn-outline btn-error" @click="tagPosition = -1">Reset</button>
           </div>
           <label class="input input-sm w-full !outline-none">
-            <input v-model="globalTagFilterInput" type="text" placeholder="Filter global tags..." :disabled="!displayedGlobalTags.size" />
+            <input v-model="globalTagFilterInput" type="text" placeholder="Filter global tags..." :disabled="!datasetStore.globalTags.size" />
           </label>
         </div>
       </div>
