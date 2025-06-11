@@ -25,6 +25,11 @@ export class AppController {
   async loadDataset(reload = false) {
     try {
       await this.deps.datasetStore.loadDataset(reload);
+      if (this.deps.datasetStore.images.size > 0) {
+        this.deps.showAlert('success', 'Dataset loaded');
+      } else {
+        this.deps.showAlert('error', 'Found no images to load');
+      }
     } catch (error) {
       this.deps.showAlert('error', 'Failed to load dataset');
       this.logStore.addLog('error', `Error loading dataset: ${(error as Error).message}`);

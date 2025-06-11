@@ -29,6 +29,7 @@ export class TagGroupManager {
     } catch (error) {
       const message = `Error saving tag group file: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
       mainWindow?.webContents.send('app-log', { type: 'error', message });
+      return false;
     }
   }
 

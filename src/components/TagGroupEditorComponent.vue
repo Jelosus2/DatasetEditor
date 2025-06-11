@@ -97,12 +97,13 @@ async function exportGroupToJSON(mode: 'one' | 'all') {
     for (const [name, tags] of tagGroupsStore.tagGroups.entries()) {
       obj[name] = [...tags];
     }
-
-    await window.ipcRenderer.invoke('save_tag_group_file', obj);
   } else {
     obj[selectedGroup.value] = [...tagGroupsStore.tagGroups.get(selectedGroup.value)!];
+  }
 
-    await window.ipcRenderer.invoke('save_tag_group_file', obj);
+  const result = await window.ipcRenderer.invoke('save_tag_group_file', obj);
+  if (result === false) {
+    emit('trigger_alert', 'error', 'Failed to export tag groups, check the logs for more information.')
   }
 }
 
@@ -113,6 +114,7 @@ async function importGroup() {
     | false;
   if (result === null) return;
   if (!result) {
+    emit('trigger_alert', 'error', 'Invalid file: Invalid JSON structure');
     return;
   }
 

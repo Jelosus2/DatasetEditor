@@ -122,7 +122,7 @@ async function changeAutocompleteFile() {
                   :id="'ignore-tags-list'"
                   :textarea="true"
                   :multiple="true"
-                  placeholder="tag1, tag2, tag3"
+                  :placeholder="'tag1, tag2, tag3'"
                 />
               </div>
             </div>
