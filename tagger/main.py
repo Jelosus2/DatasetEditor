@@ -22,12 +22,15 @@ def tag_images(images: list[str], tagger_model: str, general_threshold: float, c
             continue
 
         print(f'Tagging {image}...')
-        with Image.open(image) as img:
-            processed_image = prepare_image(img, target_size)
-            preds = model.run(None, { model.get_inputs()[0].name: processed_image })[0]
+        try:
+            with Image.open(image) as img:
+                processed_image = prepare_image(img, target_size)
+                preds = model.run(None, { model.get_inputs()[0].name: processed_image })[0]
 
-            processed_tags = process_predictions(preds, tag_data, general_threshold, character_threshold, remove_underscores, tags_ignored)
-            final_dict[Path(image.replace('\\', '/')).name] = processed_tags
+                processed_tags = process_predictions(preds, tag_data, general_threshold, character_threshold, remove_underscores, tags_ignored)
+                final_dict[Path(image.replace('\\', '/')).name] = processed_tags
+        except Exception as e:
+            print(f'Failed to tag {image}: {e}')
 
     print('Tagging finished')
     return final_dict
@@ -35,8 +38,11 @@ def tag_images(images: list[str], tagger_model: str, general_threshold: float, c
 def download_model(model: str) -> tuple[str, str]:
     model_repo = f'SmilingWolf/{model}'
     print('Downloading model if necessary...')
-    csv_path = huggingface_hub.hf_hub_download(model_repo, 'selected_tags.csv')
-    model_path = huggingface_hub.hf_hub_download(model_repo, 'model.onnx')
+    try:
+        csv_path = huggingface_hub.hf_hub_download(model_repo, 'selected_tags.csv')
+        model_path = huggingface_hub.hf_hub_download(model_repo, 'model.onnx')
+    except Exception as e:
+        print(f'Failed to download file from {model_repo}: {e}')
     return csv_path, model_path
 
 class LabelData:
@@ -47,15 +53,23 @@ class LabelData:
 
 def load_model(tagger_model: str) -> tuple[ort.InferenceSession, LabelData, int]:
     csv_path, model_path = download_model(tagger_model)
-    csv_content = pd.read_csv(csv_path)
+    try:
+        csv_content = pd.read_csv(csv_path)
+    except Exception as e:
+        print(f'Failed to load tags csv: {e}')
+        raise
     tag_data = LabelData(
         names=csv_content['name'].tolist(),
         general=list(np.where(csv_content['category'] == 0)[0]),
         character=list(np.where(csv_content['category'] == 4)[0]),
     )
     providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
-    model = ort.InferenceSession(model_path, providers=providers)
-    target_size = model.get_inputs()[0].shape[2]
+    try:
+        model = ort.InferenceSession(model_path, providers=providers)
+        target_size = model.get_inputs()[0].shape[2]
+    except Exception as e:
+        print(f'Failed to initialise model: {e}', file=sys.stderr)
+        raise
 
     return model, tag_data, target_size
 
@@ -118,7 +132,12 @@ class ServerHandle(BaseHTTPRequestHandler):
             remove_underscores: bool = data['remove_underscores']
             tags_ignored: list[str] = data.get('tags_ignored', [])
 
-            tagged_images = tag_images(images, tagger_model, general_threshold, character_threshold, remove_underscores, tags_ignored)
+            try:
+                tagged_images = tag_images(images, tagger_model, general_threshold, character_threshold, remove_underscores, tags_ignored)
+            except Exception as e:
+                print(f'Error during tagging: {e}')
+                self.good_response({'error': str(e)})
+                return
 
             self.good_response(tagged_images)
         elif self.path == '/device':
@@ -129,10 +148,13 @@ class ServerHandle(BaseHTTPRequestHandler):
             self.wfile.write(b'Invalid endpoint')
 
 def run(port: int = 3067):
-    server_address = ('', port)
-    httpd = HTTPServer(server_address, ServerHandle)
-    print(f'Service running on port {port}')
-    httpd.serve_forever()
+    try:
+        server_address = ('', port)
+        httpd = HTTPServer(server_address, ServerHandle)
+        print(f'Service running on port {port}')
+        httpd.serve_forever()
+    except Exception as e:
+        print(f'Error while trying to start the autotagger service: {e}')
 
 if __name__ == '__main__':
     port_arg = int(sys.argv[1]) if len(sys.argv) > 1 else 3067

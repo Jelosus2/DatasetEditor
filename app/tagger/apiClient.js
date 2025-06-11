@@ -82,11 +82,9 @@ export class TaggerApiClient {
           },
         });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
         const data = await response.json();
+
+        if (data.error) return null;
 
         for (const key in data) {
           const incoming = new Set(data[key]);
