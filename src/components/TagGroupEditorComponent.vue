@@ -4,6 +4,9 @@ import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 import { ref, toRaw } from 'vue';
 import { useTagGroupStore } from '@/stores/tagGroupStore';
 
+import ExportIcon from '@/assets/icons/export.svg';
+import ImportIcon from '@/assets/icons/import.svg';
+
 const emit = defineEmits(['trigger_alert']);
 
 const selectedGroup = ref('');
@@ -221,24 +224,7 @@ function renameTagGroup(event: KeyboardEvent) {
                 :disabled="!selectedGroup"
                 @click="exportGroupToJSON('one')"
               >
-                <svg
-                  class="h-5 w-5 fill-none"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M13.5 3H12H7C5.89543 3 5 3.89543 5 5V19C5 20.1046 5.89543 21 7 21H7.5M13.5 3L19 8.625M13.5 3V7.625C13.5 8.17728 13.9477 8.625 14.5 8.625H19M19 8.625V9.75V12V19C19 20.1046 18.1046 21 17 21H16.5"
-                    class="stroke-current stroke-2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M12 12V20M12 20L9.5 17.5M12 20L14.5 17.5"
-                    class="stroke-current stroke-2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
+                <ExportIcon class="h-5 w-5 fill-none" />
                 Export This Group to JSON
               </button>
               <button
@@ -246,24 +232,7 @@ function renameTagGroup(event: KeyboardEvent) {
                 :disabled="!tagGroupsStore.tagGroups.size"
                 @click="exportGroupToJSON('all')"
               >
-                <svg
-                  class="h-5 w-5 fill-none"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M13.5 3H12H7C5.89543 3 5 3.89543 5 5V19C5 20.1046 5.89543 21 7 21H7.5M13.5 3L19 8.625M13.5 3V7.625C13.5 8.17728 13.9477 8.625 14.5 8.625H19M19 8.625V9.75V12V19C19 20.1046 18.1046 21 17 21H16.5"
-                    class="stroke-current stroke-2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M12 12V20M12 20L9.5 17.5M12 20L14.5 17.5"
-                    class="stroke-current stroke-2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
+                <ExportIcon class="h-5 w-5 fill-none" />
                 Export All Groups to JSON
               </button>
               <button
@@ -358,24 +327,7 @@ function renameTagGroup(event: KeyboardEvent) {
                 <p>Import tag groups</p>
               </div>
               <button class="btn btn-outline btn-info" @click="importGroup">
-                <svg
-                  class="h-5 w-5 fill-none"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M13.5 3H12H8C6.34315 3 5 4.34315 5 6V18C5 19.6569 6.34315 21 8 21H12M13.5 3L19 8.625M13.5 3V7.625C13.5 8.17728 13.9477 8.625 14.5 8.625H19M19 8.625V11.8125"
-                    class="stroke-current stroke-2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M17.5 21L17.5 15M17.5 15L20 17.5M17.5 15L15 17.5"
-                    class="stroke-current stroke-2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
+                <ImportIcon class="h-5 w-5 fill-none" />
                 Import Groups from JSON File
               </button>
               <button

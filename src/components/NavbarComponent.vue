@@ -3,6 +3,10 @@ import { onMounted, onUnmounted, ref, computed } from 'vue';
 import { UpdateService } from '@/services/updateService';
 import { APP_VERSION } from '@/version';
 
+import UpdateCheckIcon from '@/assets/icons/update-check.svg';
+import UpdateDownloadIcon from '@/assets/icons/update-download.svg';
+import UpdateRestartIcon from '@/assets/icons/update-restart.svg';
+
 const arePreviewsEnabled = defineModel({ required: true, type: Boolean });
 const emit = defineEmits(['load_dataset', 'undo', 'redo', 'save', 'reload_dataset', 'trigger_alert']);
 
@@ -195,48 +199,9 @@ const updateInfo = computed(() => {
           <span>Downloading...</span>
         </template>
         <template v-else>
-          <svg
-            v-if="updateState === 'check'"
-            class="h-4 w-4 mr-1"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-            />
-          </svg>
-          <svg
-            v-else-if="updateState === 'download'"
-            class="h-4 w-4 mr-1"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
-            />
-          </svg>
-          <svg
-            v-else
-            class="h-4 w-4 mr-1"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3"
-            />
-          </svg>
+          <UpdateCheckIcon v-if="updateState === 'check'" class="h-4 w-4 mr-1" />
+          <UpdateDownloadIcon v-else-if="updateState === 'download'" class="h-4 w-4 mr-1" />
+          <UpdateRestartIcon v-else class="h-4 w-4 mr-1" />
           <span>{{ updateInfo.value }}</span>
         </template>
       </button>
