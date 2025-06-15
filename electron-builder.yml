@@ -1,0 +1,44 @@
+appId: "com.jelosus1.dataset-editor"
+productName: "Dataset Editor"
+directories:
+  output: "dist_electron/${os}"
+files:
+  - "dist/**/*"
+  - "app/**/*"
+extraResources:
+  - from: "tagger"
+    to: "tagger"
+    filter:
+      - "**/*"
+      - "!**/embedded_python/**"
+  
+  - from: "Data"
+    to: "Data"
+    filter:
+      - "**/*"
+      - "!**/settings.json"
+      - "!**/TagGroups/tag_groups.json"
+win:
+  artifactName: "Dataset-Editor-${version}.${ext}"
+  icon: "public/doro.ico"
+  publish:
+    - provider: "github"
+      owner: "Jelosus2"
+      repo: "DatasetEditor"
+  target:
+    - "nsis"
+    - "zip"
+  extraResources:
+    - from: "embedded_python"
+      to: "tagger/embedded_python"
+      filter:
+        - "**/*"
+nsis:
+  oneClick: false
+  perMachine: true
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  artifactName: "Dataset-Editor-Setup-${version}.${ext}"
+  installerIcon: "build/yes_doro.ico"
+  uninstallerIcon: "build/no_doro.ico"
+  include: "build/installer.nsh"

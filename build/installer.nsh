@@ -67,28 +67,32 @@
 !macroend
 
 !macro customUnInstall
-  MessageBox MB_YESNO|MB_ICONQUESTION "Do you want to remove all application data from your user profile (e.g., settings, tagger)?$\nChoosing 'No' will keep your data for a future installation." IDYES RemoveAppData
-  DetailPrint "User chose not to remove application data."
-  Goto UninstallDone
+  ${IfNot} ${isUpdated}
+    IfSilent UninstallDone
 
-RemoveAppData:
-  DetailPrint "User chose to remove application data."
+    MessageBox MB_YESNO|MB_ICONQUESTION "Do you want to remove all application data from your user profile (e.g., settings, tagger)?$\nChoosing 'No' will keep your data for a future installation." IDYES RemoveAppData
+    DetailPrint "User chose not to remove application data."
+    Goto UninstallDone
 
-  Var /GLOBAL TargetTaggerDir
-  Var /GLOBAL TargetDataDir
+  RemoveAppData:
+    DetailPrint "User chose to remove application data."
 
-  StrCpy $TargetTaggerDir "$APPDATA\${APP_PACKAGE_NAME}\tagger"
-  StrCpy $TargetDataDir "$APPDATA\${APP_PACKAGE_NAME}\Data"
+    Var /GLOBAL TargetTaggerDir
+    Var /GLOBAL TargetDataDir
 
-  DetailPrint "Removing directory $TargetTaggerDir..."
-  RMDir /r /REBOOTOK "$TargetTaggerDir"
+    StrCpy $TargetTaggerDir "$APPDATA\${APP_PACKAGE_NAME}\tagger"
+    StrCpy $TargetDataDir "$APPDATA\${APP_PACKAGE_NAME}\Data"
 
-  DetailPrint "Removing directory $TargetDataDir..."
-  RMDir /r /REBOOTOK "$TargetDataDir"
+    DetailPrint "Removing directory $TargetTaggerDir..."
+    RMDir /r /REBOOTOK "$TargetTaggerDir"
 
-  StrCpy $TargetTaggerDir ""
-  StrCpy $TargetDataDir ""
-UninstallDone:
+    DetailPrint "Removing directory $TargetDataDir..."
+    RMDir /r /REBOOTOK "$TargetDataDir"
+
+    StrCpy $TargetTaggerDir ""
+    StrCpy $TargetDataDir ""
+  UninstallDone:
+  ${EndIf}
 !macroend
 
 Function CopyDirRecursive

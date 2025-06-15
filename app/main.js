@@ -12,6 +12,7 @@ import { SettingsManager } from './settings/settingsManager.js';
 import { TaggerApiClient } from './tagger/apiClient.js';
 import { WindowManager } from './window/windowManager.js';
 import { IpcHandlers } from './ipc/handlers.js';
+import { UpdateManager } from './updater/updateManager.js';
 
 const DEBUG_FLAG = process.argv.includes('--debug-mode');
 const IS_DEBUG = !app.isPackaged;
@@ -25,6 +26,7 @@ let taggerApiClient;
 let windowManager;
 let taggerProcessManager;
 let ipcHandlers;
+let updateManager;
 
 function initializeDatabase() {
   if (!existsSync(paths.tagAutocompletionsPath)) {
@@ -73,6 +75,7 @@ async function onAppReady() {
     const mainWindow = await windowManager.createMainWindow();
     taggerApiClient.mainWindow = mainWindow;
     taggerProcessManager = new TaggerProcessManager(paths.taggerPath, mainWindow);
+    updateManager = new UpdateManager(mainWindow);
 
     ipcHandlers = new IpcHandlers({
       datasetManager,
@@ -81,7 +84,8 @@ async function onAppReady() {
       settingsManager,
       taggerApiClient,
       taggerProcessManager,
-      windowManager
+      windowManager,
+      updateManager,
     });
 
     ipcHandlers.registerHandlers();
@@ -89,6 +93,11 @@ async function onAppReady() {
       nativeTheme.shouldUseDarkColors,
       windowManager.getMainWindow()
     );
+
+    const settings = settingsManager.loadSettings(mainWindow);
+    if (settings?.autoCheckUpdates && updateManager.areUpdatesAvailable()) {
+      updateManager.checkForUpdates();
+    }
   } catch (error) {
     const message = `Error during app initialization: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
     windowManager.getMainWindow()?.webContents.send('app-log', { type: 'error', message });

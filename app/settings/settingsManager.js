@@ -19,6 +19,7 @@ export class SettingsManager {
       tagsIgnored: [],
       taggerPort: 3067,
       recursiveDatasetLoad: false,
+      autoCheckUpdates: true,
     };
   }
 

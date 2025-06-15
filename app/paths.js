@@ -7,7 +7,7 @@ export function setPaths(isDebug) {
     ? app.getAppPath()
     : existsSync(join(process.resourcesPath, 'tagger'))
       ? process.resourcesPath
-      : app.getPath('userData');
+      : join(process.env.PROGRAMDATA || 'C:\\ProgramData', 'dataset-editor');
 
   const dataPath = join(basePath, 'Data');
   const tagGroupsPath = join(dataPath, 'TagGroups');

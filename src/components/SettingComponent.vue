@@ -95,6 +95,12 @@ async function changeAutocompleteFile() {
                 <span class="label-text">Load subdirectories</span>
               </label>
             </div>
+            <div class="form-control">
+              <label class="label cursor-pointer justify-start gap-4">
+                <input type="checkbox" class="toggle" v-model="settingsStore.autoCheckUpdates" />
+                <span class="label-text">Check for updates automatically</span>
+              </label>
+            </div>
           </div>
         </div>
         <div class="divider"></div>

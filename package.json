@@ -24,6 +24,7 @@
     "@tailwindcss/vite": "^4.0.6",
     "better-sqlite3": "^11.8.1",
     "dtext-parser": "^1.0.0",
+    "electron-updater": "^6.6.2",
     "lodash": "^4.17.21",
     "pinia": "^3.0.1",
     "sharp": "^0.34.2",
@@ -57,57 +58,8 @@
       "electron-winstaller"
     ]
   },
-  "build": {
-    "appId": "com.jelosus1.dataset-editor",
-    "productName": "Dataset Editor",
-    "directories": {
-      "output": "dist_electron/${os}"
-    },
-    "files": [
-      "dist/**/*",
-      "app/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "tagger",
-        "to": "tagger",
-        "filter": [
-          "**/*",
-          "!**/embedded_python/**"
-        ]
-      },
-      {
-        "from": "Data",
-        "to": "Data",
-        "filter": [
-          "**/*",
-          "!**/settings.json",
-          "!**/TagGroups/tag_groups.json"
-        ]
-      }
-    ],
-    "win": {
-      "icon": "public/doro.ico",
-      "target": [
-        "nsis",
-        "zip"
-      ],
-      "extraResources": [
-        {
-          "from": "embedded_python",
-          "to": "tagger/embedded_python",
-          "filter": [
-            "**/*"
-          ]
-        }
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "build/yes_doro.ico",
-      "uninstallerIcon": "build/no_doro.ico",
-      "include": "build/installer.nsh"
-    }
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jelosus2/DatasetEditor.git"
   }
 }

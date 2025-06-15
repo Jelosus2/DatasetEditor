@@ -70,6 +70,7 @@ onMounted(async () => {
     @redo="appController.redoAction()"
     @save="appController.saveChanges()"
     @reload_dataset="appController.reloadDataset()"
+    @trigger_alert="showAlert"
   />
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
     <MainComponent :are-previews-enabled="arePreviewsEnabled" @trigger_alert="showAlert" />

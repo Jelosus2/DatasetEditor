@@ -9,6 +9,7 @@ export class IpcHandlers {
     this.taggerApiClient = managers.taggerApiClient;
     this.taggerProcessManager = managers.taggerProcessManager;
     this.windowManager = managers.windowManager;
+    this.updateManager = managers.updateManager;
   }
 
   registerHandlers() {
@@ -88,6 +89,22 @@ export class IpcHandlers {
 
     ipcMain.handle('open-url', (_, url) =>
       shell.openExternal(url)
+    );
+
+    ipcMain.handle('check_for_updates', () =>
+      this.updateManager.checkForUpdates()
+    );
+
+    ipcMain.handle('download_update', () =>
+      this.updateManager.downloadUpdate()
+    );
+
+    ipcMain.handle('install_update', () =>
+      this.updateManager.installUpdate()
+    );
+
+    ipcMain.handle('are_updates_available', () =>
+      this.updateManager.areUpdatesAvailable()
     );
 
     ipcMain.handle('apply_background_color', async (_, images, color) =>
