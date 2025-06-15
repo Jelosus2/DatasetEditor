@@ -105,14 +105,25 @@ export function useTagOperations() {
 
     const allImageKeys = [...datasetStore.images.keys()];
     for (const image of allImageKeys) {
-      const imageWithTags = datasetStore.images.get(image);
+      const imageWithTags = datasetStore.images.get(image)!;
       for (const tag of tags) {
+        const hadTag = imageWithTags.tags.has(tag);
+
         if (tagPosition === -1) {
-          imageWithTags?.tags.add(tag);
+          imageWithTags.tags.add(tag);
         } else {
-          const tagsCopy = [...imageWithTags!.tags];
+          const tagsCopy = [...imageWithTags.tags];
+          const existingIndex = tagsCopy.indexOf(tag);
+          if (existingIndex !== -1) tagsCopy.splice(existingIndex, 1);
+
           tagsCopy.splice(tagPosition - 1, 0, tag);
-          imageWithTags!.tags = new Set(tagsCopy);
+          imageWithTags.tags = new Set(tagsCopy);
+        }
+
+        if (datasetStore.tagDiff.size > 0 && !hadTag) {
+          const diff = datasetStore.tagDiff.get(image);
+          if (diff?.tagger.has(tag)) diff.tagger.delete(tag);
+          else diff?.original.add(tag);
         }
       }
     }
