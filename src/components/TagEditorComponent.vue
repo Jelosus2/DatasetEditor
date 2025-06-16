@@ -9,6 +9,7 @@ import { useTagOperations } from '@/composables/useTagOperations';
 
 import CopyIcon from '@/assets/icons/copy.svg';
 import SortArrowIcon from '@/assets/icons/sort-arrow.svg';
+import SwapIcon from '@/assets/icons/swap.svg';
 
 const props = defineProps({
   selectedImages: { type: Object as PropType<Set<string>>, required: true },
@@ -210,8 +211,10 @@ function replaceTag(mode: 'selected' | 'all') {
             </button>
           </div>
           <label class="input relative input-sm w-full pl-1 !outline-none">
-            <div class="tooltip" data-tip="Click to open or close the tag replace section">
-              <span class="inline-block cursor-pointer text-sm" :class="{ 'rotate-90': openReplaceTagSection }" @click="openReplaceTagSection = !openReplaceTagSection">&gt;</span>
+            <div class="tooltip" data-tip="Replace tags">
+              <button class="btn btn-circle btn-ghost btn-xs border-none p-0.5" @click="openReplaceTagSection = !openReplaceTagSection">
+                <SwapIcon class="h-full w-full fill-none" />
+              </button>
             </div>
             <AutocompletionComponent
               v-model="tagInput"
