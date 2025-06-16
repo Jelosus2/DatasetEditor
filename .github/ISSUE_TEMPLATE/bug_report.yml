@@ -9,12 +9,6 @@ body:
         - Verify you are on the latest version of the app.
         - Search existing issues to see if the bug has already been reported.
         - Prepare clear steps to reproduce the problem.
-  - type: input
-    attributes:
-      label: Summary/title
-      description: "Short summary of the bug"
-    validations:
-      required: false
   - type: textarea
     attributes:
       label: Steps to reproduce
