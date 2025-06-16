@@ -4,6 +4,9 @@ import { SettingsService } from '@/services/settingsService';
 
 export interface Settings {
   showTagCount: boolean;
+  showDiffSection: boolean;
+  showCaptionDiffList: boolean;
+  showTagGroups: boolean;
   theme: string;
   autocomplete: boolean;
   autocompleteFile: string;
@@ -21,6 +24,9 @@ interface SettingsChangeRecord {
 
 export const useSettingsStore = defineStore('settings', () => {
   const showTagCount = ref<boolean>(false);
+  const showDiffSection = ref<boolean>(true);
+  const showCaptionDiffList = ref<boolean>(true);
+  const showTagGroups = ref<boolean>(true);
   const theme = ref<string>('dark');
   const autocomplete = ref<boolean>(true);
   const autocompleteFile = ref<string>('');
@@ -34,6 +40,9 @@ export const useSettingsStore = defineStore('settings', () => {
   const settingsService = new SettingsService();
   const settingsMap: Record<keyof Settings, Ref<Settings[keyof Settings]>> = {
     showTagCount,
+    showDiffSection,
+    showCaptionDiffList,
+    showTagGroups,
     theme,
     autocomplete,
     autocompleteFile,
@@ -82,6 +91,21 @@ export const useSettingsStore = defineStore('settings', () => {
     pushSettingsChange({ key: 'showTagCount', previous: oldVal, value: newVal });
   });
 
+  watch(showDiffSection, (newVal, oldVal) => {
+    if (!isInitialized.value) return;
+    pushSettingsChange({ key: 'showDiffSection', previous: oldVal, value: newVal });
+  });
+
+  watch(showCaptionDiffList, (newVal, oldVal) => {
+    if (!isInitialized.value) return;
+    pushSettingsChange({ key: 'showCaptionDiffList', previous: oldVal, value: newVal });
+  });
+
+  watch(showTagGroups, (newVal, oldVal) => {
+    if (!isInitialized.value) return;
+    pushSettingsChange({ key: 'showTagGroups', previous: oldVal, value: newVal });
+  });
+
   watch(theme, (newVal, oldVal) => {
     if (!isInitialized.value) return;
     pushSettingsChange({ key: 'theme', previous: oldVal, value: newVal });
@@ -122,6 +146,9 @@ export const useSettingsStore = defineStore('settings', () => {
     const settings = (await settingsService.loadSettings()) as Settings;
     theme.value = settings.theme ?? theme.value;
     showTagCount.value = settings.showTagCount ?? showTagCount.value;
+    showDiffSection.value = settings.showDiffSection ?? showDiffSection.value;
+    showCaptionDiffList.value = settings.showCaptionDiffList ?? showCaptionDiffList.value;
+    showTagGroups.value = settings.showTagGroups ?? showTagGroups.value;
     autocomplete.value = settings.autocomplete ?? autocomplete.value;
     autocompleteFile.value = settings.autocompleteFile ?? autocompleteFile.value;
     tagsIgnored.value = settings.tagsIgnored ?? tagsIgnored.value;
@@ -135,6 +162,9 @@ export const useSettingsStore = defineStore('settings', () => {
   async function saveSettings() {
     await settingsService.saveSettings({
       showTagCount: toRaw(showTagCount.value),
+      showDiffSection: toRaw(showDiffSection.value),
+      showCaptionDiffList: toRaw(showCaptionDiffList.value),
+      showTagGroups: toRaw(showTagGroups.value),
       theme: toRaw(theme.value),
       autocomplete: toRaw(autocomplete.value),
       autocompleteFile: toRaw(autocompleteFile.value),
@@ -149,6 +179,9 @@ export const useSettingsStore = defineStore('settings', () => {
   async function areSettingsSaved() {
     return settingsService.compareSettingsChanges({
       showTagCount: toRaw(showTagCount.value),
+      showDiffSection: toRaw(showDiffSection.value),
+      showCaptionDiffList: toRaw(showCaptionDiffList.value),
+      showTagGroups: toRaw(showTagGroups.value),
       theme: toRaw(theme.value),
       autocomplete: toRaw(autocomplete.value),
       autocompleteFile: toRaw(autocompleteFile.value),
@@ -175,6 +208,9 @@ export const useSettingsStore = defineStore('settings', () => {
 
   return {
     showTagCount,
+    showDiffSection,
+    showCaptionDiffList,
+    showTagGroups,
     theme,
     autocomplete,
     autocompleteFile,

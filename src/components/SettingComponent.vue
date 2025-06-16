@@ -105,6 +105,30 @@ async function changeAutocompleteFile() {
         </div>
         <div class="divider"></div>
         <div class="space-y-2">
+          <h2 class="text-xl font-semibold">Interface</h2>
+          <div class="space-y-4 pt-2">
+            <div class="form-control">
+              <label class="label cursor-pointer justify-start gap-4">
+                <input type="checkbox" class="toggle" v-model="settingsStore.showDiffSection" />
+                <span class="label-text">Show Diff Section</span>
+              </label>
+            </div>
+            <div class="form-control">
+              <label class="label cursor-pointer justify-start gap-4">
+                <input type="checkbox" class="toggle" v-model="settingsStore.showCaptionDiffList" />
+                <span class="label-text">Show Caption Diff List</span>
+              </label>
+            </div>
+            <div class="form-control">
+              <label class="label cursor-pointer justify-start gap-4">
+                <input type="checkbox" class="toggle" v-model="settingsStore.showTagGroups" />
+                <span class="label-text">Show Tag Groups</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="space-y-2">
           <h2 class="text-xl font-semibold">Autotagger</h2>
           <div class="space-y-4 pt-2">
             <div class="form-control w-full max-w-xs">

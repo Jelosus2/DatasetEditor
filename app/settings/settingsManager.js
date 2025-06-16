@@ -13,6 +13,9 @@ export class SettingsManager {
   getDefaultSettings() {
     return {
       showTagCount: false,
+      showDiffSection: true,
+      showCaptionDiffList: true,
+      showTagGroups: true,
       theme: 'dark',
       autocomplete: true,
       autocompleteFile: join(this.tagAutocompletionsPath, 'danbooru.csv'),

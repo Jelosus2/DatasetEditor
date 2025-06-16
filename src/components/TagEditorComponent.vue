@@ -130,8 +130,8 @@ function replaceTag(mode: 'selected' | 'all') {
 <template>
   <div class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"></div>
   <div class="w-[40%]">
-    <div class="flex h-[50%]">
-      <div class="flex w-[50%] flex-col">
+    <div v-if="settingsStore.showDiffSection" class="flex h-[50%]">
+      <div :class="settingsStore.showCaptionDiffList ? 'flex w-[50%] flex-col' : 'flex w-full flex-col'">
         <div class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-base-content/10">
           <p>Tags detected by autotagger but not in the captions</p>
         </div>
@@ -146,8 +146,11 @@ function replaceTag(mode: 'selected' | 'all') {
           </div>
         </div>
       </div>
-      <div class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"></div>
-      <div class="flex w-[50%] flex-col">
+      <div
+        v-if="settingsStore.showCaptionDiffList"
+        class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400">
+      </div>
+      <div v-if="settingsStore.showCaptionDiffList" class="flex w-[50%] flex-col">
         <div class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-base-content/10">
           <p>Tags in captions but not detected by the autotagger</p>
         </div>
@@ -163,7 +166,10 @@ function replaceTag(mode: 'selected' | 'all') {
         </div>
       </div>
     </div>
-    <div class="flex h-[50%] flex-col border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
+    <div :class="[
+      'flex flex-col border-t-2 border-gray-400 pt-1 dark:border-base-content/10',
+      settingsStore.showDiffSection ? 'h-[50%]' : 'h-full'
+    ]">
       <div class="border-b-2 border-gray-400 pb-1 dark:border-base-content/10">
         <div class="flex w-full gap-2">
           <label class="input input-sm gap-0 !outline-none">
@@ -247,7 +253,11 @@ function replaceTag(mode: 'selected' | 'all') {
   </div>
   <div class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"></div>
   <div class="w-[30%] pt-1 pr-1">
-    <div class="flex flex-col gap-2 overflow-auto pb-1" :style="{ height: tagGroupSectionTopHeight + '%' }">
+    <div
+      v-if="settingsStore.showTagGroups"
+      class="flex flex-col gap-2 overflow-auto pb-1"
+      :style="{ height: tagGroupSectionTopHeight + '%' }"
+    >
       <div class="h-[40%] pb-1">
         <div class="flex gap-2">
           <label class="input input-sm w-full !outline-none">
@@ -296,8 +306,15 @@ function replaceTag(mode: 'selected' | 'all') {
         </div>
       </div>
     </div>
-    <div class="flex flex-col" :style="{ height: tagGroupSectionBottomHeight + '%' }">
-      <div class="divider m-0 cursor-ns-resize not-dark:before:bg-gray-400 not-dark:after:bg-gray-400" @mousedown.prevent="resizeTagGroupSection"></div>
+    <div
+      class="flex flex-col"
+      :style="{ height: settingsStore.showTagGroups ? tagGroupSectionBottomHeight + '%' : '100%' }"
+    >
+      <div
+        v-if="settingsStore.showTagGroups"
+        class="divider m-0 cursor-ns-resize not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
+        @mousedown.prevent="resizeTagGroupSection"
+      ></div>
       <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth pt-1">
         <div
           v-for="tag in displayedGlobalTags"
