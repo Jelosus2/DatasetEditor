@@ -1,0 +1,21 @@
+name: Feature request
+description: "A new feature you would like to see in the Dataset Editor."
+labels: ["Feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before requesting a feature please:
+        - Verify you are on the latest version of the app.
+        - You're sure this feature doesn't exist already and has not been suggested in the issues page.
+        - Is something that's useful for the task of editing a dataset.
+  - type: textarea
+    attributes:
+      label: Describe the feature idea
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional context or screenshots
+    validations:
+      required: false

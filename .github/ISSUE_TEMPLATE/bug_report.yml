@@ -1,0 +1,38 @@
+name: Bug Report
+description: "File a bug report. Do not use if your issue is not related to a bug and you just need help."
+labels: ["Bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before reporting a bug please:
+        - Verify you are on the latest version of the app.
+        - Search existing issues to see if the bug has already been reported.
+        - Prepare clear steps to reproduce the problem.
+  - type: input
+    attributes:
+      label: Summary/title
+      description: "Short summary of the bug"
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+      description: "Describe how to reproduce the bug"
+      placeholder: "Step-by-step instructions"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected vs. actual behavior
+      description: "What you expected to happen and what actually happened"
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: "Please attach exported `logs.txt` if possible."
+  - type: textarea
+    attributes:
+      label: Optional screenshots or additional context
+    validations:
+      required: false
