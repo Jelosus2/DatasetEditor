@@ -39,11 +39,11 @@ async function startAutotagger() {
   if (isTaggerRunning.value) return;
 
   taggerLogs.value = [];
-  taggerLogs.value.push('Starting autotagger...');
+  taggerLogs.value.push('Starting service...');
 
   const active = await window.ipcRenderer.invoke('start_tagger_service');
   if (!active) {
-    taggerLogs.value.push('Autotagger failed to start');
+    taggerLogs.value.push('Service failed to start');
     isInstalling.value = false;
     isTaggerRunning.value = false;
   }
@@ -51,11 +51,11 @@ async function startAutotagger() {
 
 async function stopAutotagger() {
   if (!isTaggerRunning.value) return;
-  taggerLogs.value.push('Stopping autotagger...');
+  taggerLogs.value.push('Stopping service...');
   await window.ipcRenderer.invoke('stop_tagger_service');
   isTaggerRunning.value = false;
   device.value = '';
-  taggerLogs.value.push('Autotagger stopped');
+  taggerLogs.value.push('Service stopped');
 }
 
 async function autoTagImages(type: 'insert' | 'diff') {
