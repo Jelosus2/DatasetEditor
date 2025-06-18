@@ -24,7 +24,7 @@ async function search() {
 
     const description = wiki.value.body.match(/^[\s\S]*?(?=^h[1-6]\.\s+)/m);
     const result = description ? description[0] : wiki.value.body;
-    html.value = await parseWikiBody(result);
+    html.value = await parseWikiBody(result || 'No description was found for this wiki page');
   } catch (err) {
     wiki.value = null;
     posts.value = [];

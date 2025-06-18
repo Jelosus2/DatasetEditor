@@ -1,4 +1,4 @@
-import { app, nativeTheme, Menu } from 'electron';
+import { app, nativeTheme, Menu, session } from 'electron';
 import Database from 'better-sqlite3';
 import { join } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
@@ -68,11 +68,22 @@ function setupApp() {
   app.on('activate', onActivate);
 }
 
+function setupDanbooruRefererHeader() {
+  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    const { hostname } = new URL(details.url);
+    if (hostname.endsWith('donmai.us')) {
+      details.requestHeaders['Referer'] = 'https://danbooru.donmai.us/';
+    }
+    callback({ requestHeaders: details.requestHeaders });
+  });
+}
+
 async function onAppReady() {
   try {
     await tagDatabase.loadCSVIntoDatabase(settingsManager, windowManager.getMainWindow());
 
     const mainWindow = await windowManager.createMainWindow();
+    setupDanbooruRefererHeader();
     taggerApiClient.mainWindow = mainWindow;
     taggerProcessManager = new TaggerProcessManager(paths.taggerPath, mainWindow);
     updateManager = new UpdateManager(mainWindow);

@@ -1,4 +1,5 @@
 import { ipcMain, shell } from 'electron';
+import { fetchDanbooruWiki, fetchDanbooruPosts } from '../utils/wiki.js';
 
 export class IpcHandlers {
   constructor(managers) {
@@ -109,6 +110,14 @@ export class IpcHandlers {
 
     ipcMain.handle('apply_background_color', async (_, images, color) =>
       await this.datasetManager.applyBackgroundColor(images, color, this.windowManager.getMainWindow())
+    );
+
+    ipcMain.handle('fetch_danbooru_wiki', async (_, tag) =>
+      await fetchDanbooruWiki(tag)
+    );
+
+    ipcMain.handle('fetch_danbooru_posts', async (_, tag) =>
+      await fetchDanbooruPosts(tag)
     );
   }
 }

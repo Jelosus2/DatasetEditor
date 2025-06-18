@@ -16,20 +16,16 @@ DText.options({
 });
 
 export async function fetchWiki(tag: string) {
-  const res = await fetch(`https://danbooru.donmai.us/wiki_pages/${encodeURIComponent(tag.toLowerCase())}.json`);
-  const json = await res.json();
-  if (res.status === 404) throw new Error(`Wiki page for tag '${tag}' not found!`);
-  if (!res.ok && json.error) throw new Error(`[Code ${res.status}] ${json.error}`);
-  if (!res.ok) throw new Error(`[Code ${res.status}] Unkown error`);
-  return json as { body: string };
+  const json = (await window.ipcRenderer.invoke('fetch_danbooru_wiki', tag)) as { body: string };
+  return json;
 }
 
 export async function fetchPosts(tag: string) {
-  const res = await fetch(
-    `https://danbooru.donmai.us/posts.json?limit=10&tags=${encodeURIComponent(tag.replace(/ /g, '_').toLowerCase())}`
-  );
-  if (!res.ok) throw new Error(`[Code ${res.status}] Failed to fetch posts related to '${tag}' tag`);
-  return res.json() as Promise<Array<{ id: number; file_url: string }>>;
+  const posts = (await window.ipcRenderer.invoke('fetch_danbooru_posts', tag)) as Array<{
+    id: number;
+    file_url: string;
+  }>;
+  return posts;
 }
 
 export async function parseWikiBody(body: string): Promise<string> {

@@ -1,11 +1,11 @@
 {
   "name": "dataset-editor",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
   "main": "app/main.js",
   "description": "A dataset editor",
   "author": "Jelosus1",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "electron": "electron .",
