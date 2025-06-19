@@ -1,32 +1,33 @@
 <script setup lang="ts">
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch } from 'vue';
 import { useSettingsStore } from '@/stores/settingsStore';
 
 const isChangingFile = ref(false);
 
 const settingsStore = useSettingsStore();
 
-const tagsIgnoredInput = ref(settingsStore.tagsIgnored.join(', '));
-const updatingFromInput = ref(false);
+const tagsIgnoredInput = ref('');
 
-watch(tagsIgnoredInput, async value => {
-  updatingFromInput.value = true;
-  settingsStore.tagsIgnored = value
-    .split(',')
-    .map(t => t.trim())
-    .filter(tag => tag.length > 0);
-  await nextTick();
-  updatingFromInput.value = false;
+function validateTagsIgnored() {
+  settingsStore.tagsIgnored = [...new Set(settingsStore.tagsIgnored)];
+  tagsIgnoredInput.value = settingsStore.tagsIgnored.join(', ');
+}
+
+watch(tagsIgnoredInput, value => {
+  if (!value.trim().endsWith(',')) {
+    settingsStore.tagsIgnored = value
+      .split(',')
+      .map(t => t.trim())
+      .filter(tag => tag.length > 0)
+  }
 });
 
 watch(
   () => settingsStore.tagsIgnored,
   tags => {
-    if (!updatingFromInput.value) {
-      tagsIgnoredInput.value = tags.join(', ');
-    }
+    tagsIgnoredInput.value = tags.join(', ');
   },
   { immediate: true }
 );
@@ -153,6 +154,7 @@ async function changeAutocompleteFile() {
                   :textarea="true"
                   :multiple="true"
                   :placeholder="'tag1, tag2, tag3'"
+                  @on-blur="validateTagsIgnored"
                 />
               </div>
             </div>

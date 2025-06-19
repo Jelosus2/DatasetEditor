@@ -151,7 +151,7 @@ export const useSettingsStore = defineStore('settings', () => {
     showTagGroups.value = settings.showTagGroups ?? showTagGroups.value;
     autocomplete.value = settings.autocomplete ?? autocomplete.value;
     autocompleteFile.value = settings.autocompleteFile ?? autocompleteFile.value;
-    tagsIgnored.value = settings.tagsIgnored ?? tagsIgnored.value;
+    tagsIgnored.value = [...new Set(settings.tagsIgnored ?? tagsIgnored.value)];
     taggerPort.value = settings.taggerPort ?? taggerPort.value;
     recursiveDatasetLoad.value = settings.recursiveDatasetLoad ?? recursiveDatasetLoad.value;
     autoCheckUpdates.value = settings.autoCheckUpdates ?? autoCheckUpdates.value;
@@ -168,7 +168,7 @@ export const useSettingsStore = defineStore('settings', () => {
       theme: toRaw(theme.value),
       autocomplete: toRaw(autocomplete.value),
       autocompleteFile: toRaw(autocompleteFile.value),
-      tagsIgnored: toRaw(tagsIgnored.value),
+      tagsIgnored: [...new Set(tagsIgnored.value)],
       taggerPort: toRaw(taggerPort.value),
       recursiveDatasetLoad: toRaw(recursiveDatasetLoad.value),
       autoCheckUpdates: toRaw(autoCheckUpdates.value),
@@ -185,7 +185,7 @@ export const useSettingsStore = defineStore('settings', () => {
       theme: toRaw(theme.value),
       autocomplete: toRaw(autocomplete.value),
       autocompleteFile: toRaw(autocompleteFile.value),
-      tagsIgnored: toRaw(tagsIgnored.value),
+      tagsIgnored: [...new Set(tagsIgnored.value)],
       taggerPort: toRaw(taggerPort.value),
       recursiveDatasetLoad: toRaw(recursiveDatasetLoad.value),
       autoCheckUpdates: toRaw(autoCheckUpdates.value),

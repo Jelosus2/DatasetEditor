@@ -4,7 +4,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 
 defineOptions({ inheritAttrs: false });
 const tagInput = defineModel({ required: true, type: String });
-const emit = defineEmits(['on-complete', 'on-input']);
+const emit = defineEmits(['on-complete', 'on-input', 'on-blur']);
 const props = defineProps({
   disabled: { type: Boolean },
   id: { type: String },
@@ -106,6 +106,13 @@ async function handleSuggestionClick(tag: string) {
     if (input.value) input.value.focus();
   }, 0);
 }
+
+function onBlur() {
+  completions.value = [];
+  selectedIndex.value = -1;
+  active.value = false;
+  emit('on-blur');
+}
 </script>
 
 <template>
@@ -119,7 +126,7 @@ async function handleSuggestionClick(tag: string) {
     v-bind="attrs"
     @input="showSuggestions"
     @focus="active = true"
-    @blur="((completions = []), (selectedIndex = -1), (active = false))"
+    @blur="onBlur"
     @keyup.enter="onKeyEnter"
     @keydown.prevent.arrow-up="onArrowUp"
     @keydown.prevent.arrow-down="onArrowDown"
@@ -134,7 +141,7 @@ async function handleSuggestionClick(tag: string) {
     v-bind="attrs"
     @input="showSuggestions"
     @focus="active = true"
-    @blur="((completions = []), (selectedIndex = -1), (active = false))"
+    @blur="onBlur"
     @keydown.enter.prevent="onKeyEnter"
     @keydown.prevent.arrow-up="onArrowUp"
     @keydown.prevent.arrow-down="onArrowDown"
