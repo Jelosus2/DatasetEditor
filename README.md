@@ -14,6 +14,9 @@
 You’ll need:
 - **Node.js ≥ 20** (download it [here](https://nodejs.org/en/download)) and **pnpm** (or npm).
 - Embedded version of a compatible python version inside the root directory named `embedded_python`
+  - You have to add pip with [get-pip.py](https://bootstrap.pypa.io/get-pip.py)
+  - You also have to uncomment the `import site` line in the pth file.
+  - (Optional) To test the tagger in development copy the `embedded_python` directory inside the `tagger` directory.
 - (Optional) Add a csv file for autocompletions named `danbooru.csv` in `Data/TagAutocompletions` and load the csv into the database.
 
 ```bash
@@ -54,7 +57,7 @@ Blazing fast autocompletions thanks to the power of SQLite.
 ### Bulk Tag Ops + Undo/Redo
 ![Bulk ops](.github/images/bulk_ops.gif)
 
-You messed up the tags of your dataset? Fear not, you can easily fix them using bulk tag operations and with the help of undo/redo actions
+Messed up the tags of your dataset? Fear not, you can easily fix them using bulk tag operations and with the help of undo/redo actions
 
 ### Built-in Python Autotagger
 ![Autotagging](.github/images/autotagging.gif)
@@ -64,17 +67,17 @@ Easily autotag your images in a few click, dependency installation and model dow
 ### Tag Groups
 ![Tag groups](.github/images/tag_groups.gif)
 
-Create reusable tag groups for hair styles, eye colors, characters... Everything you need. Export them as JSON to share them with other persons.
+Create reusable tag groups for hair styles, eye colors, characters... Everything you need. Export them as JSON to share them with other people.
 
 ### Background Color For Transparent Images
 ![Background Change](.github/images/background_change.gif)
 
-Tired of having to use an external tool or website to add a background color to your transparent images? No you can do it within the app!
+Tired of having to use an external tool or website to add a background color to your transparent images? Now you can do it within the app!
 
 ### Browse Danbooru Wiki
 ![Wiki Search](.github/images/wiki_search.gif)
 
-Ever wondered what a tag represents? You can now know within the comodity of being in the app.
+Ever wondered what a tag represents? You can now find out from the comfort of the app.
 
 ### Seamless Updates (Installer Only)
 The update service checks GitHub for new releases every launch (if the setting is enabled) and notifies you in the navbar. Just click download and install it when you’re ready.
