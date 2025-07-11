@@ -222,6 +222,7 @@ function replaceTag(mode: 'selected' | 'all') {
               :id="'completion-list'"
               :placeholder="openReplaceTagSection ? 'Type a tag to replace...' : 'Type to add a tag...'"
               :multiple="openReplaceTagSection ? false : true"
+              :custom-list="openReplaceTagSection ? [...displayedTags.keys()] : undefined"
               @on-complete="addTag()"
             />
           </label>
