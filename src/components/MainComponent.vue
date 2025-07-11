@@ -4,7 +4,7 @@ import ImageGridComponent from '@/components/ImageGridComponent.vue';
 import TagEditorComponent from '@/components/TagEditorComponent.vue';
 import BackgroundColorModalComponent from '@/components/BackgroundColorModalComponent.vue';
 
-import { ref, watch, computed, shallowRef, onMounted } from 'vue';
+import { ref, watch, computed, shallowRef, onMounted, onBeforeUnmount } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
 import { useTagDisplay } from '@/composables/useTagDisplay';
 
@@ -27,6 +27,7 @@ const globalSortMode = ref('alphabetical');
 const globalSortOrder = ref('asc');
 const globalTagFilterInput = ref('');
 const previewImage = ref('');
+const isFocused = ref(false);
 
 const datasetStore = useDatasetStore();
 const {
@@ -100,6 +101,14 @@ function toggleSelection(id: string, event: MouseEvent) {
   selectedImages.value = new Set(selectedImages.value);
 }
 
+function selectAllImages() {
+  const allImageKeys = isFiltering.value
+    ? Array.from(filteredImages.value)
+    : imageKeys.value;
+
+  selectedImages.value = new Set(allImageKeys);
+}
+
 function displayFullImage(id: string) {
   if (props.arePreviewsEnabled) return;
 
@@ -143,8 +152,22 @@ function clearImageFilter() {
   }
 }
 
+function handleKeydown(event: KeyboardEvent) {
+  if (!isFocused.value) return;
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+    event.preventDefault();
+    selectAllImages();
+  }
+}
+
 onMounted(() => {
   datasetStore.onChange = [triggerUpdate];
+  window.addEventListener('keydown', handleKeydown);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown);
 });
 </script>
 
@@ -156,6 +179,10 @@ onMounted(() => {
         class="flex w-[20%] max-w-[40%] min-w-[20%] flex-col pt-1 pl-1"
         :style="{ width: containerWidth + 'px' }"
         ref="container"
+        tabindex="0"
+        @keydown="handleKeydown"
+        @focus="isFocused = true"
+        @blur="isFocused = false"
       >
         <ImageGridComponent
           v-model:selected-images="selectedImages"
