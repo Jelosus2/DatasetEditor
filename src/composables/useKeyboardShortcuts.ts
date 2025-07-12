@@ -5,7 +5,7 @@ export interface ShortcutConfig {
   ctrl?: boolean;
   shift?: boolean;
   alt?: boolean;
-  handler: () => void | Promise<void>;
+  handler: (event: KeyboardEvent) => void | Promise<void>;
   preventDefault?: boolean;
 }
 
@@ -22,7 +22,7 @@ export function useKeyboardShortcuts(shortcuts: ShortcutConfig[]) {
         if (shortcut.preventDefault) {
           event.preventDefault();
         }
-        await shortcut.handler();
+        await shortcut.handler(event);
         break;
       }
     }

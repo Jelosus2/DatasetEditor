@@ -27,6 +27,7 @@ const globalSortMode = ref('alphabetical');
 const globalSortOrder = ref('asc');
 const globalTagFilterInput = ref('');
 const previewImage = ref('');
+const imageContainerFocused = ref(false);
 
 const datasetStore = useDatasetStore();
 const {
@@ -100,7 +101,10 @@ function toggleSelection(id: string, event: MouseEvent) {
   selectedImages.value = new Set(selectedImages.value);
 }
 
-function selectAllImages() {
+function selectAllImages(e: KeyboardEvent) {
+  if (!imageContainerFocused.value) return;
+  e.preventDefault();
+
   const images = filteredImages.value.size
     ? filteredImages.value
     : datasetStore.images.keys();
@@ -165,6 +169,9 @@ defineExpose({ selectAllImages });
         class="flex w-[20%] max-w-[40%] min-w-[20%] flex-col pt-1 pl-1"
         :style="{ width: containerWidth + 'px' }"
         ref="container"
+        tabindex="0"
+        @focus="imageContainerFocused = true"
+        @blur="imageContainerFocused = false"
       >
         <ImageGridComponent
           v-model:selected-images="selectedImages"
