@@ -212,7 +212,7 @@ function replaceTag(mode: 'selected' | 'all') {
           </div>
           <label class="input relative input-sm w-full pl-1 !outline-none">
             <div class="tooltip" data-tip="Replace tags">
-              <button class="btn btn-circle btn-ghost btn-xs border-none p-0.5" @click="openReplaceTagSection = !openReplaceTagSection">
+              <button class="btn btn-circle btn-ghost btn-xs border-none p-0.5" :disabled="!displayedTags.size" @click="openReplaceTagSection = !openReplaceTagSection">
                 <SwapIcon class="h-full w-full fill-none" />
               </button>
             </div>
@@ -222,7 +222,7 @@ function replaceTag(mode: 'selected' | 'all') {
               :id="'completion-list'"
               :placeholder="openReplaceTagSection ? 'Type a tag to replace...' : 'Type to add a tag...'"
               :multiple="openReplaceTagSection ? false : true"
-              :custom-list="openReplaceTagSection ? [...displayedTags.keys()] : undefined"
+              :custom-list="openReplaceTagSection ? [...displayedTags] : []"
               @on-complete="addTag()"
             />
           </label>

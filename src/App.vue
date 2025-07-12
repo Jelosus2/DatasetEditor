@@ -18,6 +18,7 @@ import { useAlert } from '@/composables/useAlert';
 import { AppController } from '@/controllers/AppController';
 
 const arePreviewsEnabled = ref(false);
+const mainComponent = ref<InstanceType<typeof MainComponent> | null>(null);
 const { message: alertMessage, type: alertType, timestamp: alertTimestamp, showAlert } = useAlert();
 
 const datasetStore = useDatasetStore();
@@ -36,7 +37,8 @@ useKeyboardShortcuts([
   { key: 'z', ctrl: true, handler: () => appController.undoAction(), preventDefault: true },
   { key: 'y', ctrl: true, handler: () => appController.redoAction(), preventDefault: true },
   { key: 's', ctrl: true, handler: () => appController.saveChanges(), preventDefault: true },
-  { key: 'r', ctrl: true, handler: () => appController.reloadDataset(), preventDefault: true }
+  { key: 'r', ctrl: true, handler: () => appController.reloadDataset(), preventDefault: true },
+  { key: 'a', ctrl: true, handler: () => mainComponent.value?.selectAllImages(), preventDefault: true }
 ]);
 
 const { send } = useIpcRenderer([
@@ -73,7 +75,7 @@ onMounted(async () => {
     @trigger_alert="showAlert"
   />
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
-    <MainComponent :are-previews-enabled="arePreviewsEnabled" @trigger_alert="showAlert" />
+    <MainComponent ref="mainComponent" :are-previews-enabled="arePreviewsEnabled" @trigger_alert="showAlert" />
     <TagGroupEditorComponent @trigger_alert="showAlert" />
     <SettingComponent />
     <LogsComponent />
