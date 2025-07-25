@@ -13,15 +13,17 @@ def tag_images(images: list[str], tagger_model: str, general_threshold: float, c
     final_dict = {}
 
     model, tag_data, target_size = load_model(tagger_model)
- 
-    print(f'Found {len(images)} images')
+    total_images = len(images)
+    tagged_images = 1
+
+    print(f'Found {total_images} images')
     for image in images:
         image_path = Path(image)
         if not image_path.exists():
             print(f'{image} not found, skipping')
             continue
 
-        print(f'Tagging {image}...')
+        print(f'({tagged_images}/{total_images}) Tagging {image}...')
         try:
             with Image.open(image) as img:
                 processed_image = prepare_image(img, target_size)
@@ -31,6 +33,8 @@ def tag_images(images: list[str], tagger_model: str, general_threshold: float, c
                 final_dict[Path(image.replace('\\', '/')).name] = processed_tags
         except Exception as e:
             print(f'Failed to tag {image}: {e}')
+        
+        tagged_images = tagged_images + 1
 
     print('Tagging finished')
     return final_dict
