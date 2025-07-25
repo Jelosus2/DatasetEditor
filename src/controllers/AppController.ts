@@ -24,10 +24,15 @@ export class AppController {
 
   async loadDataset(reload = false) {
     try {
-      await this.deps.datasetStore.loadDataset(reload);
-      if (this.deps.datasetStore.images.size > 0) {
-        this.deps.showAlert('success', 'Dataset loaded');
-      } else {
+      const loaded = await this.deps.datasetStore.loadDataset(reload);
+
+      if (loaded) {
+        if (this.deps.datasetStore.images.size > 0) {
+          this.deps.showAlert('success', 'Dataset loaded');
+        } else {
+          this.deps.showAlert('error', 'Found no images to load');
+        }
+      } else if (this.deps.datasetStore.images.size === 0) {
         this.deps.showAlert('error', 'Found no images to load');
       }
     } catch (error) {

@@ -202,12 +202,14 @@ export const useDatasetStore = defineStore('dataset', () => {
       settingsStore.recursiveDatasetLoad,
     );
 
-    if (!dataset) return;
+    if (!dataset) return false;
 
     images.value = dataset.images;
     globalTags.value = dataset.globalTags;
     directory.value = dataset.directoryPath;
     resetDatasetStatus();
+
+    return true;
   }
 
   async function saveDataset() {
