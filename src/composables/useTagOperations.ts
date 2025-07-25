@@ -143,12 +143,19 @@ export function useTagOperations() {
 
   function removeTag(tag: string, images: Set<string>) {
     if (!images.size) return;
+
     const imagesWithTag = datasetStore.globalTags.get(tag);
+    const previousState = new Map<string, Set<string>>();
+    for (const image of images) {
+      const current = datasetStore.images.get(image)?.tags;
+      if (current) previousState.set(image, new Set(current));
+    }
 
     datasetStore.pushDatasetChange({
       type: 'remove_tag',
       images: new Set(images),
       tags: new Set([tag]),
+      previousState,
     });
 
     for (const image of images) {
@@ -169,7 +176,10 @@ export function useTagOperations() {
 
   function removeGlobalTag(tag: string) {
     const imagesWithTag = new Set(datasetStore.globalTags.get(tag) ?? []);
+    const previousState = new Map<string, Set<string>>();
     for (const image of imagesWithTag) {
+      const current = datasetStore.images.get(image)?.tags;
+      if (current) previousState.set(image, new Set(current));
       datasetStore.images.get(image)?.tags.delete(tag);
     }
 
@@ -177,6 +187,7 @@ export function useTagOperations() {
       type: 'remove_global_tag',
       images: imagesWithTag,
       tags: new Set([tag]),
+      previousState,
     });
 
     datasetStore.globalTags.delete(tag);

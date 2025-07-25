@@ -142,10 +142,14 @@ export const useDatasetStore = defineStore('dataset', () => {
         removeTagsFromImages(images.value.keys(), change.tags);
         break;
       case 'remove_tag':
-        addTagsToImages(change.images!, change.tags);
+        for (const [image, previousTags] of change.previousState!.entries()) {
+          setImageTags(image, previousTags);
+        }
         break;
       case 'remove_global_tag':
-        addTagsToImages(change.images!, change.tags);
+        for (const [image, previousTags] of change.previousState!.entries()) {
+          setImageTags(image, previousTags);
+        }
         break;
       case 'replace_tag':
         for (const [image, previousTags] of change.previousState!.entries()) {
