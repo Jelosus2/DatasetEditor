@@ -154,6 +154,44 @@ function clearImageFilter() {
   }
 }
 
+function navigateSelection(direction: 'left' | 'right' | 'up' | 'down') {
+  if (!imageContainerFocused.value) return;
+
+  const grid = container.value?.querySelector('.grid') as HTMLElement | null;
+  const firstImage = grid?.querySelector('div') as HTMLElement | null;
+  if (!grid || !firstImage) return;
+
+  const columns = Math.max(1, Math.round(grid.clientWidth / (firstImage.clientWidth || 1)));
+
+  const total = imageKeys.value.length;
+  if (!total) return;
+
+  const currentIndex = lastSelectedIndex.value;
+  let step = 0;
+  if (direction === 'left') step = -1;
+  else if (direction === 'right') step = 1;
+  else if (direction === 'up') step = -columns;
+  else if (direction === 'down') step = columns;
+
+  let newIndex = currentIndex + step;
+  newIndex = Math.min(total - 1, Math.max(0, newIndex));
+
+  const inBounds = (idx: number) => idx >= 0 && idx < total;
+  const isValid = (idx: number) => !isFiltering.value || filteredImages.value.has(imageKeys.value[idx]);
+
+  while (inBounds(newIndex) && !isValid(newIndex)) {
+    newIndex += step > 0 ? 1 : -1;
+  }
+
+  if (!inBounds(newIndex) || !isValid(newIndex)) return;
+
+  const id = imageKeys.value[newIndex];
+  if (!id) return;
+
+  selectedImages.value = new Set([id]);
+  lastSelectedIndex.value = newIndex;
+}
+
 onMounted(() => {
   datasetStore.onChange = [triggerUpdate];
 });
@@ -166,12 +204,16 @@ defineExpose({ selectAllImages });
   <div class="tab-content border-t-base-300 bg-base-100">
     <div class="flex h-full">
       <div
-        class="flex w-[20%] max-w-[40%] min-w-[20%] flex-col pt-1 pl-1"
+        class="flex w-[20%] max-w-[40%] min-w-[20%] flex-col pt-1 pl-1 !outline-none"
         :style="{ width: containerWidth + 'px' }"
         ref="container"
         tabindex="0"
         @focus="imageContainerFocused = true"
         @blur="imageContainerFocused = false"
+        @keydown.prevent.arrow-left="navigateSelection('left')"
+        @keydown.prevent.arrow-right="navigateSelection('right')"
+        @keydown.prevent.arrow-up="navigateSelection('up')"
+        @keydown.prevent.arrow-down="navigateSelection('down')"
       >
         <ImageGridComponent
           v-model:selected-images="selectedImages"
