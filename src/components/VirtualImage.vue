@@ -49,6 +49,7 @@ onBeforeUnmount(() => {
     ref="container"
     class="flex cursor-pointer items-center justify-center rounded-md border-1 border-black bg-base-200 select-none dark:border-white"
     :class="{ 'border-3 !border-blue-600 bg-blue-400': selected }"
+    :title="name"
     @click="emit('click', $event)"
     @mouseenter="emit('mouseenter')"
     @mouseleave="emit('mouseleave')"
