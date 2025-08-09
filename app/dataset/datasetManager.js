@@ -168,4 +168,44 @@ export class DatasetManager {
     mainWindow?.webContents.send('app-log', { type: 'info', message: 'Changed background color successfully' });
     return { error: false, message: 'Changed background color successfully' };
   }
+
+  async cropImage(path, { x, y, width, height }, overwrite, mainWindow) {
+    try {
+      let outPath = path;
+
+      if (!overwrite) {
+        const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+          title: 'Save cropped image as',
+          defaultPath: path,
+        });
+
+        if (canceled || !filePath) {
+          return { error: true, message: 'Save cancelled' };
+        }
+
+        outPath = filePath;
+      }
+
+      const extractOptions = {
+        left: Math.round(x),
+        top: Math.round(y),
+        width: Math.round(width),
+        height: Math.round(height),
+      };
+
+      if (overwrite) {
+        const buffer = await sharp(path).extract(extractOptions).toBuffer();
+        writeFileSync(outPath, buffer);
+      } else {
+        await sharp(path).extract(extractOptions).toFile(outPath);
+      }
+
+      mainWindow?.webContents.send('app-log', { type: 'info', message: 'Image cropped successfully' });
+      return { error: false, message: 'Image cropped successfully' };
+    } catch (error) {
+      const message = `Error cropping image: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      mainWindow?.webContents.send('app-log', { type: 'error', message });
+      return { error: true, message: 'Failed to crop image, check the logs for more information.' };
+    }
+  }
 }

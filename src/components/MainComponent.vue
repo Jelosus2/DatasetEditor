@@ -3,6 +3,7 @@ import ModalComponent from '@/components/ModalComponent.vue';
 import ImageGridComponent from '@/components/ImageGridComponent.vue';
 import TagEditorComponent from '@/components/TagEditorComponent.vue';
 import BackgroundColorModalComponent from '@/components/BackgroundColorModalComponent.vue';
+import CropImageModalComponent from '@/components/CropImageModalComponent.vue';
 
 import { ref, watch, computed, shallowRef, onMounted } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
@@ -266,4 +267,5 @@ defineExpose({ selectAllImages });
     </div>
   <ModalComponent :html="modalHtml" :is-image="imageModal" />
   <BackgroundColorModalComponent :selected-images="selectedImages" @trigger_alert="(t, m) => emit('trigger_alert', t, m)" />
+  <CropImageModalComponent :selected-images="selectedImages" @trigger_alert="(t, m) => emit('trigger_alert', t, m)" />
 </template>

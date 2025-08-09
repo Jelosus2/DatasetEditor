@@ -184,6 +184,9 @@ const updateInfo = computed(() => {
           <li>
             <label for="danbooru_wiki_modal">Search Danbooru Wiki</label>
           </li>
+          <li>
+            <label for="crop_image_modal">Crop image</label>
+          </li>
         </ul>
       </div>
     </div>

@@ -119,5 +119,9 @@ export class IpcHandlers {
     ipcMain.handle('fetch_danbooru_posts', async (_, tag) =>
       await fetchDanbooruPosts(tag)
     );
+
+    ipcMain.handle('crop_image', async (_, path, crop, overwrite) =>
+      await this.datasetManager.cropImage(path, crop, overwrite, this.windowManager.getMainWindow())
+    );
   }
 }
