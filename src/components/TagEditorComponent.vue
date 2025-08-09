@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
-import { ref, shallowRef, type PropType } from 'vue';
+import { ref, shallowRef, computed, type PropType } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
 import { useTagGroupStore } from '@/stores/tagGroupStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -27,6 +27,7 @@ const globalTagFilterInput = defineModel<string>('globalTagFilterInput', { requi
 const tagInput = ref('');
 const globalTagInput = ref('');
 const tagPosition = ref(-1);
+const highlightInput = ref('');
 const selectedTagGroups = ref<Set<string>>(new Set());
 const tagGroupFilterInput = ref('');
 const openReplaceTagSection = ref(false);
@@ -36,10 +37,28 @@ const tagGroupSectionTopHeight = ref(55);
 const tagGroupSectionBottomHeight = ref(45);
 const areTagsCopied = ref(false);
 
+const highlightWords = computed(() =>
+  highlightInput.value
+    .split(',')
+    .map((word) => word.trim())
+    .filter((word) => word)
+);
+
 const datasetStore = useDatasetStore();
 const tagGroupsStore = useTagGroupStore();
 const settingsStore = useSettingsStore();
 const tagOperations = useTagOperations();
+
+function escapeRegExp(str: string) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\$&');
+}
+
+function matchesHighlight(tag: string) {
+  return highlightWords.value.some((word) => {
+    const regex = new RegExp(`(^|[^\\p{L}])${escapeRegExp(word)}([^\\p{L}]|$)`, 'iu');
+    return regex.test(tag);
+  });
+}
 
 function resizeTagGroupSection(moveEvent: MouseEvent) {
   const startY = moveEvent.clientY;
@@ -184,6 +203,9 @@ function replaceTag(mode: 'selected' | 'all') {
             <input v-model="globalTagFilterInput" type="text" placeholder="Filter global tags..." :disabled="!datasetStore.globalTags.size" />
           </label>
         </div>
+        <label class="input input-sm w-full mt-1 !outline-none">
+          <input v-model="highlightInput" type="text" placeholder="Highlight words..." :disabled="!displayedTags.size" />
+        </label>
       </div>
       <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth pt-1">
         <div
@@ -192,11 +214,13 @@ function replaceTag(mode: 'selected' | 'all') {
           class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
           :class="{
             'dark:bg-warning/50':
-              isFiltering &&
-              filterInput
-                .split(',')
-                .map((tag) => tag.trim())
-                .includes(tag),
+              (
+                isFiltering &&
+                filterInput
+                  .split(',')
+                  .map((tag) => tag.trim())
+                  .includes(tag)
+              ) || matchesHighlight(tag),
           }"
           @click="removeTag(tag)"
         >
