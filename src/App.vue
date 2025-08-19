@@ -77,7 +77,7 @@ onMounted(async () => {
   <div class="tabs-lift tabs h-[calc(100vh-86px)]">
     <MainComponent ref="mainComponent" :are-previews-enabled="arePreviewsEnabled" @trigger_alert="showAlert" />
     <TagGroupEditorComponent @trigger_alert="showAlert" />
-    <SettingComponent />
+    <SettingComponent @trigger-alert="showAlert" />
     <LogsComponent />
   </div>
   <AutotaggerModalComponent @trigger_alert="showAlert" />

@@ -4,11 +4,12 @@ import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 import { ref, watch } from 'vue';
 import { useSettingsStore } from '@/stores/settingsStore';
 
+const emit = defineEmits(['trigger-alert']);
+
 const isChangingFile = ref(false);
+const tagsIgnoredInput = ref('');
 
 const settingsStore = useSettingsStore();
-
-const tagsIgnoredInput = ref('');
 
 function validateTagsIgnored() {
   settingsStore.tagsIgnored = [...new Set(settingsStore.tagsIgnored)];
@@ -36,6 +37,11 @@ async function changeAutocompleteFile() {
   isChangingFile.value = true;
   await settingsStore.changeAutocompleteFile();
   isChangingFile.value = false;
+}
+
+async function saveSettings() {
+  await settingsStore.saveSettings();
+  emit('trigger-alert', 'success', 'Settings saved successfully');
 }
 </script>
 
@@ -161,6 +167,9 @@ async function changeAutocompleteFile() {
           </div>
         </div>
         <div class="divider"></div>
+        <div class="flex pt-4">
+          <button class="btn btn-accent btn-outline" @click="saveSettings">Save</button>
+        </div>
       </div>
     </div>
   </div>
