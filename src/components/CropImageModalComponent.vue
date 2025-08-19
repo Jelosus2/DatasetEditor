@@ -46,20 +46,20 @@ function next() {
   }
 }
 
-function startSelection(e: MouseEvent) {
+function startSelection(event: MouseEvent) {
   if (!imageElement.value) return;
   const rect = imageElement.value.getBoundingClientRect();
-  startX = clamp(e.clientX - rect.left, 0, rect.width);
-  startY = clamp(e.clientY - rect.top, 0, rect.height);
+  startX = clamp(event.clientX - rect.left, 0, rect.width);
+  startY = clamp(event.clientY - rect.top, 0, rect.height);
   crop.value = { x: startX, y: startY, width: 0, height: 0 };
   isSelecting.value = true;
 }
 
-function updateSelection(e: MouseEvent) {
+function updateSelection(event: MouseEvent) {
   if (!isSelecting.value || !imageElement.value) return;
   const rect = imageElement.value.getBoundingClientRect();
-  const currentX = clamp(e.clientX - rect.left, 0, rect.width);
-  const currentY = clamp(e.clientY - rect.top, 0, rect.height);
+  const currentX = clamp(event.clientX - rect.left, 0, rect.width);
+  const currentY = clamp(event.clientY - rect.top, 0, rect.height);
   crop.value = {
     x: Math.min(startX, currentX),
     y: Math.min(startY, currentY),

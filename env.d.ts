@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+import type { openWikiLink } from "@/services/wikiService";
+
 export interface ipcElectronAPI {
   send: <T>(channel: string, ...args: T[]) => void;
   receive: <T>(channel: string, callback: (...args: T[]) => void) => void;
@@ -10,6 +12,7 @@ export interface ipcElectronAPI {
 declare global {
   interface Window {
     ipcRenderer: ipcElectronAPI;
+    openWikiLink: typeof openWikiLink;
   }
 }
 

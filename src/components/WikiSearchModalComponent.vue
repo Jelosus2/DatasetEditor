@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { fetchWiki, fetchPosts, parseWikiBody } from '@/services/wikiService';
 import { useLogStore } from '@/stores/logStore';
 
@@ -39,6 +39,20 @@ async function search() {
 function openImage(id: number) {
   window.ipcRenderer.invoke('open-url', `https://danbooru.donmai.us/posts/${id}`);
 }
+
+function handleWikiOpen(event: Event) {
+  const tagName = (event as CustomEvent<string>).detail;
+  tag.value = tagName;
+  search();
+}
+
+onMounted(() => {
+  window.addEventListener('danbooru-wiki-open', handleWikiOpen);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('danbooru-wiki-open', handleWikiOpen);
+});
 </script>
 
 <template>
