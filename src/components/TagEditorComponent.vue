@@ -50,7 +50,7 @@ const settingsStore = useSettingsStore();
 const tagOperations = useTagOperations();
 
 function escapeRegExp(str: string) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\$&');
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function matchesHighlight(tag: string) {
