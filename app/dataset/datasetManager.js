@@ -1,7 +1,7 @@
 import { dialog } from 'electron';
 import { default as _ } from 'lodash';
 import sharp from 'sharp';
-import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
 import { extname, join, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -18,6 +18,8 @@ const SUPPORTED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png'];
 export class DatasetManager {
   constructor() {
     this.originalDataset = null;
+    this.thumbnailCache = new Map();
+    this.thumbnailCacheLimit = 256;
   }
 
   async loadDatasetDirectory(mainWindow, isAllSaved, directory = null, recursive = false, sortOnLoad = false) {
@@ -75,10 +77,17 @@ export class DatasetManager {
     for (const file of files) {
       const tags = this.loadImageTags(file.parentPath, file.fileName, mainWindow);
 
+      let mtimeMs;
+      try {
+        mtimeMs = statSync(file.filePath).mtimeMs;
+      } catch {
+        mtimeMs = Date.now();
+      }
+
       images.set(file.fileName, {
         tags,
         path: file.filePath,
-        filePath: `${pathToFileURL(file.filePath).href}?v=${Date.now()}`
+        filePath: `${pathToFileURL(file.filePath).href}?v=${mtimeMs}`
       });
 
       this.updateGlobalTags(globalTags, tags, file.fileName);
@@ -162,6 +171,9 @@ export class DatasetManager {
           .toBuffer();
 
         writeFileSync(image, outputBuffer);
+
+        const { mtimeMs } = statSync(image);
+        mainWindow?.webContents.send('image-updated', { path: image, mtime: mtimeMs });
       } catch (error) {
         const message = `Error applying background color for ${image}: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
         mainWindow?.webContents.send('app-log', { type: 'error', message });
@@ -204,12 +216,51 @@ export class DatasetManager {
         await sharp(path).extract(extractOptions).toFile(outPath);
       }
 
+      if (overwrite) {
+        const { mtimeMs } = statSync(outPath);
+        mainWindow?.webContents.send('image-updated', { path: outPath, mtime: mtimeMs });
+      }
+
       mainWindow?.webContents.send('app-log', { type: 'info', message: 'Image cropped successfully' });
       return { error: false, message: 'Image cropped successfully' };
     } catch (error) {
       const message = `Error cropping image: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
       mainWindow?.webContents.send('app-log', { type: 'error', message });
       return { error: true, message: 'Failed to crop image, check the logs for more information.' };
+    }
+  }
+
+  async getThumbnail(filePath, mainWindow, size = 256) {
+    try {
+      const { mtimeMs } = statSync(filePath);
+      const key = `${filePath}|${mtimeMs}|${size}`;
+
+      if (this.thumbnailCache.has(key)) {
+        const val = this.thumbnailCache.get(key);
+        this.thumbnailCache.delete(key);
+        this.thumbnailCache.set(key, val);
+        return val;
+      }
+
+      const buffer = await sharp(filePath)
+        .rotate()
+        .resize({ width: size, height: size, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 75 })
+        .toBuffer();
+
+      const dataUrl = `data:image/webp;base64,${buffer.toString('base64')}`;
+
+      if (this.thumbnailCache.size >= this.thumbnailCacheLimit) {
+        const firstKey = this.thumbnailCache.keys().next().value;
+        if (firstKey) this.thumbnailCache.delete(firstKey);
+      }
+      this.thumbnailCache.set(key, dataUrl);
+
+      return dataUrl;
+    } catch (error) {
+      const message = `Error creating thumbnail of image: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      mainWindow?.webContents.send('app-log', { type: 'error', message });
+      return null;
     }
   }
 }

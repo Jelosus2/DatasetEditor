@@ -112,6 +112,10 @@ export class IpcHandlers {
       await this.datasetManager.applyBackgroundColor(images, color, this.windowManager.getMainWindow())
     );
 
+    ipcMain.handle('get_thumbnail', async (_, filePath, size) =>
+      await this.datasetManager.getThumbnail(filePath, this.windowManager.getMainWindow(), size)
+    );
+
     ipcMain.handle('fetch_danbooru_wiki', async (_, tag) =>
       await fetchDanbooruWiki(tag)
     );
