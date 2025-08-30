@@ -23,6 +23,7 @@ export class SettingsManager {
       taggerPort: 3067,
       recursiveDatasetLoad: false,
       autoCheckUpdates: true,
+      sortImagesAlphabetically: false,
     };
   }
 

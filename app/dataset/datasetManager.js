@@ -20,7 +20,7 @@ export class DatasetManager {
     this.originalDataset = null;
   }
 
-  async loadDatasetDirectory(mainWindow, isAllSaved, directory = null, recursive = false) {
+  async loadDatasetDirectory(mainWindow, isAllSaved, directory = null, recursive = false, sortOnLoad = false) {
     if (!isAllSaved && !await this.confirmUnsavedChanges(mainWindow)) {
       return null;
     }
@@ -29,7 +29,7 @@ export class DatasetManager {
     if (!directoryPath) return null;
 
     try {
-      const { images, globalTags } = await this.processDatasetDirectory(directoryPath, mainWindow, recursive);
+      const { images, globalTags } = await this.processDatasetDirectory(directoryPath, mainWindow, recursive, sortOnLoad);
       this.originalDataset = this.serializeDatasetImages(images);
 
       return { images, globalTags, directoryPath };
@@ -59,7 +59,7 @@ export class DatasetManager {
     return result.canceled ? null : result.filePaths[0];
   }
 
-  async processDatasetDirectory(directoryPath, mainWindow, recursive = false) {
+  async processDatasetDirectory(directoryPath, mainWindow, recursive = false, sortOnLoad = false) {
     const images = new Map();
     const globalTags = new Map();
 
@@ -67,6 +67,10 @@ export class DatasetManager {
     const files = entries
       .filter((entry) => entry.isFile() && SUPPORTED_IMAGE_EXTENSIONS.includes(extname(entry.name).toLowerCase()))
       .map((entry) => ({ fileName: entry.name, parentPath: entry.parentPath, filePath: join(entry.parentPath, entry.name) }));
+
+    if (sortOnLoad) {
+      files.sort((a, b) => a.fileName.toLowerCase().localeCompare(b.fileName.toLowerCase()));
+    }
 
     for (const file of files) {
       const tags = this.loadImageTags(file.parentPath, file.fileName, mainWindow);

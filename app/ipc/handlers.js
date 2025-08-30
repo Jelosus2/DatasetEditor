@@ -14,8 +14,8 @@ export class IpcHandlers {
   }
 
   registerHandlers() {
-    ipcMain.handle('load_dataset', async (_, isAllSaved, directory, recursive) =>
-      await this.datasetManager.loadDatasetDirectory(this.windowManager.getMainWindow(), isAllSaved, directory, recursive)
+    ipcMain.handle('load_dataset', async (_, isAllSaved, directory, recursive, sortOnLoad) =>
+      await this.datasetManager.loadDatasetDirectory(this.windowManager.getMainWindow(), isAllSaved, directory, recursive, sortOnLoad)
     );
 
     ipcMain.handle('save_tag_group_file', async (_, tagGroups) =>

@@ -14,6 +14,7 @@ export interface Settings {
   taggerPort: number;
   recursiveDatasetLoad: boolean;
   autoCheckUpdates: boolean;
+  sortImagesAlphabetically: boolean;
 }
 
 interface SettingsChangeRecord {
@@ -34,6 +35,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const taggerPort = ref<number>(3067);
   const recursiveDatasetLoad = ref<boolean>(false);
   const autoCheckUpdates = ref<boolean>(true);
+  const sortImagesAlphabetically = ref<boolean>(false);
   const settingsUndoStack = ref<SettingsChangeRecord[]>([]);
   const settingsRedoStack = ref<SettingsChangeRecord[]>([]);
   const isInitialized = ref(false);
@@ -50,6 +52,7 @@ export const useSettingsStore = defineStore('settings', () => {
     taggerPort,
     recursiveDatasetLoad,
     autoCheckUpdates,
+    sortImagesAlphabetically,
   };
 
   function pushSettingsChange(change: SettingsChangeRecord) {
@@ -141,6 +144,11 @@ export const useSettingsStore = defineStore('settings', () => {
     pushSettingsChange({ key: 'autoCheckUpdates', previous: oldVal, value: newVal });
   });
 
+  watch(sortImagesAlphabetically, (newVal, oldVal) => {
+    if (!isInitialized.value) return;
+    pushSettingsChange({ key: 'sortImagesAlphabetically', previous: oldVal, value: newVal });
+  });
+
   async function loadSettings() {
     isInitialized.value = false;
     const settings = (await settingsService.loadSettings()) as Settings;
@@ -155,6 +163,7 @@ export const useSettingsStore = defineStore('settings', () => {
     taggerPort.value = settings.taggerPort ?? taggerPort.value;
     recursiveDatasetLoad.value = settings.recursiveDatasetLoad ?? recursiveDatasetLoad.value;
     autoCheckUpdates.value = settings.autoCheckUpdates ?? autoCheckUpdates.value;
+    sortImagesAlphabetically.value = settings.sortImagesAlphabetically ?? sortImagesAlphabetically.value;
     resetSettingsStatus();
     isInitialized.value = true;
   }
@@ -172,6 +181,7 @@ export const useSettingsStore = defineStore('settings', () => {
       taggerPort: toRaw(taggerPort.value),
       recursiveDatasetLoad: toRaw(recursiveDatasetLoad.value),
       autoCheckUpdates: toRaw(autoCheckUpdates.value),
+      sortImagesAlphabetically: toRaw(sortImagesAlphabetically.value),
     });
     resetSettingsStatus();
   }
@@ -189,6 +199,7 @@ export const useSettingsStore = defineStore('settings', () => {
       taggerPort: toRaw(taggerPort.value),
       recursiveDatasetLoad: toRaw(recursiveDatasetLoad.value),
       autoCheckUpdates: toRaw(autoCheckUpdates.value),
+      sortImagesAlphabetically: toRaw(sortImagesAlphabetically.value),
     });
   }
 
@@ -218,6 +229,7 @@ export const useSettingsStore = defineStore('settings', () => {
     taggerPort,
     recursiveDatasetLoad,
     autoCheckUpdates,
+    sortImagesAlphabetically,
     undoSettingsAction,
     redoSettingsAction,
     loadSettings,

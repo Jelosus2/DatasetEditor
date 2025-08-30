@@ -85,6 +85,12 @@ async function saveSettings() {
                 <span class="label-text">Autocomplete</span>
               </label>
             </div>
+            <div class="form-control">
+              <label class="label cursor-pointer justify-start gap-4">
+                <input type="checkbox" class="toggle" v-model="settingsStore.sortImagesAlphabetically" />
+                <span class="label-text">Sort images alphabetically on load</span>
+              </label>
+            </div>
             <div v-if="settingsStore.autocomplete" class="w-full max-w-xs">
               <label class="label">
                 <span>Autocompletion file</span>

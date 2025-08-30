@@ -200,6 +200,7 @@ export const useDatasetStore = defineStore('dataset', () => {
       _isDatasetSaved,
       reload ? directory.value : null,
       settingsStore.recursiveDatasetLoad,
+      settingsStore.sortImagesAlphabetically,
     );
 
     if (!dataset) return false;
