@@ -84,13 +84,14 @@ export class DatasetManager {
         mtimeMs = Date.now();
       }
 
-      images.set(file.fileName, {
+      const imageKey = file.filePath.replace(/\\|\\\\/g, '/');
+      images.set(imageKey, {
         tags,
         path: file.filePath,
         filePath: `${pathToFileURL(file.filePath).href}?v=${mtimeMs}`
       });
 
-      this.updateGlobalTags(globalTags, tags, file.fileName);
+      this.updateGlobalTags(globalTags, tags, imageKey);
     }
 
     return { images, globalTags };

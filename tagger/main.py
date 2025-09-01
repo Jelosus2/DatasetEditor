@@ -30,7 +30,9 @@ def tag_images(images: list[str], tagger_model: str, general_threshold: float, c
                 preds = model.run(None, { model.get_inputs()[0].name: processed_image })[0]
 
                 processed_tags = process_predictions(preds, tag_data, general_threshold, character_threshold, remove_underscores, tags_ignored)
-                final_dict[Path(image.replace('\\', '/')).name] = processed_tags
+                
+                normalized = Path(image).as_posix()
+                final_dict[normalized] = processed_tags
         except Exception as e:
             print(f'Failed to tag {image}: {e}')
         

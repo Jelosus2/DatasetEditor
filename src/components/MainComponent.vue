@@ -244,7 +244,7 @@ defineExpose({ selectAllImages });
             />
           </div>
         </div>
-        <div class="flex w-[30%] items-center justify-center" :title="[...selectedImages][0]">
+        <div class="flex w-[30%] items-center justify-center" :title="[...selectedImages][0]?.split('/').pop()">
           <img
             v-if="selectedImages.size"
             :src="datasetStore.images.get([...selectedImages][0])?.filePath"
