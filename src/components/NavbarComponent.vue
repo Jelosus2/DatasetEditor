@@ -187,6 +187,9 @@ const updateInfo = computed(() => {
           <li>
             <label for="crop_image_modal">Crop image</label>
           </li>
+          <li>
+            <label for="duplicate_finder_modal">Find duplicate images</label>
+          </li>
         </ul>
       </div>
     </div>

@@ -93,16 +93,21 @@ watch(() => image.filePath, async () => {
     @click="emit('click', $event)"
     @mouseenter="emit('mouseenter')"
     @mouseleave="emit('mouseleave')"
+    @dblclick="emit('dblclick')"
   >
-    <img
-      v-if="visible"
-      :src="thumbSrc || image.filePath"
-      :alt="name"
-      @dblclick="emit('dblclick')"
-      draggable="false"
-      loading="lazy"
-      decoding="async"
-      class="h-full w-full rounded-md object-scale-down"
-    />
+    <template v-if="visible">
+      <img
+        v-if="thumbSrc"
+        :src="thumbSrc"
+        :alt="name"
+        draggable="false"
+        loading="lazy"
+        decoding="async"
+        class="h-full w-full rounded-md object-scale-down"
+      />
+      <div v-else class="h-full w-full flex items-center justify-center">
+        <span class="loading loading-spinner"></span>
+      </div>
+    </template>
   </div>
 </template>

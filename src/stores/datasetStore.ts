@@ -193,6 +193,25 @@ export const useDatasetStore = defineStore('dataset', () => {
     datasetRedoStack.value = [];
   }
 
+  function removeImage(image: string) {
+    const img = images.value.get(image);
+    if (!img) return;
+
+    for (const tag of img.tags) {
+      const set = globalTags.value.get(tag);
+      set?.delete(image);
+      if (set && set.size === 0) globalTags.value.delete(tag);
+    }
+
+    images.value.delete(image);
+    tagDiff.value.delete(image);
+    onChange.value.forEach((fn) => fn());
+  }
+
+  function removeImages(imgs: Iterable<string>) {
+    for (const image of imgs) removeImage(image);
+  }
+
   async function loadDataset(reload = false) {
     const _isDatasetSaved = await isDatasetSaved();
 
@@ -237,6 +256,8 @@ export const useDatasetStore = defineStore('dataset', () => {
     sortMode,
     tagDiff,
     onChange,
+    removeImage,
+    removeImages,
     pushDatasetChange,
     undoDatasetAction,
     redoDatasetAction,

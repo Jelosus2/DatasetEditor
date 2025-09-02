@@ -127,5 +127,13 @@ export class IpcHandlers {
     ipcMain.handle('crop_image', async (_, path, crop, overwrite) =>
       await this.datasetManager.cropImage(path, crop, overwrite, this.windowManager.getMainWindow())
     );
+
+    ipcMain.handle('find_duplicates', async (_, files, method, threshold) =>
+      await this.datasetManager.findDuplicates(files, this.windowManager.getMainWindow(), method, threshold)
+    );
+
+    ipcMain.handle('trash_files', async (_, files) =>
+      await this.datasetManager.trashFiles(files, this.windowManager.getMainWindow())
+    );
   }
 }

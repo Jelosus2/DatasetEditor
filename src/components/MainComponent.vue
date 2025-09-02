@@ -5,7 +5,7 @@ import TagEditorComponent from '@/components/TagEditorComponent.vue';
 import BackgroundColorModalComponent from '@/components/BackgroundColorModalComponent.vue';
 import CropImageModalComponent from '@/components/CropImageModalComponent.vue';
 
-import { ref, watch, computed, shallowRef, onMounted } from 'vue';
+import { ref, watch, computed, shallowRef, onMounted, onUnmounted } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
 import { useTagDisplay } from '@/composables/useTagDisplay';
 
@@ -195,6 +195,19 @@ function navigateSelection(direction: 'left' | 'right' | 'up' | 'down') {
 
 onMounted(() => {
   datasetStore.onChange = [triggerUpdate];
+});
+
+function handleOpenImage(ev: Event) {
+  const id = (ev as CustomEvent<string>).detail;
+  if (id) displayFullImage(id);
+}
+
+onMounted(() => {
+  window.addEventListener('open-image', handleOpenImage as EventListener);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('open-image', handleOpenImage as EventListener);
 });
 
 defineExpose({ selectAllImages });

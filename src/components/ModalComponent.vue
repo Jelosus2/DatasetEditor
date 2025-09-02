@@ -12,7 +12,7 @@ defineProps({
 </script>
 
 <template>
-  <dialog id="my_modal_1" class="modal">
+  <dialog id="my_modal_1" class="modal z-1000">
     <div class="modal-box w-fit max-w-[90%]" :class="{ 'p-0': isImage }" v-html="html"></div>
     <form method="dialog" class="modal-backdrop">
       <button>close</button>
