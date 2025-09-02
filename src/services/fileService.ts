@@ -12,4 +12,3 @@ export class FileService {
     return (await this.ipc.invoke<TrashResult>('trash_files', paths)) as TrashResult;
   }
 }
-

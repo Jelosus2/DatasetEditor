@@ -17,6 +17,7 @@ const loading = ref(false);
 const results = ref<string[][]>([]);
 const errorMessage = ref('');
 const threshold = ref(10);
+const dims = ref<Record<string, string>>({});
 
 const isDatasetLoaded = computed(() => datasetStore.images.size > 0);
 
@@ -85,13 +86,19 @@ async function trashImage(key: string) {
 
   emit('trigger_alert', 'success', 'File moved to trash');
 }
+
+function onImageLoad(key: string, e: Event) {
+  const el = e.target as HTMLImageElement;
+  if (!el) return;
+  dims.value[key] = `${el.naturalWidth}x${el.naturalHeight}`;
+}
 </script>
 
 <template>
   <input type="checkbox" id="duplicate_finder_modal" class="modal-toggle" />
   <div class="modal" role="dialog">
     <div class="modal-box w-11/12 max-w-5xl h-11/12 max-h-11/12">
-      <label for="duplicate_finder_modal" class="absolute right-2 top-1 cursor-pointer">✕</label>
+      <label for="duplicate_finder_modal" class="absolute right-2 top-1 cursor-pointer" @click="resetState">✕</label>
       <div class="flex flex-col gap-3">
         <div class="flex items-center justify-between border-b-2 pb-2 dark:border-base-content/10">
           <div class="flex items-center gap-3">
@@ -139,7 +146,11 @@ async function trashImage(key: string) {
                     :src="datasetStore.images.get(key)?.filePath"
                     class="h-32 w-full cursor-pointer object-contain border rounded"
                     @click="openFullImage(key)"
+                    @load="onImageLoad(key, $event)"
                   />
+                  <div class="absolute left-1 top-1 rounded px-1 py-0.5 text-xs bg-base-200/80 dark:bg-base-200/80">
+                    {{ dims[key] || '' }}
+                  </div>
                   <button
                     class="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity rounded p-1 bg-base-200/80 hover:bg-error"
                     title="Move to trash"
@@ -155,6 +166,6 @@ async function trashImage(key: string) {
         </div>
       </div>
     </div>
-    <label class="modal-backdrop" for="duplicate_finder_modal"></label>
+    <label class="modal-backdrop"></label>
   </div>
 </template>
