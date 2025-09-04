@@ -1,3 +1,45 @@
+import { request as httpRequest } from 'node:http';
+
+async function postJsonLong(urlStr, bodyObj) {
+  const body = JSON.stringify(bodyObj);
+  const url = new URL(urlStr);
+  const options = {
+    protocol: url.protocol,
+    hostname: url.hostname,
+    port: url.port,
+    path: url.pathname,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body),
+    },
+  };
+
+  return await new Promise((resolve, reject) => {
+    const req = httpRequest(options, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            resolve(JSON.parse(data || '{}'));
+          } catch (e) {
+            reject(e);
+          }
+        } else {
+          reject(new Error(`HTTP ${res.statusCode}: ${data}`));
+        }
+      });
+    });
+
+    req.setTimeout(0);
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
 export function removeRedundantTagsHelper(tags, removeUnderscores) {
   const separator = removeUnderscores ? ' ' : '_';
   const tagArray = Array.from(tags);
@@ -74,15 +116,7 @@ export class TaggerApiClient {
           tags_ignored: [...new Set(tagsIgnored)],
         };
 
-        const response = await fetch(`${this.host}:${port}/tagger`, {
-          method: 'POST',
-          body: JSON.stringify(body),
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        const data = await response.json();
+        const data = await postJsonLong(`${this.host}:${port}/tagger`, body);
 
         if (data.error) return null;
 

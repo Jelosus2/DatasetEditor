@@ -19,7 +19,6 @@ export class DatasetManager {
   constructor() {
     this.originalDataset = null;
     this.thumbnailCache = new Map();
-    this.thumbnailCacheLimit = 256;
   }
 
   async loadDatasetDirectory(mainWindow, isAllSaved, directory = null, recursive = false, sortOnLoad = false) {
@@ -251,11 +250,6 @@ export class DatasetManager {
         .toBuffer();
 
       const dataUrl = `data:image/webp;base64,${buffer.toString('base64')}`;
-
-      if (this.thumbnailCache.size >= this.thumbnailCacheLimit) {
-        const firstKey = this.thumbnailCache.keys().next().value;
-        if (firstKey) this.thumbnailCache.delete(firstKey);
-      }
       this.thumbnailCache.set(key, dataUrl);
 
       return dataUrl;
