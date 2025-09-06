@@ -1,7 +1,7 @@
 import { dialog, shell } from 'electron';
 import { default as _ } from 'lodash';
 import sharp from 'sharp';
-import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync, statSync, unlinkSync } from 'node:fs';
 import { extname, join, dirname, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -166,11 +166,14 @@ export class DatasetManager {
   async applyBackgroundColor(images, color, mainWindow) {
     for (const image of images) {
       try {
-        const outputBuffer = await sharp(image)
-          .flatten({ background: color })
-          .toBuffer();
-
-        writeFileSync(image, outputBuffer);
+        const buffer = readFileSync(image);
+        unlinkSync(image);
+        try {
+          await sharp(buffer).flatten({ background: color }).toFile(image);
+        } catch (error) {
+          writeFileSync(image, buffer);
+          throw error;
+        }
 
         const { mtimeMs } = statSync(image);
         mainWindow?.webContents.send('image-updated', { path: image, mtime: mtimeMs });
@@ -210,8 +213,14 @@ export class DatasetManager {
       };
 
       if (overwrite) {
-        const buffer = await sharp(path).extract(extractOptions).toBuffer();
-        writeFileSync(outPath, buffer);
+        const buffer = readFileSync(path);
+        unlinkSync(path);
+        try {
+          await sharp(buffer).extract(extractOptions).toFile(path);
+        } catch (error) {
+          writeFileSync(path, buffer);
+          throw error;
+        }
       } else {
         await sharp(path).extract(extractOptions).toFile(outPath);
       }

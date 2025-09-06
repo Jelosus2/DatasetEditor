@@ -134,7 +134,7 @@ onUnmounted(() => {
           @mousemove="updateSelection"
           @mouseup="endSelection"
         >
-          <img ref="imageElement" class="max-h-[70vh] select-none" />
+          <img ref="imageElement" class="max-h-[70vh] select-none" draggable="false" @dragstart.prevent />
           <div
             v-if="crop.width && crop.height"
             class="absolute border border-primary bg-primary/20"

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import type { Image } from '@/stores/datasetStore';
-import { useIpcRenderer } from '@/composables/useIpcRenderer';
+import { getImageUpdateVersion } from '@/services/imageUpdateChannel';
 
 const { image, name, selected } = defineProps<{
   image: Image;
@@ -22,25 +22,12 @@ const thumbSrc = ref<string>('');
 const loadingThumb = ref(false);
 let observer: IntersectionObserver | null = null;
 
-const { invoke } = useIpcRenderer([
-  {
-    channel: 'image-updated',
-    handler: (...args: unknown[]) => {
-      const p = (args?.[0] ?? undefined) as { path?: string } | undefined;
-      if (p?.path === image.path) {
-        thumbSrc.value = '';
-        if (visible.value) void fetchThumb();
-      }
-    },
-  },
-]);
-
 async function fetchThumb() {
   if (loadingThumb.value || thumbSrc.value) return;
 
   loadingThumb.value = true;
   const target = 256;
-  const src = await invoke<string | null>('get_thumbnail', image.path, target);
+  const src = (await window.ipcRenderer.invoke<unknown>('get_thumbnail', image.path, target)) as string | null;
   if (src) thumbSrc.value = src;
   loadingThumb.value = false;
 }
@@ -80,6 +67,11 @@ watch(visible, async (isVisible) => {
 watch(() => image.filePath, async () => {
   thumbSrc.value = '';
   if (visible.value) await fetchThumb();
+});
+
+watch(() => getImageUpdateVersion(image.path), () => {
+  thumbSrc.value = '';
+  if (visible.value) void fetchThumb();
 });
 </script>
 

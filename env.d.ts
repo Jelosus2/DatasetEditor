@@ -13,6 +13,7 @@ declare global {
   interface Window {
     ipcRenderer: ipcElectronAPI;
     openWikiLink: typeof openWikiLink;
+    __imageUpdatedListenerAdded: boolean;
   }
 }
 
