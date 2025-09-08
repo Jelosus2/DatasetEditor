@@ -4,6 +4,8 @@ import sharp from 'sharp';
 import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync, statSync, unlinkSync } from 'node:fs';
 import { extname, join, dirname, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { Worker } from 'node:worker_threads';
+import * as os from 'node:os';
 
 function sortTags(tags) {
   const arr = Array.from(tags);
@@ -280,18 +282,7 @@ export class DatasetManager {
 
       const groups = [];
 
-      const entries = [];
-      for (const file of filePaths) {
-        try {
-          const bytes = method === 'dhash' ? await this.computeDHashBytes(file) : await this.computePHashBytes(file);
-          if (!bytes) continue;
-          entries.push({ file, bytes });
-        } catch (error) {
-          const message = `Error hashing (${method}) ${file}: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
-          mainWindow?.webContents.send('app-log', { type: 'warning', message });
-        }
-      }
-
+      const entries = await this.hashWithWorkers(filePaths, method, mainWindow);
       const n = entries.length;
       if (n <= 1) return { error: false, groups: [] };
 
@@ -341,105 +332,92 @@ export class DatasetManager {
     }
   }
 
-  async computeDHashBytes(filePath) {
-    const input = readFileSync(filePath);
-    const pixels = await sharp(input)
-      .rotate()
-      .grayscale()
-      .resize(9, 8, { fit: 'fill' })
-      .raw()
-      .toBuffer();
-
-    const out = new Uint8Array(8);
-    let bitIndex = 0;
-    for (let y = 0; y < 8; y++) {
-      const rowStart = y * 9;
-      for (let x = 0; x < 8; x++) {
-        const left = pixels[rowStart + x];
-        const right = pixels[rowStart + x + 1];
-        const bit = left < right ? 1 : 0;
-        const byteIndex = (bitIndex / 8) | 0;
-        out[byteIndex] = (out[byteIndex] << 1) | bit;
-        bitIndex++;
-      }
+  async getImageDimensions(filePath, mainWindow) {
+    try {
+      const input = readFileSync(filePath);
+      const meta = await sharp(input).metadata();
+      const width = meta.width || 0;
+      const height = meta.height || 0;
+      return { width, height };
+    } catch (error) {
+      const message = `Error reading image metadata: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      mainWindow?.webContents.send('app-log', { type: 'warning', message });
+      return { width: 0, height: 0 };
     }
-
-    const remaining = 8 - (bitIndex % 8);
-    if (remaining !== 8) out[(bitIndex / 8) | 0] <<= remaining;
-    return out;
   }
 
-  async computePHashBytes(filePath) {
-    const size = 32;
-    const small = 8;
+  async hashWithWorkers(filePaths, method, mainWindow) {
+    const entries = [];
+    const total = filePaths.length;
 
-    const input = readFileSync(filePath);
-    const pixels = await sharp(input)
-      .rotate()
-      .grayscale()
-      .resize(size, size, { fit: 'fill' })
-      .raw()
-      .toBuffer();
+    const usableWorkers = os.availableParallelism();
+    const workers = Array.from({ length: usableWorkers }, () =>
+      new Worker(new URL('./duplicateWorker.js', import.meta.url), { type: 'module' })
+    );
 
-    const img = Array.from({ length: size }, (_, y) => {
-      const row = new Array(size);
-      for (let x = 0; x < size; x++) row[x] = pixels[y * size + x];
-      return row;
+    let nextIndex = 0;
+    let processed = 0;
+
+    function postProgress() {
+      mainWindow?.webContents.send('duplicate-progress', { processed, total });
+    }
+
+    const runWorker = (worker) => new Promise((resolve) => {
+      let active = 0;
+      let finished = false;
+
+      const tryResolve = () => {
+        if (!finished && nextIndex >= total && active === 0) {
+          finished = true;
+          worker.off('message', onMessage);
+          worker.off('error', onError);
+          resolve();
+        }
+      };
+
+      const assign = () => {
+        if (nextIndex < total) {
+          const idx = nextIndex++;
+          const file = filePaths[idx];
+          active++;
+          worker.postMessage({ type: 'hash', file, method });
+        } else {
+          tryResolve();
+        }
+      };
+
+      const onMessage = (msg) => {
+        if (msg?.type === 'result') {
+          processed++;
+          if (msg.bytes) entries.push({ file: msg.file, bytes: Uint8Array.from(msg.bytes) });
+          postProgress();
+        } else if (msg?.type === 'error') {
+          processed++;
+          const message = `Error hashing (${method}) ${msg.file}: ${msg.error}`;
+          mainWindow?.webContents.send('app-log', { type: 'warning', message });
+          postProgress();
+        }
+        active = Math.max(0, active - 1);
+        assign();
+      };
+
+      const onError = (err) => {
+        mainWindow?.webContents.send('app-log', { type: 'error', message: `Duplicate worker error: ${err?.message || err}` });
+        active = Math.max(0, active - 1);
+        assign();
+      };
+
+      worker.on('message', onMessage);
+      worker.on('error', onError);
+
+      assign();
     });
 
-    const dct = this.dct2D(img);
+    await Promise.all(workers.map((w) => runWorker(w)));
+    await Promise.all(workers.map((w) => w.terminate().catch(() => {})));
+    mainWindow?.webContents.send('duplicate-progress', { processed, total });
 
-    const block = [];
-    for (let y = 0; y < small; y++) {
-      for (let x = 0; x < small; x++) block.push(dct[y][x]);
-    }
-
-    const vals = block.slice(1);
-    const sorted = [...vals].sort((a, b) => a - b);
-    const median = sorted[(sorted.length / 2) | 0];
-
-    const out = new Uint8Array(8);
-    let bitIndex = 0;
-    for (let i = 0; i < block.length; i++) {
-      const v = block[i];
-      const bit = v > median ? 1 : 0;
-      const byteIndex = (bitIndex / 8) | 0;
-      out[byteIndex] = (out[byteIndex] << 1) | bit;
-      bitIndex++;
-    }
-    const remaining = 8 - (bitIndex % 8);
-    if (remaining !== 8) out[(bitIndex / 8) | 0] <<= remaining;
-    return out;
-  }
-
-  dct2D(matrix) {
-    const N = matrix.length;
-    const M = matrix[0].length;
-
-    const cosX = Array.from({ length: N }, () => new Array(N));
-    const cosY = Array.from({ length: M }, () => new Array(M));
-    for (let u = 0; u < N; u++)
-      for (let x = 0; x < N; x++)
-        cosX[u][x] = Math.cos(((2 * x + 1) * u * Math.PI) / (2 * N));
-    for (let v = 0; v < M; v++)
-      for (let y = 0; y < M; y++)
-        cosY[v][y] = Math.cos(((2 * y + 1) * v * Math.PI) / (2 * M));
-
-    const result = Array.from({ length: N }, () => new Array(M).fill(0));
-    for (let u = 0; u < N; u++) {
-      const Cu = u === 0 ? 1 / Math.sqrt(2) : 1;
-      for (let v = 0; v < M; v++) {
-        const Cv = v === 0 ? 1 / Math.sqrt(2) : 1;
-        let sum = 0;
-        for (let x = 0; x < N; x++) {
-          for (let y = 0; y < M; y++) {
-            sum += matrix[x][y] * cosX[u][x] * cosY[v][y];
-          }
-        }
-        result[u][v] = 0.25 * Cu * Cv * sum;
-      }
-    }
-    return result;
+    return entries;
   }
 
   async trashFiles(filePaths = [], mainWindow) {

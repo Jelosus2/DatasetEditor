@@ -116,6 +116,10 @@ export class IpcHandlers {
       await this.datasetManager.getThumbnail(filePath, this.windowManager.getMainWindow(), size)
     );
 
+    ipcMain.handle('get_image_dimensions', async (_, filePath) =>
+      await this.datasetManager.getImageDimensions(filePath, this.windowManager.getMainWindow())
+    );
+
     ipcMain.handle('fetch_danbooru_wiki', async (_, tag) =>
       await fetchDanbooruWiki(tag)
     );
