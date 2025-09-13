@@ -8,6 +8,7 @@ import SettingComponent from '@/components/SettingComponent.vue';
 import LogsComponent from '@/components/LogsComponent.vue';
 import WikiSearchModalComponent from '@/components/WikiSearchModalComponent.vue';
 import DuplicateFinderModalComponent from '@/components/DuplicateFinderModalComponent.vue';
+import RenameFilesModalComponent from '@/components/RenameFilesModalComponent.vue';
 
 import { ref, onMounted } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
@@ -84,4 +85,5 @@ onMounted(async () => {
   <AutotaggerModalComponent @trigger_alert="showAlert" />
   <WikiSearchModalComponent />
   <DuplicateFinderModalComponent @trigger_alert="showAlert" />
+  <RenameFilesModalComponent @trigger_alert="showAlert" />
 </template>

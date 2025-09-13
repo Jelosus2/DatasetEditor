@@ -212,6 +212,42 @@ export const useDatasetStore = defineStore('dataset', () => {
     for (const image of imgs) removeImage(image);
   }
 
+  function normalizePath(p: string) {
+    return p.replace(/\\|\\\\/g, '/');
+  }
+
+  function toFileUrl(p: string) {
+    const norm = normalizePath(p);
+    if (/^[A-Za-z]:\//.test(norm)) return 'file:///' + norm;
+    return 'file://' + norm;
+  }
+
+  function renameImages(mappings: { from: string; to: string; mtime?: number }[]) {
+    if (!mappings?.length) return;
+    for (const { from, to, mtime } of mappings) {
+      const oldKey = normalizePath(from);
+      const newPath = normalizePath(to);
+      const existing = images.value.get(oldKey);
+      if (!existing) continue;
+
+      const newKey = newPath;
+      const tagsCopy = new Set(existing.tags);
+
+      for (const tag of tagsCopy) {
+        const s = globalTags.value.get(tag);
+        if (s) {
+          s.delete(oldKey);
+          s.add(newKey);
+        }
+      }
+
+      const filePath = `${toFileUrl(newPath)}?v=${typeof mtime === 'number' ? mtime : Date.now()}`;
+      images.value.delete(oldKey);
+      images.value.set(newKey, { tags: tagsCopy, path: newPath, filePath });
+    }
+    onChange.value.forEach((fn) => fn());
+  }
+
   async function loadDataset(reload = false) {
     const _isDatasetSaved = await isDatasetSaved();
 
@@ -258,6 +294,7 @@ export const useDatasetStore = defineStore('dataset', () => {
     onChange,
     removeImage,
     removeImages,
+    renameImages,
     pushDatasetChange,
     undoDatasetAction,
     redoDatasetAction,

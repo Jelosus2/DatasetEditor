@@ -139,5 +139,9 @@ export class IpcHandlers {
     ipcMain.handle('trash_files', async (_, files) =>
       await this.datasetManager.trashFiles(files, this.windowManager.getMainWindow())
     );
+
+    ipcMain.handle('rename_files', async (_, files, startAt) =>
+      await this.datasetManager.renameFiles(files, this.windowManager.getMainWindow(), startAt)
+    );
   }
 }

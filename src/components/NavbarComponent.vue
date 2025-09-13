@@ -190,6 +190,9 @@ const updateInfo = computed(() => {
           <li>
             <label for="duplicate_finder_modal">Find duplicate images</label>
           </li>
+          <li>
+            <label for="rename_files_modal">Rename files</label>
+          </li>
         </ul>
       </div>
     </div>

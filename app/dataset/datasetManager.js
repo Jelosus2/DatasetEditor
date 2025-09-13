@@ -72,7 +72,8 @@ export class DatasetManager {
       .map((entry) => ({ fileName: entry.name, parentPath: entry.parentPath, filePath: join(entry.parentPath, entry.name) }));
 
     if (sortOnLoad) {
-      files.sort((a, b) => a.fileName.toLowerCase().localeCompare(b.fileName.toLowerCase()));
+      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+      files.sort((a, b) => collator.compare(a.fileName, b.fileName));
     }
 
     for (const file of files) {
@@ -443,4 +444,191 @@ export class DatasetManager {
     mainWindow?.webContents.send('app-log', { type: 'info', message: `Sent ${trashed.length} file(s) to trash` });
     return { error: false };
   };
+
+  async renameFiles(filePaths = [], mainWindow, startAt = 1) {
+    try {
+      const totalImages = (filePaths?.length || 0);
+      if (totalImages === 0) {
+        return { error: false, renamed: 0 };
+      }
+
+      const pairs = [];
+      const fromSet = new Set();
+
+      for (let i = 0; i < filePaths.length; i++) {
+        const img = filePaths[i];
+        const dir = dirname(img);
+        const ext = extname(img);
+        const baseNum = startAt + i;
+        const imageName = basename(img);
+        const toImage = join(dir, `${baseNum}${ext}`);
+        const fromTxt = join(dir, imageName.replace(/\.[^.]+$/, '.txt'));
+        const toTxt = join(dir, `${baseNum}.txt`);
+
+        const tmpImage = join(dir, `.__rename_tmp__${imageName}_${i}${ext}`);
+        const tmpTxt = join(dir, `.__rename_tmp__${imageName}_${i}.txt`);
+
+        const pair = {
+          fromImage: img,
+          fromTxt: existsSync(fromTxt) ? fromTxt : null,
+          toImage,
+          toTxt,
+          tmpImage,
+          tmpTxt,
+        };
+        pairs.push(pair);
+        fromSet.add(img);
+        if (pair.fromTxt) fromSet.add(pair.fromTxt);
+      }
+
+      for (const p of pairs) {
+        if (p.toImage !== p.fromImage && existsSync(p.toImage) && !fromSet.has(p.toImage)) {
+          const message = `Cannot rename: target already exists ${p.toImage}`;
+          mainWindow?.webContents.send('app-log', { type: 'error', message });
+          return { error: true, message: 'Target file exists. Rename aborted.' };
+        }
+        if (p.fromTxt && p.toTxt !== p.fromTxt && existsSync(p.toTxt) && !fromSet.has(p.toTxt)) {
+          const message = `Cannot rename: target already exists ${p.toTxt}`;
+          mainWindow?.webContents.send('app-log', { type: 'error', message });
+          return { error: true, message: 'Target caption file exists. Rename aborted.' };
+        }
+      }
+
+      mainWindow?.webContents.send('app-log', { type: 'info', message: `Preparing to rename ${pairs.length} file(s)` });
+
+      const stageRes = await this.runRenamePhaseWithWorkers(pairs, mainWindow, 'stage', false);
+      if (stageRes.failed.length > 0) {
+        const message = `Error staging ${stageRes.failed.length} file(s) for rename`;
+        mainWindow?.webContents.send('app-log', { type: 'error', message });
+
+        if (stageRes.succeeded.length > 0) {
+          await this.runRenamePhaseWithWorkers(pairs, mainWindow, 'stage', false, stageRes.succeeded, true);
+        }
+        return { error: true, message: 'Failed to prepare renaming, check the logs for more information.', renamed: 0, mappings: [] };
+      }
+
+      mainWindow?.webContents.send('rename-progress', { processed: 0, total: pairs.length });
+      const finalizeRes = await this.runRenamePhaseWithWorkers(pairs, mainWindow, 'finalize', true);
+
+      if (finalizeRes.failed.length > 0) {
+        await this.runRenamePhaseWithWorkers(pairs, mainWindow, 'stage', false, finalizeRes.failed, /*reverse*/ true);
+        const renamed = finalizeRes.succeeded.length;
+        const failed = finalizeRes.failed.length;
+        const warn = `Renamed ${renamed} file(s), ${failed} failed`;
+        mainWindow?.webContents.send('app-log', { type: 'warning', message: warn });
+        const mappings = finalizeRes.succeeded.map((i) => {
+          const pr = pairs[i];
+          let mtime = 0;
+          try { mtime = statSync(pr.toImage).mtimeMs; } catch { mtime = Date.now(); }
+          return { from: pr.fromImage, to: pr.toImage, mtime };
+        });
+        return { error: true, message: 'Some files failed to rename, check the logs for more information.', renamed, mappings };
+      }
+
+      const renamed = finalizeRes.succeeded.length;
+      const mappings = finalizeRes.succeeded.map((i) => {
+        const pr = pairs[i];
+        let mtime = 0;
+        try { mtime = statSync(pr.toImage).mtimeMs; } catch { mtime = Date.now(); }
+        return { from: pr.fromImage, to: pr.toImage, mtime };
+      });
+      mainWindow?.webContents.send('app-log', { type: 'info', message: `Renamed ${renamed} file(s) successfully` });
+      return { error: false, renamed, mappings };
+    } catch (error) {
+      const message = `Error renaming files: ${error.code ? '[' + error.code + '] ' : ''}${error.message}`;
+      mainWindow?.webContents.send('app-log', { type: 'error', message });
+      return { error: true, message: 'Failed to rename files, check the logs for more information.' };
+    }
+  }
+
+  async runRenamePhaseWithWorkers(pairs, mainWindow, phase = 'finalize', emitProgress = false, subset = null, reverse = false) {
+    const indexes = subset ?? pairs.map((_, i) => i);
+    const total = indexes.length;
+    let processed = 0;
+    const failed = [];
+    const succeeded = [];
+
+    const usableWorkers = os.availableParallelism();
+    const workers = Array.from({ length: usableWorkers }, () =>
+      new Worker(new URL('./renameWorker.js', import.meta.url), { type: 'module' })
+    );
+
+    const mapPair = (p) => {
+      if (phase === 'stage') {
+        return reverse
+          ? { image: { src: p.tmpImage, dest: p.fromImage }, caption: p.fromTxt ? { src: p.tmpTxt, dest: p.fromTxt } : undefined }
+          : { image: { src: p.fromImage, dest: p.tmpImage }, caption: p.fromTxt ? { src: p.fromTxt, dest: p.tmpTxt } : undefined };
+      } else {
+        return reverse
+          ? { image: { src: p.toImage, dest: p.tmpImage }, caption: p.fromTxt ? { src: p.toTxt, dest: p.tmpTxt } : undefined }
+          : { image: { src: p.tmpImage, dest: p.toImage }, caption: p.fromTxt ? { src: p.tmpTxt, dest: p.toTxt } : undefined };
+      }
+    };
+
+    const postProgress = () => {
+      if (emitProgress) mainWindow?.webContents.send('rename-progress', { processed, total: pairs.length });
+    };
+
+    let next = 0;
+
+    const runWorker = (worker) => new Promise((resolve) => {
+      let active = 0;
+      let finished = false;
+
+      const tryResolve = () => {
+        if (!finished && next >= total && active === 0) {
+          finished = true;
+          worker.off('message', onMessage);
+          worker.off('error', onError);
+          resolve();
+        }
+      };
+
+      const assign = () => {
+        if (next < total) {
+          const idxInList = next++;
+          const i = indexes[idxInList];
+          const p = pairs[i];
+          const payload = mapPair(p);
+          active++;
+          worker.postMessage({ type: phase, id: i, ...payload });
+        } else {
+          tryResolve();
+        }
+      };
+
+      const onMessage = (msg) => {
+        if (msg?.type === 'result') {
+          processed++;
+          succeeded.push(msg.id);
+          postProgress();
+        } else if (msg?.type === 'error') {
+          processed++;
+          failed.push(msg.id);
+          const message = `Error renaming file for phase ${phase}: ${msg.error}`;
+          mainWindow?.webContents.send('app-log', { type: 'error', message });
+          postProgress();
+        }
+        active = Math.max(0, active - 1);
+        assign();
+        tryResolve();
+      };
+
+      const onError = (err) => {
+        mainWindow?.webContents.send('app-log', { type: 'error', message: `Rename worker error: ${err?.message || err}` });
+        active = Math.max(0, active - 1);
+        assign();
+        tryResolve();
+      };
+
+      worker.on('message', onMessage);
+      worker.on('error', onError);
+      assign();
+    });
+
+    await Promise.all(workers.map((w) => runWorker(w)));
+    await Promise.all(workers.map((w) => w.terminate().catch(() => {})));
+    postProgress();
+    return { failed, succeeded };
+  }
 }
