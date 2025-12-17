@@ -2,7 +2,7 @@ import type { TagBatch } from "../types/database.js";
 
 import { Utilities } from "./Utilities.js";
 import readline from "node:readline";
-import { App } from "../App.js";
+import { app } from "electron";
 import path from "node:path";
 import url from "node:url";
 import fs from "node:fs";
@@ -37,7 +37,7 @@ export class PathsBuilder {
         this.appIconPath = fs.existsSync(this.distPath) ? path.join(this.distPath, "doro.ico") : path.join(this.publicPath, "doro.ico");
         this.preloadFilePath = path.join(__dirname, "..", "preload.js");
         this.indexFilePath = path.join(this.distPath, "index.html");
-        this.uninstallerPath = path.join(path.dirname(App.electron.app.getPath("exe")), "Uninstall Dataset Editor.exe");
+        this.uninstallerPath = path.join(path.dirname(app.getPath("exe")), "Uninstall Dataset Editor.exe");
 
     }
 

@@ -1,5 +1,4 @@
-import type { BrowserWindow } from "electron";
-
+import { ipcMain, dialog, BrowserWindow } from "electron";
 import { App } from "../App.js";
 
 export class WindowManager {
@@ -12,7 +11,7 @@ export class WindowManager {
     }
 
     async createMainWindow() {
-        this.mainWindow = new App.electron.BrowserWindow({
+        this.mainWindow = new BrowserWindow({
             backgroundColor: '#1d232a',
             autoHideMenuBar: true,
             title: 'Dataset Editor',
@@ -52,11 +51,11 @@ export class WindowManager {
     handleWindowClose() {
         this.mainWindow?.webContents.send('are_changes_saved');
 
-        App.ipcMain.once('changes_saved', async (_, allSaved) => {
-            if (allSaved) {
+        ipcMain.once('changes_saved', async (_, isAllSaved: boolean) => {
+            if (isAllSaved) {
                 this.mainWindow?.destroy();
             } else {
-                const result = await App.electron.dialog.showMessageBox(this.mainWindow!, {
+                const result = await dialog.showMessageBox(this.mainWindow!, {
                     type: 'question',
                     buttons: ['Yes', 'No', 'Cancel'],
                     title: 'Confirm',
@@ -65,7 +64,7 @@ export class WindowManager {
 
                 if (result.response === 0) {
                     this.mainWindow?.webContents.send('save_all_changes');
-                    App.ipcMain.once('save_all_done', () => this.mainWindow?.destroy());
+                    ipcMain.once('save_all_done', () => this.mainWindow?.destroy());
                 } else if (result.response === 1) {
                     this.mainWindow?.destroy();
                 }

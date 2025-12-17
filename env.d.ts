@@ -1,12 +1,9 @@
 /// <reference types="vite/client" />
-
 import type { openWikiLink } from "@/services/wikiService";
 
-export interface ipcElectronAPI {
-  send: <T>(channel: string, ...args: T[]) => void;
-  receive: <T>(channel: string, callback: (...args: T[]) => void) => void;
-  unsubscribe: (channel: string) => void;
-  invoke: <T>(channel: string, ...args: T[]) => Promise<unknown>;
+interface ipcElectronAPI {
+  invoke: (channel: string, ...args: unknown[]) => Promise<unknown>;
+  on: (channel: string, listener: (...args: unknown[]) => void) => () => void;
 }
 
 declare global {

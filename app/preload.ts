@@ -1,7 +1,23 @@
-import electron from 'electron';
+import type { IpcRendererEvent } from "electron";
 
-const { contextBridge, ipcRenderer } = electron;
+import { contextBridge, ipcRenderer } from "electron";
 
-contextBridge.exposeInMainWorld('ipcRenderer', {
-    send: (channel: string, data: unknown[]) => ipcRenderer.send(channel, data)
+contextBridge.exposeInMainWorld("ipcRenderer", {
+    invoke: (channel: string, ...args: unknown[]): Promise<unknown> => {
+        return ipcRenderer.invoke(channel, ...args);
+    },
+    send: (channel: string, ...args: unknown[]) => {
+        ipcRenderer.send(channel, ...args);
+    },
+    on: (channel: string, listener: (...args: unknown[]) => void) => {
+        const subscription = (_event: IpcRendererEvent, ...args: unknown[]) => {
+            listener(...args);
+        }
+
+        ipcRenderer.on(channel, subscription);
+
+        return () => {
+            ipcRenderer.removeListener(channel, subscription);
+        }
+    }
 });

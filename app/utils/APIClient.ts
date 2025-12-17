@@ -3,12 +3,12 @@ import http from "node:http";
 export class APIClient {
     static async get<T>(url: string): Promise<[T, boolean, number]> {
         const response = await fetch(url);
-        const data = await response.json();
+        const data = await response.json() as T;
 
         return [data, response.ok, response.status];
     }
 
-    static async post<T>(url: string, body?: BodyInit, expectLongResponseTime?: boolean): Promise<[T, boolean, number]> {
+    static async post<T>(url: string, body?: object | string, expectLongResponseTime?: boolean): Promise<[T, boolean, number]> {
         let data: T;
         let responseOk: boolean;
         let status: number;
@@ -24,7 +24,7 @@ export class APIClient {
                 }
             });
 
-            data = await response.json();
+            data = await response.json() as T;
             responseOk = response.ok;
             status = response.status;
         } else {

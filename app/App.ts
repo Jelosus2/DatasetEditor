@@ -1,21 +1,19 @@
 import type { Settings } from "./types/settings.js";
 
 import { SettingsManager } from "./settings/SettingsManager.js";
-import { UpdateManager } from "./updater/updateManager.js";
+import { UpdateManager } from "./updater/UpdateManager.js";
 import { WindowManager } from "./window/WindowManager.js";
 import { TagDatabase } from "./database/TagDatabase.js";
 import { PathsBuilder } from "./utils/PathsBuilder.js";
-import electron from "electron";
+import { IpcRegistrar } from "./ipc/IpcRegistrar.js";
+import "./controllers/index.js";
+import { app, dialog, nativeTheme, Menu, session } from "electron";
 import path from "node:path";
 import url from "node:url";
 import fs from "node:fs";
 
-const { app, ipcMain, nativeTheme, Menu, session } = electron;
-
 export class App {
     static readonly IS_DEVELOPMENT = !app.isPackaged;
-    static readonly electron = electron;
-    static readonly ipcMain = ipcMain;
     static paths: PathsBuilder;
     static settings: SettingsManager;
     static database: TagDatabase;
@@ -43,6 +41,7 @@ export class App {
         this.settings = new SettingsManager();
         this.database = new TagDatabase();
         this.updater = new UpdateManager();
+        IpcRegistrar.registerAll();
     }
 
     static start(debugFlag: boolean) {
@@ -95,5 +94,13 @@ export class App {
 
             callback({ requestHeaders: details.requestHeaders });
         });
+    }
+
+    static showMessageBox(options: Electron.MessageBoxOptions): number {
+        return dialog.showMessageBoxSync(this.window.mainWindow!, options);
+    }
+
+    static showOpenDialog(options: Electron.OpenDialogOptions): string[] | undefined {
+        return dialog.showOpenDialogSync(this.window.mainWindow!, options);
     }
 }
