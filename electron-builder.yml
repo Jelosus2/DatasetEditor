@@ -35,8 +35,6 @@ win:
         - "**/*"
 nsis:
   oneClick: false
-  perMachine: true
-  allowElevation: true
   allowToChangeInstallationDirectory: true
   artifactName: "Dataset-Editor-Setup-${version}.${ext}"
   installerIcon: "build/yes_doro.ico"

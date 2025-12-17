@@ -1,4 +1,5 @@
 !include "LogicLib.nsh"
+!include "WinMessages.nsh"
 
 !macro customInstall
     Var /GLOBAL SourceTaggerDir
@@ -124,4 +125,47 @@ Function CopyDirRecursive
     Pop $2
     Pop $0
     Pop $1
+FunctionEnd
+
+!define CT_TEXT_LABEL 1006
+
+Function IsInstDirWritable
+  StrCpy $0 "$INSTDIR\test_write_perm.tmp"
+  ClearErrors
+  FileOpen $1 $0 w
+  IfErrors NotWritable
+  FileClose $1
+  Delete $0
+  Push 1
+  Return
+
+NotWritable:
+  Push 0
+  Return
+FunctionEnd
+
+Function .onVerifyInstDir
+  ; 1. Check permissions
+  Call IsInstDirWritable
+  Pop $0
+  
+  ; 2. Find the Inner Dialog Window (where the controls live)
+  FindWindow $1 "#32770" "" $HWNDPARENT
+  
+  ; 3. Get the handle for the Top Text Label (ID 1006)
+  GetDlgItem $2 $1 ${CT_TEXT_LABEL}
+
+  ${If} $0 == 0
+    ; --- BAD FOLDER CASE ---
+    ; Change text to warn the user
+    SendMessage $2 ${WM_SETTEXT} 0 "STR:PERMISSION ERROR: Cannot write to this folder.$\r$\nPlease select a User folder or run installer as Admin."
+    
+    ; Disable the Next/Install button
+    Abort
+    
+  ${Else}
+    ; --- GOOD FOLDER CASE ---
+    ; Restore the normal text (using the product name variable)
+    SendMessage $2 ${WM_SETTEXT} 0 "STR:Setup will install ${PRODUCT_NAME} in the following folder."
+  ${EndIf}
 FunctionEnd
