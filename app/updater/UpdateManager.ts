@@ -1,5 +1,6 @@
-import electronUpdater from "electron-updater";
+import { Utilities } from "../utils/Utilities.js";
 import { App } from "../App.js";
+import electronUpdater from "electron-updater";
 
 const { autoUpdater } = electronUpdater;
 
@@ -24,26 +25,27 @@ export class UpdateManager {
             App.window.mainWindow?.webContents.send('update_downloaded');
         });
 
-        autoUpdater.on('error', (err) => {
+        autoUpdater.on('error', (error) => {
             App.window.mainWindow?.webContents.send('update_error');
-            const message = `Updater error: ${err.message}`;
-            App.window.mainWindow?.webContents.send('app-log', { type: 'error', message });
+            App.logger.error(`[Updater] Update error: ${Utilities.getErrorMessage(error)}`)
         });
     }
 
     async checkForUpdates() {
         try {
             await autoUpdater.checkForUpdates();
-        } catch (error: unknown) {
+        } catch (error) {
             console.error(error);
+            App.logger.error(`[Updater] Error while checking for updates: ${Utilities.getErrorMessage(error)}`);
         }
     }
 
     async downloadUpdate() {
         try {
             await autoUpdater.downloadUpdate();
-        } catch (error: unknown) {
+        } catch (error) {
             console.error(error);
+            App.logger.error(`[Updater] Error while downloading the update: ${Utilities.getErrorMessage(error)}`);
         }
     }
 

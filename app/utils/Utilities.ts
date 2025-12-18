@@ -27,6 +27,13 @@ export class Utilities {
         return text;
     }
 
+    static getErrorMessage(error: unknown) {
+        if (error instanceof Error)
+            return error.message;
+
+        return String(error);
+    }
+
     static async processMap<T>(array: string[], mapper: (item: string) => Promise<T>): Promise<T[]> {
         const results: T[] = new Array(array.length);
         const queue = array.map((item, index) => ({ item, index }));

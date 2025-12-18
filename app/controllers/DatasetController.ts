@@ -3,11 +3,11 @@ import type { DatasetImage } from "../types/dataset.js";
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
 import { Utilities } from "../utils/Utilities.js";
 import { App } from "../App.js";
-import fs from "node:fs/promises";
 import { shell } from "electron";
 import path from "node:path";
 import * as _ from "lodash";
 import url from "node:url";
+import fs from "fs-extra";
 
 @IpcClass()
 export class DatasetController {
@@ -31,29 +31,37 @@ export class DatasetController {
             const { dataset, globalTags } = await this.processDatasetDirectory(directoryPath, recursive, sortOnLoad);
             this.originalDataset = dataset;
 
+            App.logger.info(`[Dataset Manager]`);
             return { dataset, globalTags, directoryPath }
-        } catch (error: unknown) {
+        } catch (error) {
             console.error(error);
+            App.logger.error(`[Dataset Manager] Error while trying to load the dataset: ${Utilities.getErrorMessage(error)}`);
             return null;
         }
     }
 
     @IpcHandle("dataset:save")
     async saveDataset(dataset: Map<string, DatasetImage>) {
+        let errors = 0;
+
         for (const [imageName, properties] of dataset) {
             try {
                 const datasetDirectory = path.dirname(properties.path);
-                await App.paths.mkdirRecursive(datasetDirectory);
+                await fs.ensureDir(datasetDirectory);
 
                 const tags = Array.from(properties.tags).join(", ");
                 const filePath = properties.path.replace(/\.[^.]+$/, '.txt');
 
                 await fs.writeFile(filePath, tags, { encoding: "utf-8" });
-            } catch (error: unknown) {
+            } catch (error) {
                 console.error(error);
+                App.logger.error(`[Dataset Manager] Error while trying to save the tags for image ${imageName}: ${Utilities.getErrorMessage(error)}`);
+                errors++;
             }
         }
 
+        if (errors < dataset.size)
+            App.logger.info("[Dataset Manager] Dataset saved");
         this.originalDataset = dataset;
     }
 
@@ -80,34 +88,31 @@ export class DatasetController {
     async trashDatasetPairs(filePaths: string[]) {
         const results = await Utilities.processMap(filePaths, async (filePath) => {
             try {
-                if (await App.paths.fileExists(filePath))
+                if (await fs.pathExists(filePath))
                     await shell.trashItem(filePath);
 
                 const directory = path.dirname(filePath);
                 const fileName = path.basename(filePath);
 
                 const txtPath = path.join(directory, fileName.replace(/\.[^.]+$/, '.txt'));
-                if (await App.paths.fileExists(txtPath))
+                if (await fs.pathExists(txtPath))
                     await shell.trashItem(txtPath);
 
                 return { status: "fulfilled" }
             } catch (error) {
                 console.error(error);
-                return { status: "rejected", reason: error as Error, path: filePath }
+                return { status: "rejected", reason: error, path: path.dirname(filePath) }
             }
         });
 
         const successes = results.filter((result) => result.status === "fulfilled");
         const errors = results.filter((result) => result.status === "rejected");
 
-        if (successes.length > 0) {
-            // TODO: Register the log
-        }
+        App.logger.info(`[Dataset Manager] Sent ${successes.length} pair of files to the trash bin`);
 
         if (errors.length > 0) {
             for (const error of errors) {
-                const message = `Error deleting pair ${error.path}, with error: ${error.reason?.message}`;
-                // TODO: Register the log
+                App.logger.error(`[Dataset Manager] Error deleting pair in ${error.path}: ${Utilities.getErrorMessage(error.reason)}`);
             }
 
             return { error: true, message: "Error trashing file, check the logs for more information" }
@@ -134,7 +139,7 @@ export class DatasetController {
             properties: ["openDirectory"]
         });
 
-        return result.filePaths?.[0];
+        return result.filePaths[0];
     }
 
     async processDatasetDirectory(directoryPath: string, recursive?: boolean, sortOnLoad?: boolean) {
@@ -183,7 +188,7 @@ export class DatasetController {
         const sanitizedName = fileName.replace(/\.[^.]+$/, '.txt');
         const txtPath = path.join(directoryPath, sanitizedName);
 
-        if (!await App.paths.fileExists(txtPath))
+        if (!await fs.pathExists(txtPath))
             return new Set();
 
         try {
@@ -194,8 +199,9 @@ export class DatasetController {
                     .map((tag) => tag.trim().replaceAll('_', ' ').replaceAll('\\(', '(').replaceAll('\\)', ')'))
                     .filter(Boolean)
             );
-        } catch (error: unknown) {
+        } catch (error) {
             console.error(error);
+            App.logger.error(`[Dataset Manager] Error reading the tags from ${fileName}: ${Utilities.getErrorMessage(error)}`)
             return new Set();
         }
     }

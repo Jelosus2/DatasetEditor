@@ -2,12 +2,11 @@ import type { TagBatch } from "../types/database.js";
 
 import { Utilities } from "./Utilities.js";
 import { App } from "../App.js";
-import { createReadStream } from "node:fs";
 import readline from "node:readline";
-import fs from "node:fs/promises";
 import { app } from "electron";
 import path from "node:path";
 import url from "node:url";
+import fs from "fs-extra";
 
 export class PathsBuilder {
     readonly dataPath: string;
@@ -43,31 +42,9 @@ export class PathsBuilder {
 
     }
 
-    async mkdirRecursive(path: string) {
-        await fs.mkdir(path, { recursive: true });
-    }
-
-    async writeJSONFile(path: string, content: unknown) {
-        await fs.writeFile(path, JSON.stringify(content, null, 4), { encoding: 'utf-8' });
-    }
-
-    async readJSONFile<T>(path: string): Promise<T> {
-        const content = await fs.readFile(path, 'utf-8');
-        return JSON.parse(content);
-    }
-
-    async fileExists(path: string) {
-        try {
-            await fs.access(path);
-            return true;
-        } catch {
-            return false;
-        }
-    }
-
     async readTagsCsv(csvPath: string, batchSize: number, onBatchComplete: (batch: TagBatch[]) => void) {
         return new Promise<void>((resolve, reject) => {
-            const stream = createReadStream(csvPath);
+            const stream = fs.createReadStream(csvPath);
             const rl = readline.createInterface({ input: stream });
             let batch: TagBatch[] = [];
 
@@ -93,8 +70,9 @@ export class PathsBuilder {
                         onBatchComplete(batch);
                         batch = [];
                     }
-                } catch (error: unknown) {
+                } catch (error) {
                     console.error(error);
+                    reject(error);
                 }
             });
 
@@ -105,7 +83,7 @@ export class PathsBuilder {
 
                     console.log('CSV import completed successfully!');
                     resolve();
-                } catch (error: unknown) {
+                } catch (error) {
                     console.error(error);
                     reject(error);
                 }

@@ -1,6 +1,7 @@
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
 import { Utilities } from "../utils/Utilities.js";
-import fs from "node:fs/promises";
+import { App } from "../App.js";
+import fs from "fs-extra";
 import sharp from "sharp";
 
 @IpcClass()
@@ -32,31 +33,34 @@ export class ImageController {
                 return { status: "fulfilled" }
             } catch (error) {
                 console.error(error);
-                await fs.unlink(tempPath).catch(() => {});
-                return { status: "rejected", reason: error as Error, path: imagePath };
+                await fs.remove(tempPath).catch(() => {})
+                return { status: "rejected", reason: error, path: imagePath };
             }
         });
 
+        const successes = results.filter((result) => result.status === "fulfilled");
         const errors = results.filter((result) => result.status === "rejected");
+
+        App.logger.info(`[Image Manager] Applied the background color to ${successes.length} images`);
+
         if (errors.length > 0) {
             for (const error of errors) {
-                const message = `Failed to process image ${error.path}, with error: ${error.reason?.message}`;
-                // TODO: Register the log
+                App.logger.error(`[Image Manager] Failed to process image ${error.path}: ${Utilities.getErrorMessage(error.reason)}`);
             }
 
             return { error: true, message: 'Failed to change background color, check the logs for more information.' };
         }
 
-        // TODO: Register the log
         return { error: false, message: 'Changed background color successfully' };
     }
 
-    async getThumbnail(filePath: string, size?: number) {
+    @IpcHandle("image:create_thumbnail")
+    async createThumbnail(imagePath: string, size?: number) {
         size ??= 256;
 
         try {
-            const { mtimeMs } = await fs.stat(filePath);
-            const key = `${filePath}|${mtimeMs}|${size}`;
+            const { mtimeMs } = await fs.stat(imagePath);
+            const key = `${imagePath}|${mtimeMs}|${size}`;
 
             if (this.thumbnailCache.has(key)) {
                 const value = this.thumbnailCache.get(key);
@@ -66,7 +70,7 @@ export class ImageController {
                 return value;
             }
 
-            const buffer = await sharp(filePath)
+            const buffer = await sharp(imagePath)
                 .rotate()
                 .resize({
                     width: size,
@@ -88,6 +92,7 @@ export class ImageController {
             return dataUrl;
         } catch (error) {
             console.error(error);
+            App.logger.error(`[Image Manager] Failed to generate a thumbnail for image ${imagePath}: ${Utilities.getErrorMessage(error)}`)
             return null;
         }
     }

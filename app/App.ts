@@ -6,12 +6,13 @@ import { WindowManager } from "./window/WindowManager.js";
 import { TagDatabase } from "./database/TagDatabase.js";
 import { PathsBuilder } from "./utils/PathsBuilder.js";
 import { IpcRegistrar } from "./ipc/IpcRegistrar.js";
+import { Utilities } from "./utils/Utilities.js";
 import { Logger } from "./utils/Logger.js";
 import "./controllers/index.js";
 import { app, dialog, nativeTheme, Menu, session } from "electron";
 import path from "node:path";
 import url from "node:url";
-import fs from "node:fs";
+import fs from "fs-extra";
 
 export class App {
     static readonly IS_DEVELOPMENT = !app.isPackaged;
@@ -22,62 +23,65 @@ export class App {
     static updater: UpdateManager;
     static logger: Logger;
 
-    static getBasePath() {
+    static async getBasePath() {
         let basePath = this.IS_DEVELOPMENT ? app.getAppPath() : app.getPath("userData");
 
         // Check if it's a portable installation
         const portableTestPath = path.join(path.dirname(app.getPath("exe")), "Uninstall Dataset Editor.exe");
-        if (!this.IS_DEVELOPMENT && fs.existsSync(portableTestPath))
+        if (!this.IS_DEVELOPMENT && await fs.pathExists(portableTestPath))
             basePath = process.resourcesPath
 
         return basePath
     }
 
     static async isPortableInstallation() {
-        return !(await App.paths.fileExists(App.paths.uninstallerPath));
+        return !(await fs.pathExists(App.paths.uninstallerPath));
     }
 
-    static loadModules(debugFlag: boolean) {
-        this.paths = new PathsBuilder(this.getBasePath());
+    static async loadModules(debugFlag: boolean) {
+        this.paths = new PathsBuilder(await this.getBasePath());
         this.window = new WindowManager(debugFlag);
         this.settings = new SettingsManager();
-        this.database = new TagDatabase();
         this.updater = new UpdateManager();
         IpcRegistrar.registerAll();
     }
 
     static async start(debugFlag: boolean) {
-        if (!this.IS_DEVELOPMENT && !debugFlag)
-            Menu.setApplicationMenu(null);
+        try {
+            if (!this.IS_DEVELOPMENT && !debugFlag)
+                Menu.setApplicationMenu(null);
 
-        this.loadModules(debugFlag);
-        await this.database.start();
+            await this.loadModules(debugFlag);
+            this.database = await TagDatabase.start();
 
-        const settings = await this.settings.loadSettings();
-        if (settings != null && !settings.enableHardwareAcceleration)
-            app.disableHardwareAcceleration();
+            const settings = await this.settings.loadSettings();
+            if (settings != null && !settings.enableHardwareAcceleration)
+                app.disableHardwareAcceleration();
 
-        app.whenReady().then(() => this.onAppReady(settings));
-        app.on('window-all-closed', this.onWindowAllClosed);
-        app.on('activate', this.onActivate);
+            app.whenReady().then(() => this.onAppReady(settings));
+            app.on('window-all-closed', this.onWindowAllClosed);
+            app.on('activate', this.onActivate);
+        } catch (error) {
+            console.error(error);
+        }
     }
 
     static async onAppReady(settings: Settings | null) {
         try {
-            await this.database.tryLoadDefaultCsv();
             await this.window.createMainWindow();
-
             this.logger = Logger.setupLogging(this.window.mainWindow!);
 
+            await this.database.tryLoadDefaultCsv();
             this.setupDanbooruRefererHeader();
 
             const isDarkThemeDefault = nativeTheme.shouldUseDarkColors;
-            this.settings.initializeWithDefaults(isDarkThemeDefault);
+            await this.settings.initializeWithDefaults(isDarkThemeDefault);
 
             if (settings?.autoCheckUpdates && !this.isPortableInstallation())
                 this.updater.checkForUpdates();
-        } catch (error: unknown) {
+        } catch (error) {
             console.error(error);
+            this.logger.error(`[App] Error during initialization: ${Utilities.getErrorMessage(error)}`);
         }
     }
 

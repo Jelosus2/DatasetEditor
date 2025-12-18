@@ -12,17 +12,19 @@ export class Logger {
     }
 
     info(message: string) {
-        if (this.mainWindow && !this.mainWindow.isDestroyed())
-            this.mainWindow.webContents.send("app-log", { type: "info", message });
+        this.sendLog("info", message);
     }
 
     warning(message: string) {
-        if (this.mainWindow && !this.mainWindow.isDestroyed())
-            this.mainWindow.webContents.send("app-log", { type: "warning", message });
+        this.sendLog("warning", message);
     }
 
     error(message: string) {
+        this.sendLog("error", message);
+    }
+
+    sendLog(type: "info" | "warning" | "error", message: string) {
         if (this.mainWindow && !this.mainWindow.isDestroyed())
-            this.mainWindow.webContents.send("app-log", { type: "error", message });
+            this.mainWindow.webContents.send("app-log", { type, message });
     }
 }
