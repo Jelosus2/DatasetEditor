@@ -5,12 +5,12 @@ type GenericMethod = (...args: unknown[]) => unknown;
 
 export class IpcRegistrar {
     static registerAll() {
-        ipcDecorator.CONTROLLER_REGISTRY_KEY.forEach((ControllerClass) => {
+        for (const ControllerClass of ipcDecorator.CONTROLLER_REGISTRY_KEY) {
             const instance = new ControllerClass();
             const prototype = Object.getPrototypeOf(instance);
             const methods = Object.getOwnPropertyNames(prototype);
 
-            methods.forEach((methodName) => {
+            for (const methodName of methods) {
                 if (methodName === "constructor")
                     return;
 
@@ -33,7 +33,7 @@ export class IpcRegistrar {
                         console.log(`[IPC-On] Registered: ${onChannel}`);
                     }
                 }
-            });
-        });
+            }
+        }
     }
 }

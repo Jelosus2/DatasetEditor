@@ -1,11 +1,13 @@
 import type { TagBatch } from "../types/database.js";
 
 import { Utilities } from "./Utilities.js";
+import { App } from "../App.js";
+import { createReadStream } from "node:fs";
 import readline from "node:readline";
+import fs from "node:fs/promises";
 import { app } from "electron";
 import path from "node:path";
 import url from "node:url";
-import fs from "node:fs";
 
 export class PathsBuilder {
     readonly dataPath: string;
@@ -34,28 +36,38 @@ export class PathsBuilder {
         this.tagAutocompletionFilePath = path.join(this.tagAutocompletionsPath, "danbooru.csv");
         this.distPath = path.join(__dirname, "..", "..", "dist");
         this.publicPath = path.join(__dirname, "..", "..", "public");
-        this.appIconPath = fs.existsSync(this.distPath) ? path.join(this.distPath, "doro.ico") : path.join(this.publicPath, "doro.ico");
+        this.appIconPath = !App.IS_DEVELOPMENT ? path.join(this.distPath, "doro.ico") : path.join(this.publicPath, "doro.ico");
         this.preloadFilePath = path.join(__dirname, "..", "preload.js");
         this.indexFilePath = path.join(this.distPath, "index.html");
         this.uninstallerPath = path.join(path.dirname(app.getPath("exe")), "Uninstall Dataset Editor.exe");
 
     }
 
-    mkdirRecursive(path: fs.PathLike) {
-        fs.mkdirSync(path, { recursive: true });
+    async mkdirRecursive(path: string) {
+        await fs.mkdir(path, { recursive: true });
     }
 
-    writeJSONFile(path: fs.PathOrFileDescriptor, content: unknown) {
-        fs.writeFileSync(path, JSON.stringify(content, null, 4), { encoding: 'utf-8' });
+    async writeJSONFile(path: string, content: unknown) {
+        await fs.writeFile(path, JSON.stringify(content, null, 4), { encoding: 'utf-8' });
     }
 
-    readJSONFile<T>(path: fs.PathOrFileDescriptor): T {
-        return JSON.parse(fs.readFileSync(path, 'utf-8'));
+    async readJSONFile<T>(path: string): Promise<T> {
+        const content = await fs.readFile(path, 'utf-8');
+        return JSON.parse(content);
     }
 
-    async readTagsCsv(csvPath: fs.PathLike, batchSize: number, onBatchComplete: (batch: TagBatch[]) => void) {
+    async fileExists(path: string) {
+        try {
+            await fs.access(path);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    async readTagsCsv(csvPath: string, batchSize: number, onBatchComplete: (batch: TagBatch[]) => void) {
         return new Promise<void>((resolve, reject) => {
-            const stream = fs.createReadStream(csvPath);
+            const stream = createReadStream(csvPath);
             const rl = readline.createInterface({ input: stream });
             let batch: TagBatch[] = [];
 

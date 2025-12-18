@@ -6,6 +6,7 @@ import { WindowManager } from "./window/WindowManager.js";
 import { TagDatabase } from "./database/TagDatabase.js";
 import { PathsBuilder } from "./utils/PathsBuilder.js";
 import { IpcRegistrar } from "./ipc/IpcRegistrar.js";
+import { Logger } from "./utils/Logger.js";
 import "./controllers/index.js";
 import { app, dialog, nativeTheme, Menu, session } from "electron";
 import path from "node:path";
@@ -19,6 +20,7 @@ export class App {
     static database: TagDatabase;
     static window: WindowManager;
     static updater: UpdateManager;
+    static logger: Logger;
 
     static getBasePath() {
         let basePath = this.IS_DEVELOPMENT ? app.getAppPath() : app.getPath("userData");
@@ -31,8 +33,8 @@ export class App {
         return basePath
     }
 
-    static isPortableInstallation(): boolean {
-        return !fs.existsSync(App.paths.uninstallerPath);
+    static async isPortableInstallation() {
+        return !(await App.paths.fileExists(App.paths.uninstallerPath));
     }
 
     static loadModules(debugFlag: boolean) {
@@ -44,13 +46,14 @@ export class App {
         IpcRegistrar.registerAll();
     }
 
-    static start(debugFlag: boolean) {
+    static async start(debugFlag: boolean) {
         if (!this.IS_DEVELOPMENT && !debugFlag)
             Menu.setApplicationMenu(null);
 
         this.loadModules(debugFlag);
+        await this.database.start();
 
-        const settings = this.settings.loadSettings();
+        const settings = await this.settings.loadSettings();
         if (settings != null && !settings.enableHardwareAcceleration)
             app.disableHardwareAcceleration();
 
@@ -63,6 +66,8 @@ export class App {
         try {
             await this.database.tryLoadDefaultCsv();
             await this.window.createMainWindow();
+
+            this.logger = Logger.setupLogging(this.window.mainWindow!);
 
             this.setupDanbooruRefererHeader();
 
@@ -96,11 +101,11 @@ export class App {
         });
     }
 
-    static showMessageBox(options: Electron.MessageBoxOptions): number {
-        return dialog.showMessageBoxSync(this.window.mainWindow!, options);
+    static async showMessageBox(options: Electron.MessageBoxOptions) {
+        return await dialog.showMessageBox(this.window.mainWindow!, options);
     }
 
-    static showOpenDialog(options: Electron.OpenDialogOptions): string[] | undefined {
-        return dialog.showOpenDialogSync(this.window.mainWindow!, options);
+    static async showOpenDialog(options: Electron.OpenDialogOptions) {
+        return await dialog.showOpenDialog(this.window.mainWindow!, options);
     }
 }
