@@ -2,7 +2,7 @@ import type { Settings } from "../types/settings.js";
 
 import { Utilities } from "../utils/Utilities.js";
 import { App } from "../App.js";
-import * as _ from "lodash";
+import _ from "lodash";
 import fs from "fs-extra";
 
 export class SettingsManager {
@@ -68,7 +68,7 @@ export class SettingsManager {
         }
     }
 
-    compareChanges(settings: Settings): boolean {
+    compare(settings: Settings): boolean {
         if (!this.originalSettings)
             return true;
 

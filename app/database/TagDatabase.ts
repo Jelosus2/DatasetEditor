@@ -52,24 +52,19 @@ export class TagDatabase {
         }
     }
 
-    async loadCsv(csvPath: string, resetTable: boolean = false) {
-        try {
-            if (!csvPath || !await fs.pathExists(csvPath))
-                throw new Error(`CSV file not found at ${csvPath}`);
-            if (resetTable)
-                this.resetTagsTable();
+    async loadCsv(csvPath: string, resetTable?: boolean) {
+        if (!csvPath || !await fs.pathExists(csvPath))
+            throw new Error(`CSV file not found at ${csvPath}`);
+        if (resetTable)
+            this.resetTagsTable();
 
-            const statement = this.database.prepare("INSERT INTO tags (tag, type, results) VALUES (?, ?, ?)");
-            const insertMany = this.database.transaction((rows: TagBatch[]) => {
-                for (const row of rows)
-                    statement.run(row.tag, row.type, row.results);
-            });
+        const statement = this.database.prepare("INSERT INTO tags (tag, type, results) VALUES (?, ?, ?)");
+        const insertMany = this.database.transaction((rows: TagBatch[]) => {
+            for (const row of rows)
+                statement.run(row.tag, row.type, row.results);
+        });
 
-            await App.paths.readTagsCsv(csvPath, this.BATCH_SIZE, /* onBatchComplete = */ insertMany);
-        } catch (error) {
-            console.error(error);
-            App.logger.error(`[Tag Database] Error while loading CSV file into database: ${Utilities.getErrorMessage(error)}`)
-        }
+        await App.paths.readTagsCsv(csvPath, this.BATCH_SIZE, /* onBatchComplete = */ insertMany);
     }
 
     retrieveTagCompletions(tagHint: string) {

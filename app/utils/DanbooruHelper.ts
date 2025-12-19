@@ -18,6 +18,7 @@ export class DanbooruHelper {
         const [data, responseOk, statusCode] = await APIClient.get<PostsResponse[]>(url);
 
         if (!responseOk) throw new Error(`[Code ${statusCode}] Failed to fetch posts related to '${tag}' tag`);
+        // TODO: Handle status codes
         return data;
     }
 }

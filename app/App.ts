@@ -81,7 +81,7 @@ export class App {
                 this.updater.checkForUpdates();
         } catch (error) {
             console.error(error);
-            this.logger.error(`[App] Error during initialization: ${Utilities.getErrorMessage(error)}`);
+            this.logger?.error(`[App] Error during initialization: ${Utilities.getErrorMessage(error)}`);
         }
     }
 

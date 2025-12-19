@@ -17,12 +17,12 @@ export class DatasetService {
   async loadDataset(isAllSaved: boolean, directory?: string | null, recursive = false, sortOnLoad = false) {
     this.logStore.addLog('info', 'Requesting dataset load');
     const result = await this.ipc.invoke<{
-      images: Map<string, Image>
+      dataset: Map<string, Image>
       globalTags: Map<string, Set<string>>
       directoryPath: string
-    } | null>('load_dataset', isAllSaved, directory, recursive, sortOnLoad);
-    if (result && result.images.size > 0) this.logStore.addLog('info', 'Dataset loaded');
-    else if (result && result.images.size === 0) this.logStore.addLog('info', 'Attempted to load dataset but no images were found')
+    } | null>('dataset:load', isAllSaved, directory, recursive, sortOnLoad);
+    if (result && result.dataset.size > 0) this.logStore.addLog('info', 'Dataset loaded');
+    else if (result && result.dataset.size === 0) this.logStore.addLog('info', 'Attempted to load dataset but no images were found')
     else this.logStore.addLog('info', 'Dataset not loaded');
     return result;
   }

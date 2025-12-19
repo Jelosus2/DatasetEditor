@@ -1,13 +1,14 @@
 import type { DatasetImage } from "../types/dataset.js";
+import type { IpcMainInvokeEvent } from "electron";
 
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
 import { Utilities } from "../utils/Utilities.js";
 import { App } from "../App.js";
 import { shell } from "electron";
 import path from "node:path";
-import * as _ from "lodash";
 import url from "node:url";
 import fs from "fs-extra";
+import _ from "lodash";
 
 @IpcClass()
 export class DatasetController {
@@ -19,7 +20,7 @@ export class DatasetController {
     }
 
     @IpcHandle("dataset:load")
-    async loadDataset(isAllSaved: boolean, directory?: string, recursive?: boolean, sortOnLoad?: boolean) {
+    async loadDataset(_event: IpcMainInvokeEvent, isAllSaved: boolean, directory?: string, recursive?: boolean, sortOnLoad?: boolean) {
         if (!isAllSaved && !await this.confirmedUnsavedChanges())
             return null;
 
@@ -41,7 +42,7 @@ export class DatasetController {
     }
 
     @IpcHandle("dataset:save")
-    async saveDataset(dataset: Map<string, DatasetImage>) {
+    async saveDataset(_event: IpcMainInvokeEvent, dataset: Map<string, DatasetImage>) {
         let errors = 0;
 
         for (const [imageName, properties] of dataset) {
@@ -66,7 +67,7 @@ export class DatasetController {
     }
 
     @IpcHandle("dataset:compare")
-    areDatasetsEqual(dataset: Map<string, DatasetImage>) {
+    compare(_event: IpcMainInvokeEvent, dataset: Map<string, DatasetImage>) {
         return _.isEqualWith(this.originalDataset, dataset, (val1, val2) => {
             if (val1 instanceof Set && val2 instanceof Set) {
                 if (val1.size !== val2.size)
@@ -85,7 +86,7 @@ export class DatasetController {
     }
 
     @IpcHandle("dataset:trash")
-    async trashDatasetPairs(filePaths: string[]) {
+    async trashDatasetPairs(_event: IpcMainInvokeEvent, filePaths: string[]) {
         const results = await Utilities.processMap(filePaths, async (filePath) => {
             try {
                 if (await fs.pathExists(filePath))

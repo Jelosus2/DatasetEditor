@@ -12,7 +12,7 @@ export class IpcRegistrar {
 
             for (const methodName of methods) {
                 if (methodName === "constructor")
-                    return;
+                    continue;
 
                 const handleChannel = ipcDecorator.getIpcHandleChannel(prototype, methodName);
                 if (handleChannel) {

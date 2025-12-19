@@ -34,8 +34,8 @@ export class Utilities {
         return String(error);
     }
 
-    static async processMap<T>(array: string[], mapper: (item: string) => Promise<T>): Promise<T[]> {
-        const results: T[] = new Array(array.length);
+    static async processMap<I, O>(array: I[], mapper: (item: I) => Promise<O>, concurrency: number = os.availableParallelism()): Promise<O[]> {
+        const results: O[] = new Array(array.length);
         const queue = array.map((item, index) => ({ item, index }));
         const worker = async () => {
             while (queue.length > 0) {

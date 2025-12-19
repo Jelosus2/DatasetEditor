@@ -12,7 +12,7 @@
     "e-dev": "set NODE_ENV=debug&& run-p dev electron",
     "e-prod": "run-p dev electron",
     "build": "run-p type-check \"build-only {@}\" --",
-    "build:electron": "tsc -p tsconfig.electron.json",
+    "build:electron": "tsc -p tsconfig.electron.json && tsc -p tsconfig.preload.json",
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",

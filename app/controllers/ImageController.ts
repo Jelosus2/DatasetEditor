@@ -1,3 +1,5 @@
+import type { IpcMainInvokeEvent } from "electron";
+
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
 import { Utilities } from "../utils/Utilities.js";
 import { App } from "../App.js";
@@ -14,7 +16,7 @@ export class ImageController {
     }
 
     @IpcHandle("image:set_background")
-    async setBackgroundColor(images: string[], color: string) {
+    async setBackgroundColor(_event: IpcMainInvokeEvent, images: string[], color: string) {
         const results = await Utilities.processMap(images, async (imagePath) => {
             const tempPath = imagePath + ".tmp";
 
@@ -28,7 +30,7 @@ export class ImageController {
                 let mtimeMs: number;
                 try { mtimeMs = (await fs.stat(imagePath)).mtimeMs } catch { mtimeMs = Date.now() }
 
-                // TODO: Send the image update to the renderer process
+                App.window.mainWindow?.webContents.send('image-updated', { path: imagePath, mtime: mtimeMs });
 
                 return { status: "fulfilled" }
             } catch (error) {
@@ -55,7 +57,7 @@ export class ImageController {
     }
 
     @IpcHandle("image:create_thumbnail")
-    async createThumbnail(imagePath: string, size?: number) {
+    async createThumbnail(_event: IpcMainInvokeEvent, imagePath: string, size?: number) {
         size ??= 256;
 
         try {
@@ -94,6 +96,22 @@ export class ImageController {
             console.error(error);
             App.logger.error(`[Image Manager] Failed to generate a thumbnail for image ${imagePath}: ${Utilities.getErrorMessage(error)}`)
             return null;
+        }
+    }
+
+    @IpcHandle("image:dimensions")
+    async getImageDimensions(imagePath: string) {
+        try {
+            const metadata = await sharp(imagePath).metadata();
+
+            return {
+                width: metadata.width ?? 0,
+                height: metadata.height ?? 0
+            }
+        } catch (error) {
+            console.error(error);
+            App.logger.error(`[Image Manager] Error reading metadata for ${imagePath}: ${Utilities.getErrorMessage(error)}`);
+            return { width: 0, height: 0 }
         }
     }
 }

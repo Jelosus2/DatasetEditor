@@ -249,10 +249,10 @@ export const useDatasetStore = defineStore('dataset', () => {
   }
 
   async function loadDataset(reload = false) {
-    const _isDatasetSaved = await isDatasetSaved();
+    //const _isDatasetSaved = await isDatasetSaved();
 
     const dataset = await datasetService.loadDataset(
-      _isDatasetSaved,
+      true,
       reload ? directory.value : null,
       settingsStore.recursiveDatasetLoad,
       settingsStore.sortImagesAlphabetically,
