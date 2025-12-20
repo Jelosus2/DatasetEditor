@@ -16,6 +16,7 @@ export class PathsBuilder {
     readonly databasePath: string;
     readonly settingsPath: string;
     readonly tagAutocompletionFilePath: string;
+    readonly tagGroupsFilePath: string;
     readonly distPath: string;
     readonly publicPath: string;
     readonly appIconPath: string;
@@ -33,6 +34,7 @@ export class PathsBuilder {
         this.databasePath = path.join(this.tagAutocompletionsPath, "tags.db");
         this.settingsPath = path.join(this.dataPath, "settings.json");
         this.tagAutocompletionFilePath = path.join(this.tagAutocompletionsPath, "danbooru.csv");
+        this.tagGroupsFilePath = path.join(this.tagGroupsPath, "tag_groups.json");
         this.distPath = path.join(__dirname, "..", "..", "dist");
         this.publicPath = path.join(__dirname, "..", "..", "public");
         this.appIconPath = !App.IS_DEVELOPMENT ? path.join(this.distPath, "doro.ico") : path.join(this.publicPath, "doro.ico");
@@ -43,54 +45,48 @@ export class PathsBuilder {
     }
 
     async readTagsCsv(csvPath: string, batchSize: number, onBatchComplete: (batch: TagBatch[]) => void) {
-        return new Promise<void>((resolve, reject) => {
-            const stream = fs.createReadStream(csvPath);
-            const rl = readline.createInterface({ input: stream });
-            let batch: TagBatch[] = [];
+        const stream = fs.createReadStream(csvPath);
+        const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
 
-            rl.on('line', (line) => {
-                try {
-                    const [tag, type, results] = line.replaceAll('"', "").split(",");
+        let batch: TagBatch[] = [];
+        let processedCount = 0;
 
-                    if (tag && type && results) {
-                        const isTypeNumeric = Utilities.isStringNumeric(type);
-                        const isResultNumeric = Utilities.isStringNumeric(results);
+        for await (const line of rl) {
+            if (!line.trim())
+                continue;
 
-                        if (!isTypeNumeric && !isResultNumeric)
-                            return;
+            const cleanLine = line.replaceAll('"', "");
+            const parts = cleanLine.split(",");
 
-                        batch.push({
-                            tag: tag.replaceAll("_", " "),
-                            type: parseInt(type, 10),
-                            results: parseInt(results, 10)
-                        });
-                    }
+            if (parts.length < 3)
+                continue;
 
-                    if (batch.length >= batchSize) {
-                        onBatchComplete(batch);
-                        batch = [];
-                    }
-                } catch (error) {
-                    console.error(error);
-                    reject(error);
-                }
+            const tag = parts[0].replaceAll("_", "");
+            const type = parts[1];
+            const results = parts[2];
+
+            if (!Utilities.isStringNumeric(type) || !Utilities.isStringNumeric(results))
+                continue;
+
+            batch.push({
+                tag,
+                type: parseInt(type, 10),
+                results: parseInt(results, 10)
             });
 
-            rl.on('close', () => {
-                try {
-                    if (batch.length > 0)
-                        onBatchComplete(batch)
+            if (batch.length >= batchSize) {
+                onBatchComplete(batch);
+                processedCount += batch.length;
+                batch = [];
+            }
+        }
 
-                    console.log('CSV import completed successfully!');
-                    resolve();
-                } catch (error) {
-                    console.error(error);
-                    reject(error);
-                }
-            });
+        if (batch.length > 0) {
+            onBatchComplete(batch);
+            processedCount += batch.length;
+        }
 
-            rl.on('error', reject);
-        });
+        console.log(`[CSV Reader] Successfully processed ${processedCount} tags`);
     }
 
     __dirname(fileURL: string): string {

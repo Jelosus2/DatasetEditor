@@ -1,5 +1,4 @@
-import { ipcMain, shell } from 'electron';
-import { fetchDanbooruWiki, fetchDanbooruPosts } from '../utils/wiki.js';
+import { ipcMain } from 'electron';
 
 export class IpcHandlers {
   constructor(managers) {
@@ -14,21 +13,6 @@ export class IpcHandlers {
   }
 
   registerHandlers() {
-    ipcMain.handle('save_tag_group_file', async (_, tagGroups) =>
-      await this.tagGroupManager.saveTagGroupFile(this.windowManager.getMainWindow(), tagGroups)
-    );
-
-    ipcMain.handle('import_tag_group', async () =>
-      await this.tagGroupManager.importTagGroup(this.windowManager.getMainWindow())
-    );
-
-    ipcMain.handle('save_tag_group', (_, tagGroups) =>
-      this.tagGroupManager.saveTagGroup(tagGroups, this.windowManager.getMainWindow())
-    );
-
-    ipcMain.handle('load_tag_group', () =>
-      this.tagGroupManager.loadTagGroups(this.windowManager.getMainWindow())
-    );
 
     ipcMain.handle('get_tagger_device', async () => {
       const settings = this.settingsManager.loadSettings(this.windowManager.getMainWindow());
@@ -42,10 +26,6 @@ export class IpcHandlers {
       return await this.taggerApiClient.autoTagImages(props, port);
     });
 
-    ipcMain.handle('compare_tag_group_changes', (_, tagGroups) =>
-      this.tagGroupManager.compareTagGroupChanges(tagGroups)
-    );
-
     ipcMain.handle('start_tagger_service', () => {
       const settings = this.settingsManager.loadSettings();
       const port = settings?.taggerPort ?? 3067;
@@ -58,14 +38,6 @@ export class IpcHandlers {
 
     ipcMain.handle('crop_image', async (_, path, crop, overwrite) =>
       await this.datasetManager.cropImage(path, crop, overwrite, this.windowManager.getMainWindow())
-    );
-
-    ipcMain.handle('find_duplicates', async (_, files, method, threshold) =>
-      await this.datasetManager.findDuplicates(files, this.windowManager.getMainWindow(), method, threshold)
-    );
-
-    ipcMain.handle('rename_files', async (_, files, startAt) =>
-      await this.datasetManager.renameFiles(files, this.windowManager.getMainWindow(), startAt)
     );
   }
 }

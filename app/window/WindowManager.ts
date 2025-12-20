@@ -49,7 +49,7 @@ export class WindowManager {
     }
 
     handleWindowClose() {
-        this.mainWindow?.webContents.send('are_changes_saved');
+        this.ipcSend('are_changes_saved');
 
         ipcMain.once('changes_saved', async (_, isAllSaved: boolean) => {
             if (isAllSaved) {
@@ -63,7 +63,7 @@ export class WindowManager {
                 });
 
                 if (result.response === 0) {
-                    this.mainWindow?.webContents.send('save_all_changes');
+                    this.ipcSend('save_all_changes');
                     ipcMain.once('save_all_done', () => this.mainWindow?.destroy());
                 } else if (result.response === 1) {
                     this.mainWindow?.destroy();
@@ -74,5 +74,9 @@ export class WindowManager {
 
     hasMainWindow(): boolean {
         return this.mainWindow !== null;
+    }
+
+    ipcSend(channel: string, ...args: unknown[]) {
+        this.mainWindow?.webContents.send(channel, ...args);
     }
 }

@@ -112,4 +112,8 @@ export class App {
     static async showOpenDialog(options: Electron.OpenDialogOptions) {
         return await dialog.showOpenDialog(this.window.mainWindow!, options);
     }
+
+    static async showSaveDialog(options: Electron.SaveDialogOptions) {
+        return await dialog.showSaveDialog(this.window.mainWindow!, options);
+    }
 }

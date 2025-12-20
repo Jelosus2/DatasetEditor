@@ -2,8 +2,8 @@ import type { Settings } from "../types/settings.js";
 
 import { Utilities } from "../utils/Utilities.js";
 import { App } from "../App.js";
-import _ from "lodash";
 import fs from "fs-extra";
+import _ from "lodash";
 
 export class SettingsManager {
     private originalSettings: Settings | null;
@@ -33,14 +33,13 @@ export class SettingsManager {
         try {
             if (!settings && await fs.pathExists(App.paths.settingsPath))
                 return;
-            await fs.ensureDir(App.paths.dataPath);
 
             const defaultSettings = this.getDefaultSettings();
             if (!settings && !isDarkThemeDefault)
                 defaultSettings.theme = "winter";
 
             settings = settings ?? defaultSettings;
-            await fs.writeJson(App.paths.settingsPath, settings, { spaces: 4, encoding: "utf-8" });
+            await fs.outputJson(App.paths.settingsPath, settings, { spaces: 4, encoding: "utf-8" });
             this.originalSettings = settings;
         } catch (error) {
             console.error(error);

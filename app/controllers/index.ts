@@ -3,5 +3,6 @@ export * from "./DatabaseController.js";
 export * from "./DatasetController.js";
 export * from "./ImageController.js";
 export * from "./SettingsController.js";
+export * from "./TagGroupController.js";
 export * from "./UpdateController.js";
 export * from "./UtilitiesController.js";

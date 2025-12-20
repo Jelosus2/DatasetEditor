@@ -3,3 +3,9 @@ export type DatasetImage = {
     path: string;
     filePath: string;
 }
+
+export type RenamePair = {
+    from: string;
+    to: string;
+    temp: string;
+}

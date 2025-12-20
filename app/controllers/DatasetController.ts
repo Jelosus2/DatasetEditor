@@ -1,4 +1,4 @@
-import type { DatasetImage } from "../types/dataset.js";
+import type { DatasetImage, RenamePair } from "../types/dataset.js";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
@@ -43,31 +43,27 @@ export class DatasetController {
 
     @IpcHandle("dataset:save")
     async saveDataset(_event: IpcMainInvokeEvent, dataset: Map<string, DatasetImage>) {
-        let errors = 0;
-
-        for (const [imageName, properties] of dataset) {
-            try {
-                const datasetDirectory = path.dirname(properties.path);
-                await fs.ensureDir(datasetDirectory);
-
+        try {
+            for (const properties of dataset.values()) {
                 const tags = Array.from(properties.tags).join(", ");
                 const filePath = properties.path.replace(/\.[^.]+$/, '.txt');
 
-                await fs.writeFile(filePath, tags, { encoding: "utf-8" });
-            } catch (error) {
-                console.error(error);
-                App.logger.error(`[Dataset Manager] Error while trying to save the tags for image ${imageName}: ${Utilities.getErrorMessage(error)}`);
-                errors++;
+                await fs.outputFile(filePath, tags, { encoding: "utf-8" });
             }
-        }
 
-        if (errors < dataset.size)
             App.logger.info("[Dataset Manager] Dataset saved");
-        this.originalDataset = dataset;
+            this.originalDataset = dataset;
+        } catch (error) {
+            console.error(error);
+            App.logger.error(`[Dataset Manager] Error while trying to save the dataset: ${Utilities.getErrorMessage(error)}`);
+        }
     }
 
     @IpcHandle("dataset:compare")
     compare(_event: IpcMainInvokeEvent, dataset: Map<string, DatasetImage>) {
+        if (!this.originalDataset)
+            return true;
+
         return _.isEqualWith(this.originalDataset, dataset, (val1, val2) => {
             if (val1 instanceof Set && val2 instanceof Set) {
                 if (val1.size !== val2.size)
@@ -120,6 +116,93 @@ export class DatasetController {
         }
 
         return { error: false }
+    }
+
+    @IpcHandle("dataset:rename")
+    async renameDataset(_event: IpcMainInvokeEvent, imagePaths: string[], startAt: number) {
+        if (!imagePaths?.length)
+            return { error: false, renamedCount: 0 };
+
+        const pairs: RenamePair[] = [];
+        const sourceFiles = new Set(imagePaths.map((p) => path.normalize(p.toLowerCase())));
+
+        for (let i = 0; i < imagePaths.length; i++) {
+            const imagePath = imagePaths[i];
+            const directory = path.dirname(imagePath);
+            const extension = path.extname(imagePath);
+            const newName = `${startAt + i}`;
+
+            const newImagePath = path.join(directory, newName + extension);
+
+            if (await fs.pathExists(newImagePath) && !sourceFiles.has(path.normalize(newImagePath.toLowerCase())))
+                return { error: true, message: `Cannot rename: Target '${newImagePath}' exists and is not part of the dataset.` }
+
+            const tempImagePath = path.join(directory, `.tmp_${Date.now()}_img_${i}${extension}`);
+            pairs.push({
+                from: imagePath,
+                to: newImagePath,
+                temp: tempImagePath
+            });
+
+            const txtPath = imagePath.replace(/\.[^.]+$/, '.txt');
+            if (await fs.pathExists(txtPath)) {
+                const newTxtPath = path.join(directory, newName + ".txt");
+
+                if (await fs.pathExists(newTxtPath) && !sourceFiles.has(path.normalize(newTxtPath.toLowerCase())))
+                    return { error: true, message: `Cannot rename: Target '${newTxtPath}' exists and is not part of the dataset.` }
+
+                const tempTxtPath = path.join(directory, `.tmp_${Date.now()}_txt_${i}.txt`);
+                pairs.push({
+                    from: txtPath,
+                    to: newTxtPath,
+                    temp: tempTxtPath
+                });
+                sourceFiles.add(path.normalize(txtPath.toLowerCase()));
+            }
+        }
+
+        let processed = 0;
+        const concurrency = 50;
+        const totalOperations = pairs.length * 2;
+
+        const updateProgress = () => {
+            processed++;
+            App.window.ipcSend("rename-progress", { processed, total: totalOperations });
+        }
+
+        try {
+            await Utilities.processMap(pairs, async (pair) => {
+                await fs.rename(pair.from, pair.temp);
+                updateProgress();
+            }, concurrency);
+
+            await Utilities.processMap(pairs, async (pair) => {
+                await fs.rename(pair.temp, pair.to);
+                updateProgress();
+            }, concurrency);
+
+            const mappings = pairs
+                .filter((pair) => this.SUPPORTED_IMAGE_EXTENSIONS.includes(path.extname(pair.to)))
+                .map((pair) => ({ from: pair.from, to: pair.to, mtime: Date.now() }));
+
+            App.logger.info(`[Dataset Manager] Successfully renamed ${pairs.length} files`);
+            return { error: false, renamedCount: pairs.length, mappings }
+        } catch (error) {
+            console.error(error);
+            App.logger.error(`[Dataset Manager] Error while renaming dataset: ${Utilities.getErrorMessage(error)}`);
+            App.logger.warning("Rename failed. Reverting changes...");
+
+            try {
+                await this.rollbackRenameOperation(pairs, concurrency);
+
+                App.logger.info("[Dataset Manager] Rename rollback successful");
+                return { error: true, message: "Rename failed, but files were restored to their original names" }
+            } catch (rollbackError) {
+                console.error(rollbackError);
+                App.logger.error(`[Dataset Manager] Rename rollback failed: ${Utilities.getErrorMessage(rollbackError)}`);
+                return { error: true, message: "Critical error: rename failed and rollback could not be completed. Please check for files named .tmp" }
+            }
+        }
     }
 
     async confirmedUnsavedChanges() {
@@ -214,5 +297,15 @@ export class DatasetController {
 
             globalTags.get(tag)?.add(imageName);
         }
+    }
+
+    async rollbackRenameOperation(pairs: RenamePair[], concurrency: number) {
+        await Utilities.processMap(pairs, async (pair) => {
+            if (await fs.pathExists(pair.temp)) {
+                await fs.rename(pair.temp, pair.from);
+            } else if (await fs.pathExists(pair.to) && pair.to !== pair.from) {
+                await fs.rename(pair.to, pair.from);
+            }
+        }, concurrency);
     }
 }

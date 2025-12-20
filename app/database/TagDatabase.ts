@@ -1,5 +1,5 @@
 import type { Database as DatabaseType } from "better-sqlite3";
-import type { TagBatch, DBTagBatch } from "../types/database.js";
+import type { TagBatch } from "../types/database.js";
 
 import { Utilities } from "../utils/Utilities.js";
 import { App } from "../App.js";
@@ -7,7 +7,7 @@ import Database from "better-sqlite3";
 import fs from "fs-extra";
 
 export class TagDatabase {
-    readonly BATCH_SIZE = 5000;
+    readonly BATCH_SIZE = 2000;
     database: DatabaseType;
 
     constructor(database: DatabaseType) {
@@ -71,7 +71,7 @@ export class TagDatabase {
         if (!tagHint)
             return [];
 
-        const statement = this.database.prepare<[string], DBTagBatch>(`
+        const statement = this.database.prepare<[string], TagBatch>(`
             SELECT tag, type, results FROM tags
             WHERE tag LIKES ?
             LIMIT 20

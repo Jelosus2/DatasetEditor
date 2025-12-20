@@ -14,19 +14,19 @@ export class UpdateManager {
 
     registerListeners() {
         autoUpdater.on('update-available', () => {
-            App.window.mainWindow?.webContents.send('update_available');
+            App.window.ipcSend('update_available');
         });
 
         autoUpdater.on('download-progress', () => {
-            App.window.mainWindow?.webContents.send('update_progress');
+            App.window.ipcSend('update_progress');
         });
 
         autoUpdater.on('update-downloaded', () => {
-            App.window.mainWindow?.webContents.send('update_downloaded');
+            App.window.ipcSend('update_downloaded');
         });
 
         autoUpdater.on('error', (error) => {
-            App.window.mainWindow?.webContents.send('update_error');
+            App.window.ipcSend('update_error');
             App.logger.error(`[Updater] Update error: ${Utilities.getErrorMessage(error)}`)
         });
     }
