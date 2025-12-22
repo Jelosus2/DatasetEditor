@@ -1,4 +1,4 @@
-import type { DatasetImage, RenamePair } from "../types/dataset.js";
+import type { Dataset, GlobalTags, RenamePair } from "../types/dataset.js";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
@@ -13,36 +13,43 @@ import _ from "lodash";
 @IpcClass()
 export class DatasetController {
     readonly SUPPORTED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png'];
-    originalDataset: Map<string, DatasetImage> | null;
+    originalDataset: Dataset | null;
+    loadedDirectory: string | null;
 
     constructor() {
         this.originalDataset = null;
+        this.loadedDirectory = null;
     }
 
     @IpcHandle("dataset:load")
-    async loadDataset(_event: IpcMainInvokeEvent, isAllSaved: boolean, directory?: string, recursive?: boolean, sortOnLoad?: boolean) {
+    async loadDataset(_event: IpcMainInvokeEvent, isAllSaved: boolean, reloadDataset: boolean = false) {
         if (!isAllSaved && !await this.confirmedUnsavedChanges())
-            return null;
+            return { error: false, canceled: true };
+        if (!reloadDataset)
+            this.loadedDirectory = null;
 
-        const directoryPath = directory ?? await this.selectDirectory();
+        const directoryPath = this.loadedDirectory ?? await this.selectDirectory();
         if (!directoryPath)
-            return null;
+            return { error: false, canceled: true };
 
         try {
-            const { dataset, globalTags } = await this.processDatasetDirectory(directoryPath, recursive, sortOnLoad);
+            const settings = await App.settings.loadSettings();
+
+            const { dataset, globalTags } = await this.processDatasetDirectory(directoryPath, settings.recursiveDatasetLoad, settings.sortImagesAlphabetically);
             this.originalDataset = dataset;
+            this.loadedDirectory = directoryPath;
 
             App.logger.info(`[Dataset Manager]`);
-            return { dataset, globalTags, directoryPath }
+            return { error: false, dataset, globalTags, directoryPath }
         } catch (error) {
             console.error(error);
-            App.logger.error(`[Dataset Manager] Error while trying to load the dataset: ${Utilities.getErrorMessage(error)}`);
-            return null;
+            App.logger.error(`[Dataset Manager] Error loading the dataset: ${Utilities.getErrorMessage(error)}`);
+            return { error: true, message: "Error loading the dataset, check the logs for more information" };
         }
     }
 
     @IpcHandle("dataset:save")
-    async saveDataset(_event: IpcMainInvokeEvent, dataset: Map<string, DatasetImage>) {
+    async saveDataset(_event: IpcMainInvokeEvent, dataset: Dataset) {
         try {
             for (const properties of dataset.values()) {
                 const tags = Array.from(properties.tags).join(", ");
@@ -60,7 +67,7 @@ export class DatasetController {
     }
 
     @IpcHandle("dataset:compare")
-    compare(_event: IpcMainInvokeEvent, dataset: Map<string, DatasetImage>) {
+    compare(_event: IpcMainInvokeEvent, dataset: Dataset) {
         if (!this.originalDataset)
             return true;
 
@@ -227,8 +234,8 @@ export class DatasetController {
     }
 
     async processDatasetDirectory(directoryPath: string, recursive?: boolean, sortOnLoad?: boolean) {
-        const dataset = new Map<string, DatasetImage>();
-        const globalTags = new Map<string, Set<string>>();
+        const dataset: Dataset = new Map();
+        const globalTags: GlobalTags = new Map();
 
         const entries = await fs.readdir(directoryPath, { withFileTypes: true, recursive });
         const files = entries
@@ -290,12 +297,12 @@ export class DatasetController {
         }
     }
 
-    updateGlobalTags(globalTags: Map<string, Set<string>>, tags: Set<string>, imageName: string) {
+    updateGlobalTags(globalTags: GlobalTags, tags: Set<string>, imageName: string) {
         for (const tag of tags) {
             if (!globalTags.has(tag))
                 globalTags.set(tag, new Set());
 
-            globalTags.get(tag)?.add(imageName);
+            globalTags.get(tag)!.add(imageName);
         }
     }
 

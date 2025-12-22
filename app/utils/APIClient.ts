@@ -1,6 +1,9 @@
-import http from "node:http";
+import type { TaggerWSPayload } from "../types/tagger.js";
+import { App } from "../App.js";
 
 export class APIClient {
+    static websocket: WebSocket | null = null;
+
     static async get<T>(url: string): Promise<[T, boolean, number]> {
         const response = await fetch(url);
         const data = await response.json() as T;
@@ -8,76 +11,84 @@ export class APIClient {
         return [data, response.ok, response.status];
     }
 
-    static async post<T>(url: string, body?: object | string, expectLongResponseTime?: boolean): Promise<[T, boolean, number]> {
-        let data: T;
-        let responseOk: boolean;
-        let status: number;
+    static getTaggerDeviceWS(port: number): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const websocket = new WebSocket(`ws://localhost:${port}`);
 
-        body = body ? JSON.stringify(body) : undefined;
+            const timeout = setTimeout(() => {
+                websocket.close()
+                reject(new Error("Timeout waiting for tagger device info"));
+            }, 30000);
 
-        if (!expectLongResponseTime) {
-            const response = await fetch(url, {
-                method: 'POST',
-                body,
-                headers: {
-                    "Content-Type": "application/json"
+            websocket.onopen = () => {
+                websocket.send(JSON.stringify({ command: "device" }));
+            }
+
+            websocket.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                if (message.type === "info" && message.device) {
+                    clearTimeout(timeout);
+                    websocket.close();
+                    resolve(message.device);
                 }
-            });
+            }
 
-            data = await response.json() as T;
-            responseOk = response.ok;
-            status = response.status;
-        } else {
-            const result = await this.postWithHttp<T>(url, body);
-
-            data = result.data;
-            responseOk = result.ok;
-            status = result.status;
-        }
-
-        return [data, responseOk, status];
+            websocket.onerror = (error) => {
+                clearTimeout(timeout);
+                websocket.close();
+                reject(error);
+            }
+        });
     }
 
-    static async postWithHttp<T>(urlStr: string, body?: string): Promise<{ data: T, ok: boolean, status: number }> {
-        const url = new URL(urlStr);
-        body = body ?? "";
-
-        const options: http.RequestOptions = {
-            protocol: url.protocol,
-            hostname: url.hostname,
-            port: url.port,
-            path: url.pathname,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(body),
-            },
-        };
-
+    static runTaggingWS(port: number, payload: TaggerWSPayload): Promise<Map<string, string[]>> {
         return new Promise((resolve, reject) => {
-            const req = http.request(options, (res) => {
-                let rawData = '';
-                res.setEncoding('utf-8');
-                res.on('data', (chunk) => (rawData += chunk));
-                res.on('end', () => {
-                    const status = res.statusCode || 0;
-                    const ok = status >= 200 && status < 300;
-                    let data = {} as T;
+            const accumulator = new Map<string, Set<string>>();
+            this.websocket = new WebSocket(`ws://localhost:${port}`);
 
-                    try {
-                        data = JSON.parse(rawData || "{}");
-                    } catch (error: unknown) {
-                        console.error("JSON Parse error:", error);
-                    }
+            this.websocket.onopen = () => {
+                this.websocket?.send(JSON.stringify({
+                    command: "tag",
+                    ...payload
+                }));
+            }
 
-                    resolve({ data, ok, status })
-                });
-            });
+            this.websocket.onmessage = (event) => {
+                const message = JSON.parse(event.data);
 
-            req.setTimeout(0);
-            req.on('error', reject);
-            req.write(body);
-            req.end();
+                if (message.type === "result") {
+                    const file: string = message.file;
+                    const tags: string[] = message.tags;
+
+                    if (!accumulator.has(file))
+                        accumulator.set(file, new Set());
+
+                    const currentTags = accumulator.get(file)!;
+                    tags.forEach((tag) => currentTags.add(tag));
+                } else if (message.type === "error") {
+                    App.logger.error(`[Tagger Manager] Tagger error from the websocket: ${message.error}`);
+                } else if (message.type === "done") {
+                    this.websocket?.close();
+
+                    const results = new Map<string, string[]>();
+                    for (const [file, tags] of accumulator)
+                        results.set(file, Array.from(tags));
+
+                    resolve(results);
+                }
+            }
+
+            this.websocket.onerror = (error) => {
+                this.websocket?.close();
+                reject(error);
+            }
         });
+    }
+
+    static cancelTagging() {
+        if (this.websocket) {
+            this.websocket.close();
+            this.websocket = null;
+        }
     }
 }

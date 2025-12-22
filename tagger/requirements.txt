@@ -3,6 +3,7 @@ pandas
 onnxruntime-gpu==1.19.2
 pillow
 huggingface_hub
+websockets
 
 --extra-index-url https://download.pytorch.org/whl/cu124
 torch==2.5.1

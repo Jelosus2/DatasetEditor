@@ -3,6 +3,7 @@ import type { Settings } from "./types/settings.js";
 import { SettingsManager } from "./settings/SettingsManager.js";
 import { UpdateManager } from "./updater/UpdateManager.js";
 import { WindowManager } from "./window/WindowManager.js";
+import { TaggerManager } from "./tagger/TaggerManager.js";
 import { TagDatabase } from "./database/TagDatabase.js";
 import { PathsBuilder } from "./utils/PathsBuilder.js";
 import { IpcRegistrar } from "./ipc/IpcRegistrar.js";
@@ -11,7 +12,6 @@ import { Logger } from "./utils/Logger.js";
 import "./controllers/index.js";
 import { app, dialog, nativeTheme, Menu, session } from "electron";
 import path from "node:path";
-import url from "node:url";
 import fs from "fs-extra";
 
 export class App {
@@ -22,6 +22,7 @@ export class App {
     static window: WindowManager;
     static updater: UpdateManager;
     static logger: Logger;
+    static tagger: TaggerManager;
 
     static async getBasePath() {
         let basePath = this.IS_DEVELOPMENT ? app.getAppPath() : app.getPath("userData");
@@ -43,6 +44,7 @@ export class App {
         this.window = new WindowManager(debugFlag);
         this.settings = new SettingsManager();
         this.updater = new UpdateManager();
+        this.tagger = new TaggerManager();
         IpcRegistrar.registerAll();
     }
 
@@ -52,15 +54,18 @@ export class App {
                 Menu.setApplicationMenu(null);
 
             await this.loadModules(debugFlag);
+
             this.database = await TagDatabase.start();
+            const isDarkThemeDefault = nativeTheme.shouldUseDarkColors;
+            await this.settings.initializeWithDefaults(isDarkThemeDefault);
 
             const settings = await this.settings.loadSettings();
-            if (settings != null && !settings.enableHardwareAcceleration)
+            if (!settings.enableHardwareAcceleration)
                 app.disableHardwareAcceleration();
 
             app.whenReady().then(() => this.onAppReady(settings));
-            app.on('window-all-closed', this.onWindowAllClosed);
-            app.on('activate', this.onActivate);
+            app.on("window-all-closed", this.onWindowAllClosed);
+            app.on("activate", this.onActivate);
         } catch (error) {
             console.error(error);
         }
@@ -71,11 +76,8 @@ export class App {
             await this.window.createMainWindow();
             this.logger = Logger.setupLogging(this.window.mainWindow!);
 
-            await this.database.tryLoadDefaultCsv();
+            this.database.tryLoadDefaultCsv();
             this.setupDanbooruRefererHeader();
-
-            const isDarkThemeDefault = nativeTheme.shouldUseDarkColors;
-            await this.settings.initializeWithDefaults(isDarkThemeDefault);
 
             if (settings?.autoCheckUpdates && !this.isPortableInstallation())
                 this.updater.checkForUpdates();
@@ -85,19 +87,22 @@ export class App {
         }
     }
 
-    static onWindowAllClosed() {
+    static onWindowAllClosed = () => {
+        this.tagger.cleanup();
         if (process.platform !== "darwin")
             app.quit();
     }
 
-    static async onActivate() {
+    static onActivate = async () => {
         if (!this.window.hasMainWindow())
             await this.window.createMainWindow();
+
+        console.log("Hello")
     }
 
     static setupDanbooruRefererHeader() {
         session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
-            const { hostname } = new url.URL(details.url);
+            const { hostname } = new URL(details.url);
             if (hostname.endsWith("donmai.us"))
                 details.requestHeaders["Referer"] = "https://danbooru.donmai.us/";
 

@@ -13,10 +13,12 @@ export class PathsBuilder {
     readonly tagGroupsPath: string;
     readonly tagAutocompletionsPath: string;
     readonly taggerPath: string;
+    readonly pythonPath: string;
     readonly databasePath: string;
     readonly settingsPath: string;
     readonly tagAutocompletionFilePath: string;
     readonly tagGroupsFilePath: string;
+    readonly taggerScriptPath: string;
     readonly distPath: string;
     readonly publicPath: string;
     readonly appIconPath: string;
@@ -31,10 +33,12 @@ export class PathsBuilder {
         this.tagGroupsPath = path.join(this.dataPath, "TagGroups");
         this.tagAutocompletionsPath = path.join(this.dataPath, "TagAutocompletions");
         this.taggerPath = path.join(basePath, "tagger");
+        this.pythonPath = path.join(this.taggerPath, "embedded_python");
         this.databasePath = path.join(this.tagAutocompletionsPath, "tags.db");
         this.settingsPath = path.join(this.dataPath, "settings.json");
         this.tagAutocompletionFilePath = path.join(this.tagAutocompletionsPath, "danbooru.csv");
         this.tagGroupsFilePath = path.join(this.tagGroupsPath, "tag_groups.json");
+        this.taggerScriptPath = path.join(this.taggerPath, "main.py");
         this.distPath = path.join(__dirname, "..", "..", "dist");
         this.publicPath = path.join(__dirname, "..", "..", "public");
         this.appIconPath = !App.IS_DEVELOPMENT ? path.join(this.distPath, "doro.ico") : path.join(this.publicPath, "doro.ico");

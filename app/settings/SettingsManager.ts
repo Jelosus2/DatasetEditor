@@ -1,6 +1,5 @@
 import type { Settings } from "../types/settings.js";
 
-import { Utilities } from "../utils/Utilities.js";
 import { App } from "../App.js";
 import fs from "fs-extra";
 import _ from "lodash";
@@ -30,40 +29,34 @@ export class SettingsManager {
     }
 
     async saveSettings(settings: Settings | null, isDarkThemeDefault?: boolean) {
-        try {
-            if (!settings && await fs.pathExists(App.paths.settingsPath))
-                return;
+        if (!settings && await fs.pathExists(App.paths.settingsPath))
+            return;
 
-            const defaultSettings = this.getDefaultSettings();
-            if (!settings && !isDarkThemeDefault)
-                defaultSettings.theme = "winter";
+        const defaultSettings = this.getDefaultSettings();
+        if (!settings && !isDarkThemeDefault)
+            defaultSettings.theme = "winter";
 
-            settings = settings ?? defaultSettings;
-            await fs.outputJson(App.paths.settingsPath, settings, { spaces: 4, encoding: "utf-8" });
-            this.originalSettings = settings;
-        } catch (error) {
-            console.error(error);
-            App.logger.error(`[Settings Manager] Error while saving the settings: ${Utilities.getErrorMessage(error)}`);
-        }
+        settings = settings ?? defaultSettings;
+        await fs.outputJson(App.paths.settingsPath, settings, { spaces: 4, encoding: "utf-8" });
+        this.originalSettings = settings;
     }
 
     async loadSettings() {
         try {
             if (!await fs.pathExists(App.paths.settingsPath))
-                return null;
+                return this.getDefaultSettings();
 
             const loadedSettings: Settings = await fs.readJson(App.paths.settingsPath, { encoding: "utf-8" });
             const settings = { ...this.getDefaultSettings(), ...loadedSettings };
 
             if (!_.isEqual(loadedSettings, settings))
-                this.saveSettings(settings);
+                await this.saveSettings(settings);
 
             this.originalSettings = settings;
             return settings;
         } catch (error) {
             console.error(error);
-            App.logger?.error(`[Settings Manager] Error while loading the settings: ${Utilities.getErrorMessage(error)}`);
-            return null;
+            return this.getDefaultSettings();
         }
     }
 

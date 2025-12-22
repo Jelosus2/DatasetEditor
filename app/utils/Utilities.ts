@@ -34,6 +34,37 @@ export class Utilities {
         return String(error);
     }
 
+    static removeRedundantTags(tags: string[], removeUnderscores: boolean) {
+        const separator = removeUnderscores ? " " : "_";
+        const toRemove = new Set<string>();
+
+        for (let i = 0; i < tags.length; i++) {
+            const tagA = tags[i];
+
+            for (let j = 0; j < tags.length; j++) {
+                if (i === j)
+                    continue;
+
+                const tagB = tags[j];
+                if (tagA.length >= tagB.length)
+                    continue;
+
+                if (tagB.includes(tagA)) {
+                    const isPrefix = tagB.startsWith(tagA + separator);
+                    const isSuffix = tagB.endsWith(separator + tagA);
+                    const isMiddle = tagB.includes(separator + tagA + separator);
+
+                    if (isPrefix || isSuffix || isMiddle) {
+                        toRemove.add(tagA);
+                        break;
+                    }
+                }
+            }
+        }
+
+        return tags.filter((tag) => !toRemove.has(tag));
+    }
+
     static async processMap<I, O>(items: I[], mapper: (item: I) => Promise<O>, concurrency: number = os.availableParallelism()): Promise<O[]> {
         const results: O[] = new Array(items.length);
         let nextIndex = 0;

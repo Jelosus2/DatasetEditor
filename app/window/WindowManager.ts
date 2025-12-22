@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow } from "electron";
+import { ipcMain, BrowserWindow } from "electron";
 import { App } from "../App.js";
 
 export class WindowManager {
@@ -42,12 +42,13 @@ export class WindowManager {
             this.mainWindow = null;
         });
 
-        this.mainWindow?.on('close', (e) => {
+        /*this.mainWindow?.on('close', (e) => {
             e.preventDefault();
             this.handleWindowClose();
-        });
+        });*/
     }
 
+    // TODO: Refactor this after refactoring Front-end
     handleWindowClose() {
         this.ipcSend('are_changes_saved');
 
@@ -55,7 +56,7 @@ export class WindowManager {
             if (isAllSaved) {
                 this.mainWindow?.destroy();
             } else {
-                const result = await dialog.showMessageBox(this.mainWindow!, {
+                const result = await App.showMessageBox({
                     type: 'question',
                     buttons: ['Yes', 'No', 'Cancel'],
                     title: 'Confirm',
