@@ -65,7 +65,7 @@ export class PathsBuilder {
             if (parts.length < 3)
                 continue;
 
-            const tag = parts[0].replaceAll("_", "");
+            const tag = parts[0].replaceAll("_", " ");
             const type = parts[1];
             const results = parts[2];
 
