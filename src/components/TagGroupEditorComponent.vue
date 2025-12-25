@@ -165,7 +165,7 @@ function renameTagGroup(event: KeyboardEvent) {
 
 <template>
   <input type="radio" name="editor_tabs" class="tab" aria-label="Tag Groups" />
-  <div class="tab-content border-t-base-300 bg-base-100">
+  <div class="tab-content min-h-0 border-t-base-300 bg-base-100">
     <div class="flex h-full">
       <div class="flex w-[25%] flex-col gap-2 overflow-auto pt-1 pl-1">
         <div
@@ -174,10 +174,10 @@ function renameTagGroup(event: KeyboardEvent) {
           class="collapse shrink-0 rounded-none border border-base-300 bg-base-100"
         >
           <input type="checkbox" />
-          <div class="collapse-title pr-[16px] text-center font-semibold break-all">
+          <div class="collapse-title pr-4 text-center font-semibold break-all">
             {{ name }}
           </div>
-          <div class="collapse-content flex flex-wrap gap-2 overflow-auto scroll-smooth text-sm">
+          <div class="collapse-content flex flex-wrap gap-2 overflow-auto scroll-smooth">
             <div
               v-for="tag in tags"
               :key="tag"
@@ -189,7 +189,7 @@ function renameTagGroup(event: KeyboardEvent) {
           </div>
         </div>
       </div>
-      <div class="flex flex-1 pt-1">
+      <div class="flex flex-1 py-1">
         <div
           class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
         ></div>
@@ -203,14 +203,14 @@ function renameTagGroup(event: KeyboardEvent) {
               </div>
               <select
                 v-model.lazy="selectedGroup"
-                class="select w-full text-center select-sm !outline-none"
+                class="select w-full text-center outline-none!"
               >
                 <option value="" selected></option>
                 <option v-for="name in tagGroupsStore.tagGroups.keys()" :key="name" :value="name">
                   {{ name }}
                 </option>
               </select>
-              <label class="input input-sm w-full px-2 !outline-none">
+              <label class="input w-full px-2 outline-none!">
                 <span class="label">Rename Group</span>
                 <input
                   type="text"
@@ -260,7 +260,7 @@ function renameTagGroup(event: KeyboardEvent) {
               >
                 <p>Create tag group</p>
               </div>
-              <label class="input input-sm w-full px-2 !outline-none">
+              <label class="input w-full px-2 outline-none!">
                 <span class="label">Group Name</span>
                 <input
                   v-model.trim="groupNameInput"
@@ -271,7 +271,7 @@ function renameTagGroup(event: KeyboardEvent) {
               <div class="relative flex-1">
                 <AutocompletionComponent
                   v-model="groupTags"
-                  class="textarea w-full h-full resize-none !outline-none"
+                  class="textarea w-full h-full resize-none outline-none!"
                   :id="'tag-group-creation-list'"
                   :textarea="true"
                   :multiple="true"
@@ -295,14 +295,14 @@ function renameTagGroup(event: KeyboardEvent) {
               <div
                 v-for="tag in tagGroupsStore.tagGroups.get(selectedGroup)?.values()"
                 :key="tag"
-                class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
+                class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
                 @click="tagGroupsStore.tagGroups.get(selectedGroup)?.delete(tag)"
               >
                 {{ tag }}
               </div>
             </div>
             <div class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
-              <label class="input input-sm w-full px-1 !outline-none">
+              <label class="input w-full px-1 outline-none!">
                 <AutocompletionComponent
                   v-model="tagInput"
                   :disabled="!selectedGroup"
@@ -359,11 +359,11 @@ function renameTagGroup(event: KeyboardEvent) {
                 class="collapse shrink-0 rounded-none border border-base-300 bg-base-100"
               >
                 <input type="checkbox" />
-                <div class="collapse-title pr-[16px] text-center font-semibold break-all">
+                <div class="collapse-title pr-4 text-center font-semibold break-all">
                   {{ name }}
                 </div>
                 <div
-                  class="collapse-content flex flex-wrap gap-2 overflow-auto scroll-smooth text-sm"
+                  class="collapse-content flex flex-wrap gap-2 overflow-auto scroll-smooth"
                 >
                   <div
                     v-for="tag in tags"

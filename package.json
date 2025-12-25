@@ -54,8 +54,6 @@
     "eslint-plugin-vue": "^9.32.0",
     "jiti": "^2.4.2",
     "npm-run-all2": "^7.0.2",
-    "prettier": "^3.4.2",
-    "prettier-plugin-tailwindcss": "^0.6.11",
     "typescript": "~5.9.3",
     "vite": "^6.0.11",
     "vite-svg-loader": "^5.1.0",

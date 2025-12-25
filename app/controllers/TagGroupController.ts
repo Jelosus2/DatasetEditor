@@ -49,7 +49,7 @@ export class TagGroupsController {
             for (const [groupName, tagsSet] of tagGroups)
                 jsonOutput[groupName] = Array.from(tagsSet);
 
-            await fs.outputJson(App.paths.tagGroupsFilePath, jsonOutput, { spaces: 4, encoding: "utf-8" });
+            await fs.outputJson(App.paths.tagGroupsFilePath, jsonOutput, { spaces: 2, encoding: "utf-8" });
             this.originalTagGroups = tagGroups;
 
             return { error: false }
@@ -120,7 +120,7 @@ export class TagGroupsController {
             for (const [groupName, tagsSet] of tagGroups)
                 jsonOutput[groupName] = Array.from(tagsSet);
 
-            await fs.outputJson(filePath, jsonOutput, { spaces: 4, encoding: "utf-8" });
+            await fs.outputJson(filePath, jsonOutput, { spaces: 2, encoding: "utf-8" });
             return { error: false }
         } catch (error) {
             console.log(error);

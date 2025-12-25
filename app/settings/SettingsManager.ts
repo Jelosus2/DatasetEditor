@@ -37,7 +37,7 @@ export class SettingsManager {
             defaultSettings.theme = "winter";
 
         settings = settings ?? defaultSettings;
-        await fs.outputJson(App.paths.settingsPath, settings, { spaces: 4, encoding: "utf-8" });
+        await fs.outputJson(App.paths.settingsPath, settings, { spaces: 2, encoding: "utf-8" });
         this.originalSettings = settings;
     }
 

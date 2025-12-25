@@ -47,7 +47,7 @@ async function saveSettings() {
 
 <template>
   <input type="radio" name="editor_tabs" class="tab" aria-label="Settings" />
-  <div class="tab-content h-full overflow-auto border-0 border-t border-base-300 bg-base-100 p-6">
+  <div class="tab-content min-h-0 overflow-auto border-0 border-t border-base-300 bg-base-100 p-6">
     <div class="flex flex-col items-center justify-center">
       <div class="w-3xl space-y-8">
         <div class="space-y-2">
@@ -65,7 +65,7 @@ async function saveSettings() {
               <span class="label-text">Theme</span>
             </label>
             <select
-              class="select-bordered select !outline-none"
+              class="select-bordered select outline-none!"
               v-model="settingsStore.theme"
               @change="settingsStore.loadTheme(($event.target as HTMLSelectElement).value)"
             >
@@ -148,7 +148,7 @@ async function saveSettings() {
               <label class="label">
                 <span class="label-text">Service port</span>
               </label>
-              <input type="number" class="input input-bordered !outline-none" v-model.number="settingsStore.taggerPort" />
+              <input type="number" class="input input-bordered outline-none!" v-model.number="settingsStore.taggerPort" />
             </div>
             <div class="w-full max-w-md">
               <label class="label">
@@ -160,7 +160,7 @@ async function saveSettings() {
               <div class="relative">
                 <AutocompletionComponent
                   v-model="tagsIgnoredInput"
-                  class="textarea w-full resize-y !outline-none"
+                  class="textarea w-full resize-y outline-none!"
                   :rows="3"
                   :id="'ignore-tags-list'"
                   :textarea="true"

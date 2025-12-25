@@ -161,16 +161,16 @@ onUnmounted(() => {
 <template>
   <input type="checkbox" id="autotagger_modal" class="modal-toggle" />
   <div class="modal" role="dialog">
-    <div class="modal-box w-11/12 max-w-5xl">
+    <div class="modal-box w-11/12 max-w-6xl">
       <label for="autotagger_modal" class="absolute top-1 right-2 cursor-pointer">✕</label>
       <div class="flex h-[500px] gap-3">
         <ul class="list min-w-fit overflow-auto shadow-md">
-          <li class="pt-2 pb-2 pl-2 text-xs tracking-wide opacity-60">Autotagger models</li>
-          <li v-for="model in taggerModels" :key="model" class="list-row items-center gap-2 p-2">
+          <li class="pt-2 pb-2 pl-2 tracking-wide opacity-60">Autotagger models</li>
+          <li v-for="model in taggerModels" :key="model" class="list-row text-base items-center gap-2 p-2">
             <div>
               <input
                 type="checkbox"
-                class="checkbox checkbox-sm"
+                class="checkbox"
                 :value="model"
                 v-model="selectedModels"
               />
@@ -191,7 +191,7 @@ onUnmounted(() => {
       <div class="flex items-center pt-4">
         <div class="flex flex-1 gap-4">
           <div class="w-45">
-            <div class="flex text-xs">
+            <div class="flex text-sm">
               <div class="tracking-wide opacity-60">General threshold:</div>
               <span class="pl-1">{{ generalThreshold }}</span>
             </div>
@@ -204,12 +204,12 @@ onUnmounted(() => {
               class="range w-full [--range-fill:0] [--range-thumb:var(--color-base-100)] range-xs"
             />
             <div class="flex items-center gap-2 pt-2">
-              <input v-model="removeUnderscores" type="checkbox" class="checkbox checkbox-xs" />
-              <span class="text-xs">Remove underscores</span>
+              <input v-model="removeUnderscores" type="checkbox" class="checkbox checkbox-sm" />
+              <span class="text-sm">Remove underscores</span>
             </div>
           </div>
           <div class="w-45">
-            <div class="flex text-xs">
+            <div class="flex text-sm">
               <div class="tracking-wide opacity-60">Character threshold:</div>
               <span class="pl-1">{{ characterThreshold }}</span>
             </div>
@@ -222,8 +222,8 @@ onUnmounted(() => {
               class="range w-full [--range-fill:0] [--range-thumb:var(--color-base-100)] range-xs"
             />
             <div class="flex items-center gap-2 pt-2">
-              <input v-model="removeRedundantTags" type="checkbox" class="checkbox checkbox-xs" />
-              <span class="text-xs">Remove Redundant Tags</span>
+              <input v-model="removeRedundantTags" type="checkbox" class="checkbox checkbox-sm" />
+              <span class="text-sm">Remove Redundant Tags</span>
             </div>
           </div>
           <div class="flex flex-col gap-2">
@@ -253,7 +253,7 @@ onUnmounted(() => {
                 </button>
               </div>
             </div>
-            <div class="flex items-center gap-2 pt-1.5 text-sm">
+            <div class="flex items-center gap-2 pt-1.5">
               <div class="tracking-wide opacity-60">Autotagger Device:</div>
               <span>{{ device }}</span>
             </div>

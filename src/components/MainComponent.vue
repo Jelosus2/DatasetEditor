@@ -112,6 +112,24 @@ function selectAllImages(e: KeyboardEvent) {
   selectedImages.value = new Set(images);
 }
 
+function selectAllImagesFromUi() {
+  const images = filteredImages.value.size
+    ? filteredImages.value
+    : datasetStore.images.keys();
+  selectedImages.value = new Set(images);
+  lastSelectedIndex.value = 0;
+}
+
+function clearSelectionToFirstImage() {
+  const images = filteredImages.value.size
+    ? [...filteredImages.value]
+    : imageKeys.value;
+  const first = images[0];
+  if (!first) return;
+  selectedImages.value = new Set([first]);
+  lastSelectedIndex.value = imageKeys.value.indexOf(first);
+}
+
 function displayFullImage(id: string) {
   if (props.arePreviewsEnabled) return;
 
@@ -131,10 +149,13 @@ function displayFullImage(id: string) {
 function resizeContainer(event: MouseEvent) {
   const startX = event.clientX;
   const startWidth = container.value?.offsetWidth || 0;
+  const parentWidth = container.value?.parentElement?.getBoundingClientRect().width || 0;
+  const minWidth = Math.max(180, parentWidth * 0.15);
+  const maxWidth = Math.max(minWidth, parentWidth * 0.35);
 
   function onMouseMove(moveEvent: MouseEvent) {
     const newWidth = startWidth + (moveEvent.clientX - startX);
-    containerWidth.value = Math.max(100, newWidth);
+    containerWidth.value = Math.min(maxWidth, Math.max(minWidth, newWidth));
   }
 
   function onMouseUp() {
@@ -215,10 +236,10 @@ defineExpose({ selectAllImages });
 
 <template>
   <input type="radio" name="editor_tabs" class="tab" aria-label="Dataset" checked />
-  <div class="tab-content border-t-base-300 bg-base-100">
-    <div class="flex h-full">
+  <div class="tab-content min-h-0 border-t-base-300 bg-base-100">
+    <div class="flex h-full min-h-0">
       <div
-        class="flex w-[20%] max-w-[40%] min-w-[20%] flex-col pt-1 pl-1 !outline-none"
+        class="flex w-[20%] max-w-[40%] min-w-[20%] flex-col pt-1 pl-1 outline-none!"
         :style="{ width: containerWidth + 'px' }"
         ref="container"
         tabindex="0"
@@ -274,6 +295,8 @@ defineExpose({ selectAllImages });
           v-model:global-sort-mode="globalSortMode"
           v-model:global-sort-order="globalSortOrder"
           v-model:global-tag-filter-input="globalTagFilterInput"
+          @select-all-images="selectAllImagesFromUi"
+          @clear-selection="clearSelectionToFirstImage"
         />
         </div>
       </div>

@@ -66,21 +66,23 @@ onMounted(async () => {
 </script>
 
 <template>
-  <AlertComponent :message="alertMessage" :timestamp="alertTimestamp" :type="alertType" />
-  <NavbarComponent
-    v-model="arePreviewsEnabled"
-    @load_dataset="appController.loadDataset()"
-    @undo="appController.undoAction()"
-    @redo="appController.redoAction()"
-    @save="appController.saveChanges()"
-    @reload_dataset="appController.reloadDataset()"
-    @trigger_alert="showAlert"
-  />
-  <div class="tabs-lift tabs h-[calc(100vh-86px)]">
-    <MainComponent ref="mainComponent" :are-previews-enabled="arePreviewsEnabled" @trigger_alert="showAlert" />
-    <TagGroupEditorComponent @trigger_alert="showAlert" />
-    <SettingComponent @trigger-alert="showAlert" />
-    <LogsComponent />
+  <div class="flex h-screen flex-col overflow-hidden">
+    <AlertComponent :message="alertMessage" :timestamp="alertTimestamp" :type="alertType" />
+    <NavbarComponent
+      v-model="arePreviewsEnabled"
+      @load_dataset="appController.loadDataset()"
+      @undo="appController.undoAction()"
+      @redo="appController.redoAction()"
+      @save="appController.saveChanges()"
+      @reload_dataset="appController.reloadDataset()"
+      @trigger_alert="showAlert"
+    />
+    <div class="tabs-border tabs min-h-0 flex-1 overflow-hidden text-base">
+      <MainComponent ref="mainComponent" :are-previews-enabled="arePreviewsEnabled" @trigger_alert="showAlert" />
+      <TagGroupEditorComponent @trigger_alert="showAlert" />
+      <SettingComponent @trigger-alert="showAlert" />
+      <LogsComponent />
+    </div>
   </div>
   <AutotaggerModalComponent @trigger_alert="showAlert" />
   <WikiSearchModalComponent />

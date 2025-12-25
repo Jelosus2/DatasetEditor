@@ -184,8 +184,8 @@ watch(() => results.value, () => {
       <div class="flex flex-col gap-3">
         <div class="flex items-center justify-between border-b-2 pb-2 dark:border-base-content/10">
           <div class="flex items-center gap-3">
-            <span class="text-sm opacity-70">Method:</span>
-            <select v-model="method" class="select select-sm w-fit !outline-none">
+            <span class="opacity-70">Method:</span>
+            <select v-model="method" class="select w-fit outline-none!">
               <option value="phash">Perceptual (robust)</option>
               <option value="dhash">Perceptual (fast)</option>
             </select>
@@ -206,7 +206,7 @@ watch(() => results.value, () => {
           <span class="text-sm opacity-70">Similarity threshold:</span>
           <input type="range" class="range range-xs w-64" min="0" max="64" step="1" v-model.number="threshold" />
           <span class="text-sm">{{ threshold }}</span>
-          <span class="text-xs opacity-60">(0 exact – 64 very loose)</span>
+          <span class="text-sm opacity-60">(0 exact – 64 very loose)</span>
         </div>
 
         <div v-if="!isDatasetLoaded" class="flex items-center justify-center bg-warning/20 p-3 rounded">

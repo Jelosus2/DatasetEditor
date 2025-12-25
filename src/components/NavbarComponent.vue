@@ -75,7 +75,7 @@ const updateInfo = computed(() => {
         </div>
         <ul
           tabindex="0"
-          class="dropdown-content menu z-1 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
+          class="dropdown-content menu z-1 w-55 rounded-box bg-base-100 p-2 shadow"
         >
           <li @click="emit('load_dataset')">
             <div class="justify-between">
@@ -119,7 +119,7 @@ const updateInfo = computed(() => {
         </div>
         <ul
           tabindex="0"
-          class="dropdown-content menu z-1 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
+          class="dropdown-content menu z-1 w-52 rounded-box bg-base-100 p-2 shadow"
         >
           <li @click="emit('undo')">
             <div class="justify-between">
@@ -153,11 +153,11 @@ const updateInfo = computed(() => {
         </div>
         <ul
           tabindex="0"
-          class="dropdown-content menu z-1 w-52 menu-sm rounded-box bg-base-100 p-2 shadow"
+          class="dropdown-content menu z-1 w-52 rounded-box bg-base-100 p-2 shadow"
         >
           <li>
             <div @click.self="arePreviewsEnabled = !arePreviewsEnabled">
-              <input v-model="arePreviewsEnabled" type="checkbox" class="toggle toggle-xs" />
+              <input v-model="arePreviewsEnabled" type="checkbox" class="toggle toggle-sm" />
               Image Previews
             </div>
           </li>
@@ -173,7 +173,7 @@ const updateInfo = computed(() => {
         </div>
         <ul
           tabindex="0"
-          class="dropdown-content menu z-1 w-70 menu-sm rounded-box bg-base-100 p-2 shadow"
+          class="dropdown-content menu z-1 w-75 rounded-box bg-base-100 p-2 shadow"
         >
           <li>
             <label for="autotagger_modal">Autotag Images</label>
@@ -216,7 +216,7 @@ const updateInfo = computed(() => {
       </button>
     </div>
     <div class="navbar-end">
-      <span class="rounded border border-gray-400 px-2 text-sm dark:border-base-content/20">
+      <span class="rounded border border-gray-400 px-2 dark:border-base-content/20">
         Version {{ APP_VERSION }}
       </span>
     </div>

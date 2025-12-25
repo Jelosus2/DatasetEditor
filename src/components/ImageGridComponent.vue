@@ -30,7 +30,7 @@ const imageEntries = computed(() => {
 <template>
   <div
     v-if="datasetStore.images.size"
-    class="grid h-fit grid-cols-[repeat(auto-fit,_minmax(100px,_1fr))] gap-1 overflow-y-auto overflow-x-hidden scroll-smooth scrollbar-stable"
+    class="grid h-fit grid-cols-[repeat(auto-fit,minmax(100px,1fr))] gap-1 overflow-y-auto overflow-x-hidden scroll-smooth scrollbar-stable"
   >
     <VirtualImage
       v-for="[name, image] in imageEntries"
@@ -48,8 +48,8 @@ const imageEntries = computed(() => {
   <div v-else class="flex flex-1 items-center justify-center">
     <p class="text-center text-lg text-base-content/50">Start by clicking<br />File &gt; Load Dataset</p>
   </div>
-  <div class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
-    <label class="input input-sm w-full border-r-0 pr-0 pl-1 !outline-none">
+  <div class="mt-auto border-t-2 border-gray-400 pt-1 pb-1 dark:border-base-content/10">
+    <label class="input w-full border-r-0 pr-0 pl-1 outline-none!">
       <AutocompletionComponent
         v-model="filterInput"
         :disabled="!datasetStore.images.size"
@@ -67,7 +67,7 @@ const imageEntries = computed(() => {
         >X</span
       >
       <div class="not-focus-within:hover:tooltip" data-tip="Mode to filter the images">
-        <select v-model.lazy="filterMode" class="select w-fit select-sm !outline-none">
+        <select v-model.lazy="filterMode" class="select w-fit outline-none!">
           <option value="or" selected>OR</option>
           <option value="no">NO</option>
           <option value="and">AND</option>

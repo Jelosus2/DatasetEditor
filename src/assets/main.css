@@ -1,16 +1,54 @@
 @import 'tailwindcss';
 @plugin 'daisyui' {
-  themes:
-    dark --prefersdark,
-    winter --default;
+    themes:
+        dark --prefersdark,
+        winter --default;
+}
+
+@layer utilities {
+    .btn, .tab {
+        @apply text-base;
+        line-height: 1.5;
+    }
+
+    .btn-sm, .btn-xs {
+        @apply text-sm;
+        line-height: 1.428571;
+    }
+
+    .btn-sm, .btn-xs {
+        --size-field: 0.3rem;
+    }
+
+    .kbd-xs {
+        font-size: .75rem;
+    }
 }
 
 :root:has(:is(.modal-open, .modal:target, .modal-toggle:checked + .modal, .modal[open])) {
-  scrollbar-gutter: auto;
+    scrollbar-gutter: auto;
 }
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 .scrollbar-stable {
-  scrollbar-gutter: stable;
+    scrollbar-gutter: stable;
+}
+
+@media (min-width: 1024px) and (max-width: 2500px) {
+    :root {
+        font-size: 87.5%;
+    }
+}
+
+@media (min-width: 2501px) and (max-width: 3800px) {
+    :root {
+        font-size: 112.5%;
+    }
+}
+
+@media (min-width: 3801px) {
+    :root {
+        font-size: 125%;
+    }
 }

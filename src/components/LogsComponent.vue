@@ -49,12 +49,12 @@ function exportLogs() {
 <template>
   <input type="radio" name="editor_tabs" class="tab" aria-label="Logs" />
 
-  <div class="tab-content border-t-base-300 bg-base-100 h-full p-4">
+  <div class="tab-content min-h-0 border-t-base-300 bg-base-100 p-4">
     <div
       ref="logsContainer"
       class="h-full flex flex-col rounded-box bg-base-300 font-mono"
     >
-      <div class="flex shrink-0 justify-end gap-2 p-2 border-b-1">
+      <div class="flex shrink-0 justify-end gap-2 p-2 border-b">
         <a
           class="btn btn-square btn-ghost btn-sm"
           @click.prevent="openIssuesPage"
@@ -70,7 +70,7 @@ function exportLogs() {
       </div>
       <div class="flex-1 overflow-auto p-4">
         <div v-for="(log, idx) in logStore.logs" :key="idx">
-          <div class="break-words whitespace-pre-wrap">
+          <div class="wrap-break-word whitespace-pre-wrap">
             {{ formatTime(log.timestamp) }}
             [<span :class="{
               'text-blue-500': log.type === 'info',

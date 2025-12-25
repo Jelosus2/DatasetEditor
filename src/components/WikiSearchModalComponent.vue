@@ -61,7 +61,7 @@ onUnmounted(() => {
     <div class="modal-box w-11/12 max-w-5xl h-9/12">
       <label for="danbooru_wiki_modal" class="absolute right-2 top-1 cursor-pointer">✕</label>
       <div class="flex justify-center items-end gap-2 pb-4">
-        <label class="input input-sm pr-0 pl-1 !outline-none">
+        <label class="input pr-0 pl-1 outline-none!">
           <AutocompletionComponent
             v-model="tag"
             :id="'wiki-search-list'"
@@ -70,7 +70,7 @@ onUnmounted(() => {
             @on-complete="search"
           />
         </label>
-        <button class="btn btn-primary btn-sm" @click="search">Search</button>
+        <button class="btn btn-primary" @click="search">Search</button>
       </div>
       <div v-if="loading" class="flex justify-center py-4">
         <span class="loading loading-spinner"></span>

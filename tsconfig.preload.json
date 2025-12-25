@@ -1,10 +1,10 @@
 {
-    "extends": "./tsconfig.electron.json",
-    "include": ["app/preload.ts"],
-    "compilerOptions": {
-        "module": "commonjs",
-        "moduleResolution": "node",
-        "outDir": "dist-electron",
-        "noEmit": false
-    }
+  "extends": "./tsconfig.electron.json",
+  "include": ["app/preload.ts"],
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "dist-electron",
+    "noEmit": false
+  }
 }

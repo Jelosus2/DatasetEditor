@@ -93,7 +93,7 @@ async function beginRenaming() {
             v-model.number="startNumberInput"
             type="number"
             min="1"
-            class="input input-bordered input-sm w-full !outline-none"
+            class="input input-bordered w-full outline-none!"
             placeholder="1"
           />
           <div class="alert alert-info py-2 px-3 text-sm">

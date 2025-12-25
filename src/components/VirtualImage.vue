@@ -78,9 +78,9 @@ watch(() => getImageUpdateVersion(image.path), () => {
 <template>
   <div
     ref="container"
-    class="flex cursor-pointer items-center justify-center rounded-md border-1 border-black bg-base-200 select-none dark:border-white"
+    class="flex cursor-pointer items-center justify-center rounded-md border border-black bg-base-200 select-none dark:border-white"
     style="content-visibility:auto; contain-intrinsic-size: 150px 150px;"
-    :class="{ 'border-3 !border-blue-600 bg-blue-400': selected }"
+    :class="{ 'border-3 border-blue-600! bg-blue-400': selected }"
     :title="name.split('/').pop()"
     @click="emit('click', $event)"
     @mouseenter="emit('mouseenter')"
