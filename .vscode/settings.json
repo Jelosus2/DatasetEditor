@@ -2,8 +2,10 @@
     "editor.codeActionsOnSave": {
         "source.fixAll": "explicit"
     },
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
     "files.associations": {
         "*.css": "tailwindcss"
+    },
+    "[vue]": {
+        "editor.defaultFormatter": "Vue.volar"
     }
 }

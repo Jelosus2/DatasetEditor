@@ -59,78 +59,85 @@ async function stopAutotagger() {
 }
 
 async function autoTagImages(type: 'insert' | 'diff') {
-  if (!datasetStore.images.size) {
-    emit('trigger_alert', 'error', 'Dataset not loaded');
-    return;
-  }
-  if (!selectedModels.value.length) {
-    emit('trigger_alert', 'error', 'No tagger model selected');
-    return;
-  }
+    const rawDataset = toRaw(datasetStore.dataset);
 
-  const images = [...datasetStore.images.values()].map((image) => image.path);
-  isTagging.value = true;
-  const results = (await window.ipcRenderer.invoke('tag_images', {
-    images,
-    generalThreshold: toRaw(generalThreshold.value),
-    characterThreshold: toRaw(characterThreshold.value),
-    removeUnderscores: toRaw(removeUnderscores.value),
-    selectedModels: toRaw(selectedModels.value),
-    removeRedundantTags: toRaw(removeRedundantTags.value),
-    tagsIgnored: toRaw(settingsStore.tagsIgnored),
-  })) as Map<string, Set<string>> | null;
+    if (rawDataset.size === 0) {
+        emit('trigger_alert', 'error', 'Dataset not loaded');
+        return;
+    }
+    if (!selectedModels.value.length) {
+        emit('trigger_alert', 'error', 'No tagger model selected');
+        return;
+    }
 
-  if (!results) {
+    const images = Array.from(rawDataset.values(), (image) => image.path);
+    isTagging.value = true;
+
+    const results = (await window.ipcRenderer.invoke('tag_images', {
+        images,
+        generalThreshold: toRaw(generalThreshold.value),
+        characterThreshold: toRaw(characterThreshold.value),
+        removeUnderscores: toRaw(removeUnderscores.value),
+        selectedModels: toRaw(selectedModels.value),
+        removeRedundantTags: toRaw(removeRedundantTags.value),
+        tagsIgnored: toRaw(settingsStore.tagsIgnored),
+    })) as Map<string, Set<string>> | null;
+
+    if (!results) {
+        isTagging.value = false;
+        return;
+    }
+
+    if (type === 'insert') {
+        datasetStore.tagDiff.clear();
+        insertTags(results);
+    } else {
+        loadDiff(results);
+    }
+
     isTagging.value = false;
-    return;
-  }
-
-  if (type === 'insert') {
-    datasetStore.tagDiff.clear();
-    insertTags(results);
-  } else {
-    loadDiff(results);
-  }
-
-  isTagging.value = false;
 }
 
 function insertTags(tags: Map<string, Set<string>>) {
-  datasetStore.globalTags = new Map();
-  for (const [image, tagsToInsert] of tags.entries()) {
-    if (!datasetStore.images.has(image)) continue;
-    datasetStore.images.get(image)!.tags = tagsToInsert;
+    const rawDataset = toRaw(datasetStore.dataset);
 
-    for (const tag of tagsToInsert) {
-      if (!datasetStore.globalTags.has(tag)) {
-        datasetStore.globalTags.set(tag, new Set([image]));
-      } else {
-        datasetStore.globalTags.get(tag)!.add(image);
-      }
+    datasetStore.globalTags = new Map();
+    for (const [image, tagsToInsert] of tags.entries()) {
+        if (!rawDataset.has(image)) continue;
+        rawDataset.get(image)!.tags = tagsToInsert;
+
+        for (const tag of tagsToInsert) {
+        if (!datasetStore.globalTags.has(tag)) {
+            datasetStore.globalTags.set(tag, new Set([image]));
+        } else {
+            datasetStore.globalTags.get(tag)!.add(image);
+        }
+        }
     }
-  }
 
-  datasetStore.onChange.forEach((fn) => fn());
+    datasetStore.onChange.forEach((fn) => fn());
 }
 
 function loadDiff(tags: Map<string, Set<string>>) {
-  for (const [image, tagsToInsert] of tags.entries()) {
-    if (!datasetStore.images.has(image)) continue;
+    const rawDataset = toRaw(datasetStore.dataset);
 
-    const taggerTags: Set<string> = new Set();
-    const imageTags = [...datasetStore.images.get(image)!.tags];
+    for (const [image, tagsToInsert] of tags.entries()) {
+        if (!rawDataset.has(image)) continue;
 
-    for (const tag of tagsToInsert.values()) {
-      if (!imageTags.includes(tag)) taggerTags.add(tag);
+        const taggerTags: Set<string> = new Set();
+        const imageTags = [...rawDataset.get(image)!.tags];
+
+        for (const tag of tagsToInsert.values()) {
+        if (!imageTags.includes(tag)) taggerTags.add(tag);
+        }
+
+        const originalTags: Set<string> = new Set(imageTags.filter((tag) => !tagsToInsert.has(tag)));
+
+        datasetStore.tagDiff.set(image, {
+        tagger: taggerTags,
+        original: originalTags,
+        });
     }
-
-    const originalTags: Set<string> = new Set(imageTags.filter((tag) => !tagsToInsert.has(tag)));
-
-    datasetStore.tagDiff.set(image, {
-      tagger: taggerTags,
-      original: originalTags,
-    });
-  }
 }
 
 function scrollToBottom() {

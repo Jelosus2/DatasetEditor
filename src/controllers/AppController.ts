@@ -27,12 +27,12 @@ export class AppController {
       const loaded = await this.deps.datasetStore.loadDataset(reload);
 
       if (loaded) {
-        if (this.deps.datasetStore.images.size > 0) {
+        if (this.deps.datasetStore.dataset.size > 0) {
           this.deps.showAlert('success', 'Dataset loaded');
         } else {
           this.deps.showAlert('error', 'Found no images to load');
         }
-      } else if (this.deps.datasetStore.images.size === 0) {
+      } else if (this.deps.datasetStore.dataset.size === 0) {
         this.deps.showAlert('error', 'Found no images to load');
       }
     } catch (error) {

@@ -3,7 +3,7 @@ import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 import VirtualImage from './VirtualImage.vue';
 
 import { useDatasetStore } from '@/stores/datasetStore';
-import { computed } from 'vue';
+import { computed, toRaw } from 'vue';
 
 const selectedImages = defineModel<Set<string>>('selectedImages', { required: true });
 const filterInput = defineModel<string>('filterInput', { required: true });
@@ -23,17 +23,21 @@ const emit = defineEmits<{
 
 const datasetStore = useDatasetStore();
 const visibleImages = computed(() => {
-    if (!props.isFiltering)
-        return Array.from(datasetStore.images.entries());
+    void datasetStore.dataVersion;
 
-    return Array.from(datasetStore.images.entries())
-        .filter(([name]) => props.filteredImages.has(name));
+    const rawDataset = toRaw(datasetStore.dataset);
+
+    if (!props.isFiltering)
+        return Array.from(rawDataset.entries());
+
+    return Array.from(rawDataset.entries())
+        .filter(([imageId]) => props.filteredImages.has(imageId));
 });
 </script>
 
 <template>
   <div
-    v-if="datasetStore.images.size"
+    v-if="datasetStore.dataset.size > 0"
     class="grid h-fit grid-cols-[repeat(auto-fit,minmax(100px,1fr))] gap-1 overflow-y-auto overflow-x-hidden scroll-smooth scrollbar-stable"
   >
     <VirtualImage
@@ -55,7 +59,7 @@ const visibleImages = computed(() => {
     <label class="input w-full border-r-0 pr-0 pl-1 outline-none!">
       <AutocompletionComponent
         v-model="filterInput"
-        :disabled="!datasetStore.images.size"
+        :disabled="datasetStore.dataset.size === 0"
         :id="'filter-completion-list'"
         :placeholder="'Type a tag to filter the images...'"
         :multiple="true"

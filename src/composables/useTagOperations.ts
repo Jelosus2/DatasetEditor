@@ -27,7 +27,7 @@ export function useTagOperations() {
 
         const position = validateTagPosition(tagPosition);
 
-        datasetStore.addTagsToImages(datasetStore.images.keys(), new Set(tags), position);
+        datasetStore.addTagsToImages(datasetStore.dataset.keys(), new Set(tags), position);
     }
 
     function removeTag(tag: string, images: Set<string>) {

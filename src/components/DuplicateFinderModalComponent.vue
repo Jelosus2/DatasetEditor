@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, toRaw } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
 import { DuplicateService, type DuplicateMethod } from '@/services/duplicateService';
 import { FileService } from '@/services/fileService';
@@ -27,7 +27,7 @@ const kept = ref<Set<string>>(new Set());
 const trashing = ref(false);
 
 const percent = computed(() => (total.value === 0 ? 0 : Math.round((processed.value / total.value) * 100)));
-const isDatasetLoaded = computed(() => datasetStore.images.size > 0);
+const isDatasetLoaded = computed(() => datasetStore.dataset.size > 0);
 
 function resetState() {
   results.value = [];
@@ -41,44 +41,46 @@ function resetState() {
 }
 
 async function scan() {
-  if (!isDatasetLoaded.value) {
-    emit('trigger_alert', 'error', 'Dataset not loaded');
-    return;
-  }
-  loading.value = true;
-  errorMessage.value = '';
-  results.value = [];
-  processed.value = 0;
+    if (!isDatasetLoaded.value) {
+        emit('trigger_alert', 'error', 'Dataset not loaded');
+        return;
+    }
+    loading.value = true;
+    errorMessage.value = '';
+    results.value = [];
+    processed.value = 0;
 
-  const files = Array.from(datasetStore.images.values()).map((img) => img.path);
-  total.value = files.length;
+    const rawDataset = toRaw(datasetStore.dataset);
 
-  const pathToKey = new Map<string, string>();
-  for (const [key, img] of datasetStore.images.entries()) {
-    pathToKey.set(img.path, key);
-  }
+    const files = Array.from(rawDataset.values()).map((img) => img.path);
+    total.value = files.length;
 
-  try {
-    const { error, message, groups } = await service.findDuplicates(files, method.value, threshold.value);
-    if (error) {
-      errorMessage.value = message || 'Failed to find duplicates, check the logs for more information.';
-      emit('trigger_alert', 'error', errorMessage.value);
-      return;
+    const pathToKey = new Map<string, string>();
+    for (const [key, img] of rawDataset.entries()) {
+        pathToKey.set(img.path, key);
     }
 
-    const mapped = groups
-      .map((grp) => grp.map((p) => pathToKey.get(p)).filter((v): v is string => !!v))
-      .filter((grp) => grp.length > 1);
-    results.value = mapped;
+    try {
+        const { error, message, groups } = await service.findDuplicates(files, method.value, threshold.value);
+        if (error) {
+        errorMessage.value = message || 'Failed to find duplicates, check the logs for more information.';
+        emit('trigger_alert', 'error', errorMessage.value);
+        return;
+        }
 
-    emit('trigger_alert', 'success', mapped.length ? `Found ${mapped.length} duplicate group(s)` : 'No duplicates found');
-    void prefetchDimensions();
-  } catch (e) {
-    errorMessage.value = `Failed to find duplicates: ${(e as Error).message}`;
-    emit('trigger_alert', 'error', errorMessage.value);
-  } finally {
-    loading.value = false;
-  }
+        const mapped = groups
+        .map((grp) => grp.map((p) => pathToKey.get(p)).filter((v): v is string => !!v))
+        .filter((grp) => grp.length > 1);
+        results.value = mapped;
+
+        emit('trigger_alert', 'success', mapped.length ? `Found ${mapped.length} duplicate group(s)` : 'No duplicates found');
+        void prefetchDimensions();
+    } catch (e) {
+        errorMessage.value = `Failed to find duplicates: ${(e as Error).message}`;
+        emit('trigger_alert', 'error', errorMessage.value);
+    } finally {
+        loading.value = false;
+    }
 }
 
 function openFullImage(key: string) {
@@ -86,22 +88,24 @@ function openFullImage(key: string) {
 }
 
 async function trashImage(key: string) {
-  const path = datasetStore.images.get(key)?.path;
-  if (!path) return;
-  const { error, message } = await fileService.trashFiles([path]);
-  if (error) {
-    emit('trigger_alert', 'error', message);
-    return;
-  }
+    const rawDataset = toRaw(datasetStore.dataset);
 
-  datasetStore.removeImage(key);
+    const path = rawDataset.get(key)?.path;
+    if (!path) return;
+    const { error, message } = await fileService.trashFiles([path]);
+    if (error) {
+        emit('trigger_alert', 'error', message);
+        return;
+    }
 
-  const updated = results.value
-    .map((grp) => grp.filter((k) => k !== key))
-    .filter((grp) => grp.length > 1);
-  results.value = updated;
+    datasetStore.removeImage(key);
 
-  emit('trigger_alert', 'success', 'File moved to trash');
+    const updated = results.value
+        .map((grp) => grp.filter((k) => k !== key))
+        .filter((grp) => grp.length > 1);
+    results.value = updated;
+
+    emit('trigger_alert', 'success', 'File moved to trash');
 }
 
 useIpcRenderer([
@@ -116,23 +120,25 @@ useIpcRenderer([
 ]);
 
 async function prefetchDimensions() {
-  const keys = results.value.flat().filter((k) => !(k in dims.value));
-  if (keys.length === 0) return;
+    const rawDataset = toRaw(datasetStore.dataset);
 
-  let index = 0;
-  const run = async () => {
-    while (index < keys.length) {
-      const i = index++;
-      const key = keys[i];
-      const path = datasetStore.images.get(key)?.path;
-      if (!path) continue;
-      const meta = (await window.ipcRenderer.invoke('get_image_dimensions', path)) as { width: number; height: number };
-      if (meta && meta.width && meta.height) {
-        dims.value[key] = `${meta.width}x${meta.height}`;
-      }
-    }
-  };
-  await Promise.all(Array.from({ length: 4 }, run));
+    const keys = results.value.flat().filter((k) => !(k in dims.value));
+    if (keys.length === 0) return;
+
+    let index = 0;
+    const run = async () => {
+        while (index < keys.length) {
+        const i = index++;
+        const key = keys[i];
+        const path = rawDataset.get(key)?.path;
+        if (!path) continue;
+        const meta = (await window.ipcRenderer.invoke('get_image_dimensions', path)) as { width: number; height: number };
+        if (meta && meta.width && meta.height) {
+            dims.value[key] = `${meta.width}x${meta.height}`;
+        }
+        }
+    };
+    await Promise.all(Array.from({ length: 4 }, run));
 }
 
 function toggleKeep(key: string) {
@@ -141,34 +147,36 @@ function toggleKeep(key: string) {
 }
 
 async function trashNotKept() {
-  const toKeep = kept.value;
-  const notKeptKeys = results.value.flatMap((group) => {
-    const hasKeptInGroup = group.some((k) => toKeep.has(k));
-    if (!hasKeptInGroup) return [] as string[];
-    return group.filter((k) => !toKeep.has(k));
-  });
-  if (notKeptKeys.length === 0) return;
-  const paths = notKeptKeys
-    .map((k) => datasetStore.images.get(k)?.path)
-    .filter((p): p is string => !!p);
-  trashing.value = true;
-  const { error, message } = await fileService.trashFiles(paths);
-  if (error) {
+    const rawDataset = toRaw(datasetStore.dataset);
+
+    const toKeep = kept.value;
+    const notKeptKeys = results.value.flatMap((group) => {
+        const hasKeptInGroup = group.some((k) => toKeep.has(k));
+        if (!hasKeptInGroup) return [] as string[];
+        return group.filter((k) => !toKeep.has(k));
+    });
+    if (notKeptKeys.length === 0) return;
+    const paths = notKeptKeys
+        .map((k) => rawDataset.get(k)?.path)
+        .filter((p): p is string => !!p);
+    trashing.value = true;
+    const { error, message } = await fileService.trashFiles(paths);
+    if (error) {
+        trashing.value = false;
+        emit('trigger_alert', 'error', message || 'Failed to move files to trash');
+        return;
+    }
+
+    notKeptKeys.forEach((k) => datasetStore.removeImage(k));
+    const updated = results.value
+        .map((grp) => grp.filter((k) => !notKeptKeys.includes(k)))
+        .filter((grp) => grp.length > 1);
+    results.value = updated;
+
+    notKeptKeys.forEach((k) => delete dims.value[k]);
+    kept.value = new Set([...kept.value].filter((k) => !notKeptKeys.includes(k)));
     trashing.value = false;
-    emit('trigger_alert', 'error', message || 'Failed to move files to trash');
-    return;
-  }
-
-  notKeptKeys.forEach((k) => datasetStore.removeImage(k));
-  const updated = results.value
-    .map((grp) => grp.filter((k) => !notKeptKeys.includes(k)))
-    .filter((grp) => grp.length > 1);
-  results.value = updated;
-
-  notKeptKeys.forEach((k) => delete dims.value[k]);
-  kept.value = new Set([...kept.value].filter((k) => !notKeptKeys.includes(k)));
-  trashing.value = false;
-  emit('trigger_alert', 'success', `Moved ${paths.length} file(s) to trash`);
+    emit('trigger_alert', 'success', `Moved ${paths.length} file(s) to trash`);
 }
 
 watch(() => results.value, () => {
@@ -235,7 +243,7 @@ watch(() => results.value, () => {
               <div v-for="key in group" :key="key" class="group relative flex flex-col items-center gap-1">
                 <div class="relative w-full h-32 overflow-hidden">
                   <VirtualImage
-                    :image="datasetStore.images.get(key)!"
+                    :image="datasetStore.dataset.get(key)!"
                     :name="key"
                     :selected="false"
                     class="h-full w-full"

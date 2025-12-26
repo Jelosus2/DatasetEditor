@@ -31,7 +31,7 @@ const previewImage = ref('');
 const imageContainerFocused = ref(false);
 
 const datasetStore = useDatasetStore();
-const imageKeys = computed(() => Array.from(datasetStore.images.keys()));
+const imageKeys = computed(() => Array.from(datasetStore.dataset.keys()));
 
 const {
     selectedImages,
@@ -45,8 +45,7 @@ const { containerWidth, startResize } = useResizablePane(container, 300);
 const {
     displayedTags,
     displayedGlobalTags,
-    filteredImages,
-    triggerUpdate
+    filteredImages
 } = useTagDisplay(
     selectedImages,
     filterInput,
@@ -60,7 +59,6 @@ const {
 watch(imageKeys, (newKeys) => {
     if (newKeys.length > 0 && selectedImages.value.size === 0) {
       clearSelection();
-      triggerUpdate();
       datasetStore.resetDatasetStatus();
     }
 }, { immediate: true });
@@ -80,8 +78,8 @@ watch(filteredImages, (newSet) => {
 });
 
 watch(filterInput, (val) => {
-  if (!val && !selectedImages.value.size && datasetStore.images.size) {
-    const first = datasetStore.images.keys().next().value as string | undefined;
+  if (!val && !selectedImages.value.size && datasetStore.dataset.size) {
+    const first = datasetStore.dataset.keys().next().value as string | undefined;
     if (first) selectedImages.value.add(first);
   }
 });
@@ -96,7 +94,7 @@ function displayFullImage(id: string) {
     imageModal.value = true;
     modalHtml.value = `
       <div class="flex justify-center">
-        <img src="${datasetStore.images.get(id)?.filePath}" class="max-h-screen" />
+        <img src="${datasetStore.dataset.get(id)?.filePath}" class="max-h-screen" />
       </div>
     `;
     modal.showModal();
@@ -107,7 +105,7 @@ function clearImageFilter() {
   if (filterInput.value) return;
 
   if (!filteredImages.value.size && !selectedImages.value.size) {
-    const first = datasetStore.images.keys().next().value as string | undefined;
+    const first = datasetStore.dataset.keys().next().value as string | undefined;
     if (first) selectedImages.value.add(first);
   }
 }
@@ -206,7 +204,7 @@ defineExpose({ selectAll });
         >
           <div class="bg-transparent p-2">
             <img
-              :src="datasetStore.images.get(previewImage)?.filePath"
+              :src="datasetStore.dataset.get(previewImage)?.filePath"
               class="max-h-[80vh] max-w-[80vw] object-contain"
             />
           </div>
@@ -214,7 +212,7 @@ defineExpose({ selectAll });
         <div class="flex w-[30%] items-center justify-center" :title="[...selectedImages][0]?.split('/').pop()">
           <img
             v-if="selectedImages.size"
-            :src="datasetStore.images.get([...selectedImages][0])?.filePath"
+            :src="datasetStore.dataset.get([...selectedImages][0])?.filePath"
             class="max-h-full"
           />
         </div>

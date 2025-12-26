@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, toRaw } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
 import { cropImage } from '@/services/imageService';
 
@@ -7,7 +7,7 @@ const props = defineProps<{ selectedImages: Set<string> }>();
 const emit = defineEmits(['trigger_alert']);
 
 const datasetStore = useDatasetStore();
-const imageKeys = computed(() => Array.from(datasetStore.images.keys()));
+const imageKeys = computed(() => Array.from(datasetStore.dataset.keys()));
 const currentIndex = ref(0);
 const imageElement = ref<HTMLImageElement | null>(null);
 
@@ -25,11 +25,13 @@ function resetSelection() {
 }
 
 function showImage() {
-  const key = imageKeys.value[currentIndex.value];
-  const img = datasetStore.images.get(key);
-  if (!img || !imageElement.value) return;
-  imageElement.value.src = img.filePath;
-  resetSelection();
+    const rawDataset = toRaw(datasetStore.dataset);
+
+    const key = imageKeys.value[currentIndex.value];
+    const img = rawDataset.get(key);
+    if (!img || !imageElement.value) return;
+    imageElement.value.src = img.filePath;
+    resetSelection();
 }
 
 function prev() {

@@ -27,7 +27,7 @@ async function fetchThumb() {
 
   loadingThumb.value = true;
   const target = 256;
-  const src = (await window.ipcRenderer.invoke<unknown>('get_thumbnail', image.path, target)) as string | null;
+  const src = (await window.ipcRenderer.invoke('get_thumbnail', image.path, target)) as string | null;
   if (src) thumbSrc.value = src;
   loadingThumb.value = false;
 }

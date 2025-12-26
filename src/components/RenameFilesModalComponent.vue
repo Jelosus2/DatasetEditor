@@ -17,7 +17,7 @@ const processed = ref(0);
 const total = ref(0);
 
 const percent = computed(() => (total.value === 0 ? 0 : Math.round((processed.value / total.value) * 100)));
-const isDatasetLoaded = computed(() => datasetStore.images.size > 0);
+const isDatasetLoaded = computed(() => datasetStore.dataset.size > 0);
 
 function resetState() {
   startNumberInput.value = 1;
@@ -50,7 +50,7 @@ async function beginRenaming() {
   processed.value = 0;
   total.value = 0;
 
-  const files = Array.from(datasetStore.images.values()).map((img) => img.path);
+  const files = Array.from(datasetStore.dataset.values()).map((img) => img.path);
   if (settingsStore.sortImagesAlphabetically) {
     const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
     files.sort((a, b) => {

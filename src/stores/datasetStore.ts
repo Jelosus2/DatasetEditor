@@ -25,38 +25,59 @@ interface TagDiff {
 }
 
 export const useDatasetStore = defineStore('dataset', () => {
-    const images = ref<Map<string, Image>>(new Map());
+    const dataset = ref<Map<string, Image>>(new Map());
     const globalTags = ref<Map<string, Set<string>>>(new Map());
     const tagDiff = ref<Map<string, TagDiff>>(new Map());
 
+    const dataVersion = ref(0);
+
     const datasetUndoStack = ref<DatasetChangeRecord[]>([]);
     const datasetRedoStack = ref<DatasetChangeRecord[]>([]);
-    const directory = ref('');
-    const sortMode = ref('none');
+    const sortMode = ref("none");
     const onChange = ref<(() => void)[]>([]);
 
     const datasetService = new DatasetService();
     const alerts = useAlert();
 
-    function setImageTags(image: string, newTags: Set<string>) {
-        const current = images.value.get(image)!.tags;
-        for (const tag of current) {
-            if (!newTags.has(tag)) {
-                const imagesWithTag = globalTags.value.get(tag);
-                imagesWithTag?.delete(image);
-                if (imagesWithTag?.size === 0) globalTags.value.delete(tag);
-            }
-        }
+    function triggerUpdate() {
+        dataVersion.value++;
+        onChange.value.forEach((fn) => fn());
+    }
 
-        for (const tag of newTags) {
-            if (!globalTags.value.has(tag)) {
-                globalTags.value.set(tag, new Set([image]));
-            } else {
-                globalTags.value.get(tag)!.add(image);
-            }
-        }
+    function restoreState(previousState: Map<string, Set<string>>) {
+        const rawDataset = toRaw(dataset.value);
+        const rawGlobalTags = toRaw(globalTags.value);
 
-        images.value.get(image)!.tags = new Set(newTags);
+        for (const [imageId, oldTags] of previousState.entries()) {
+            const imageData = rawDataset.get(imageId);
+            if (!imageData)
+                continue;
+
+            for (const tag of imageData.tags) {
+                if (!oldTags.has(tag)) {
+                    const globalSet = rawGlobalTags.get(tag);
+                    if (globalSet) {
+                        globalSet.delete(imageId);
+
+                        if (globalSet.size === 0)
+                            rawGlobalTags.delete(tag);
+                    }
+                }
+            }
+
+            for (const tag of oldTags) {
+                if (!imageData.tags.has(tag)) {
+                    let globalSet = rawGlobalTags.get(tag);
+                    if (!globalSet) {
+                        globalSet = new Set();
+                        rawGlobalTags.set(tag, globalSet);
+                    }
+                    globalSet.add(imageId);
+                }
+            }
+
+            imageData.tags = new Set(oldTags);
+        }
     }
 
     function addTagsToImages(imageIds: Iterable<string>, tags: Set<string>, position: number = -1, createHistory: boolean = true) {
@@ -69,12 +90,12 @@ export const useDatasetStore = defineStore('dataset', () => {
         const previousState = createHistory ? new Map<string, Set<string>>() : undefined;
         const changedImages = new Set<string>();
 
-        const rawImages = toRaw(images.value);
+        const rawDataset = toRaw(dataset.value);
         const rawGlobalTags = toRaw(globalTags.value);
         const rawTagDiff = toRaw(tagDiff.value);
 
         for (const imageId of imagesSet) {
-            const imageData = rawImages.get(imageId);
+            const imageData = rawDataset.get(imageId);
             if (!imageData)
                 continue;
 
@@ -138,7 +159,7 @@ export const useDatasetStore = defineStore('dataset', () => {
             });
         }
 
-        onChange.value.forEach((fn) => fn());
+        triggerUpdate();
     }
 
     function removeTagsFromImages(imageIds: Iterable<string>, tags: Set<string>, createHistory: boolean = true) {
@@ -149,12 +170,12 @@ export const useDatasetStore = defineStore('dataset', () => {
         const previousState = createHistory ? new Map<string, Set<string>>() : undefined;
         const changedImages = new Set<string>();
 
-        const rawImages = toRaw(images.value);
+        const rawDataset = toRaw(dataset.value);
         const rawGlobalTags = toRaw(globalTags.value);
         const rawTagDiff = toRaw(tagDiff.value);
 
         for (const imageId of imagesSet) {
-            const imageData = rawImages.get(imageId);
+            const imageData = rawDataset.get(imageId);
             if (!imageData)
                 continue;
 
@@ -177,11 +198,11 @@ export const useDatasetStore = defineStore('dataset', () => {
                 if (imageData.tags.has(tag)) {
                     imageData.tags.delete(tag);
 
-                    const imagesWithTags = rawGlobalTags.get(tag);
-                    if (imagesWithTags) {
-                        imagesWithTags.delete(tag);
+                    const imagesWithTag = rawGlobalTags.get(tag);
+                    if (imagesWithTag) {
+                        imagesWithTag.delete(imageId);
 
-                        if (imagesWithTags.size === 0)
+                        if (imagesWithTag.size === 0)
                             rawGlobalTags.delete(tag);
                     }
 
@@ -203,7 +224,7 @@ export const useDatasetStore = defineStore('dataset', () => {
             });
         }
 
-        onChange.value.forEach((fn) => fn());
+        triggerUpdate();
     }
 
     function replaceTagForImages(imageIds: Iterable<string>, originalTag: string, newTag: string, createHistory: boolean = true) {
@@ -217,12 +238,12 @@ export const useDatasetStore = defineStore('dataset', () => {
         const previousState = createHistory ? new Map<string, Set<string>>() : undefined;
         const changedImages = new Set<string>();
 
-        const rawImages = toRaw(images.value);
+        const rawDataset = toRaw(dataset.value);
         const rawGlobalTags = toRaw(globalTags.value);
         const rawTagDiff = toRaw(tagDiff.value);
 
         for (const imageId of imagesSet) {
-            const imageData = rawImages.get(imageId);
+            const imageData = rawDataset.get(imageId);
             if (!imageData || !imageData.tags.has(originalTag))
                 continue;
 
@@ -288,7 +309,7 @@ export const useDatasetStore = defineStore('dataset', () => {
             });
         }
 
-        onChange.value.forEach((fn) => fn());
+        triggerUpdate();
     }
 
     function pushDatasetChange(change: DatasetChangeRecord) {
@@ -300,34 +321,11 @@ export const useDatasetStore = defineStore('dataset', () => {
         const change = datasetUndoStack.value.pop();
         if (!change) return;
 
-        switch (change.type) {
-            case 'add_tag':
-                for (const [image, previousTags] of change.previousState!.entries()) {
-                    setImageTags(image, previousTags);
-                }
-                break;
-            case 'add_global_tag':
-                removeTagsFromImages(images.value.keys(), change.tags);
-                break;
-            case 'remove_tag':
-                for (const [image, previousTags] of change.previousState!.entries()) {
-                    setImageTags(image, previousTags);
-                }
-                break;
-            case 'remove_global_tag':
-                for (const [image, previousTags] of change.previousState!.entries()) {
-                    setImageTags(image, previousTags);
-                }
-                break;
-            case 'replace_tag':
-                for (const [image, previousTags] of change.previousState!.entries()) {
-                    setImageTags(image, previousTags);
-                }
-                break;
-        }
+        if (change.previousState)
+            restoreState(change.previousState);
 
         datasetRedoStack.value.push(change);
-        onChange.value.forEach((fn) => fn());
+        triggerUpdate();
     }
 
     function redoDatasetAction() {
@@ -350,67 +348,91 @@ export const useDatasetStore = defineStore('dataset', () => {
         }
 
         datasetUndoStack.value.push(change);
-        onChange.value.forEach((fn) => fn());
+        triggerUpdate();
     }
 
-    function resetDatasetStatus() {
-        datasetUndoStack.value = [];
-        datasetRedoStack.value = [];
-    }
+    function removeImages(imageIds: Iterable<string>) {
+        const rawDataset = toRaw(dataset.value);
+        const rawGlobalTags = toRaw(globalTags.value);
+        const rawTagDiff = toRaw(tagDiff.value);
+        let changed = false;
 
-    function removeImage(image: string) {
-        const img = images.value.get(image);
-        if (!img) return;
+        for (const imageId of imageIds) {
+            const imageData = rawDataset.get(imageId);
+            if (!imageData)
+                continue;
 
-        for (const tag of img.tags) {
-            const set = globalTags.value.get(tag);
-            set?.delete(image);
-            if (set && set.size === 0) globalTags.value.delete(tag);
+            changed = true;
+
+            for (const tag of imageData.tags) {
+                const globalSet = rawGlobalTags.get(tag);
+                if (globalSet) {
+                    globalSet.delete(imageId);
+
+                    if (globalSet.size === 0)
+                        rawGlobalTags.delete(tag);
+                }
+            }
+
+            rawDataset.delete(imageId);
+            rawTagDiff.delete(imageId);
         }
 
-        images.value.delete(image);
-        tagDiff.value.delete(image);
-        onChange.value.forEach((fn) => fn());
+        if (changed)
+            triggerUpdate();
     }
 
-    function removeImages(imgs: Iterable<string>) {
-        for (const image of imgs) removeImage(image);
-    }
-
-    function normalizePath(p: string) {
-        return p.replace(/\\|\\\\/g, '/');
-    }
-
-    function toFileUrl(p: string) {
-        const norm = normalizePath(p);
-        if (/^[A-Za-z]:\//.test(norm)) return 'file:///' + norm;
-        return 'file://' + norm;
+    function removeImage(imageId: string) {
+        removeImages([imageId]);
     }
 
     function renameImages(mappings: { from: string; to: string; mtime?: number }[]) {
-        if (!mappings?.length) return;
+        if (mappings.length === 0)
+            return;
+
+        const rawDataset = toRaw(dataset.value);
+        const rawGlobalTags = toRaw(globalTags.value);
+        let changed = false;
+
         for (const { from, to, mtime } of mappings) {
             const oldKey = normalizePath(from);
             const newPath = normalizePath(to);
-            const existing = images.value.get(oldKey);
-            if (!existing) continue;
+            const existing = rawDataset.get(oldKey);
+
+            if (!existing)
+                continue;
+            changed = true;
 
             const newKey = newPath;
             const tagsCopy = new Set(existing.tags);
 
             for (const tag of tagsCopy) {
-                const s = globalTags.value.get(tag);
-                if (s) {
-                    s.delete(oldKey);
-                    s.add(newKey);
+                const globalSet = rawGlobalTags.get(tag);
+                if (globalSet) {
+                    globalSet.delete(oldKey);
+                    globalSet.add(newKey);
                 }
             }
 
-            const filePath = `${toFileUrl(newPath)}?v=${typeof mtime === 'number' ? mtime : Date.now()}`;
-            images.value.delete(oldKey);
-            images.value.set(newKey, { tags: tagsCopy, path: newPath, filePath });
+            const filePath = `${toFileUrl(newPath)}?v=${typeof mtime === "number" ? mtime : Date.now()}`;
+            rawDataset.delete(oldKey);
+            rawDataset.set(newKey, { tags: tagsCopy, path: newPath, filePath });
         }
-        onChange.value.forEach((fn) => fn());
+
+        if (changed)
+            triggerUpdate();
+    }
+
+    function normalizePath(path: string) {
+        return path.replace(/\\|\\\\/g, '/');
+    }
+
+    function toFileUrl(path: string) {
+        const norm = normalizePath(path);
+        if (/^[A-Za-z]:\//.test(norm))
+            return 'file:///' + norm;
+
+        return 'file://' + norm;
     }
 
     async function loadDataset(reload: boolean = false) {
@@ -420,33 +442,39 @@ export const useDatasetStore = defineStore('dataset', () => {
         if (!result)
             return;
 
-        images.value = result.dataset!;
+        dataset.value = result.dataset!;
         globalTags.value = result.globalTags!;
 
         if (!reload)
             resetDatasetStatus();
+        triggerUpdate();
     }
 
     async function saveDataset() {
-        if (images.value.size === 0) {
+        if (dataset.value.size === 0) {
             alerts.showAlert("warning", "The dataset has not been loaded yet");
             return;
         }
 
-        await datasetService.saveDataset(images.value);
+        await datasetService.saveDataset(dataset.value);
     }
 
     async function isDatasetSaved() {
-        return await datasetService.compareDatasets(images.value);
+        return await datasetService.compareDatasets(dataset.value);
+    }
+
+    function resetDatasetStatus() {
+        datasetUndoStack.value = [];
+        datasetRedoStack.value = [];
     }
 
     return {
-        images,
+        dataset,
         globalTags,
-        directory,
         sortMode,
         tagDiff,
         onChange,
+        dataVersion,
         addTagsToImages,
         removeTagsFromImages,
         replaceTagForImages,
