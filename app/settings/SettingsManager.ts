@@ -1,5 +1,6 @@
 import type { Settings } from "../types/settings.js";
 
+import { Utilities } from "../utils/Utilities.js";
 import { App } from "../App.js";
 import fs from "fs-extra";
 import _ from "lodash";
@@ -56,6 +57,7 @@ export class SettingsManager {
             return settings;
         } catch (error) {
             console.error(error);
+            App.logger?.error(`[Settings Manager] Failed to load settings from file, using defaults: ${Utilities.getErrorMessage(error)}`);
             return this.getDefaultSettings();
         }
     }

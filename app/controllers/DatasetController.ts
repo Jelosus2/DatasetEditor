@@ -23,27 +23,43 @@ export class DatasetController {
 
     @IpcHandle("dataset:load")
     async loadDataset(_event: IpcMainInvokeEvent, isAllSaved: boolean, reloadDataset: boolean = false) {
-        if (!isAllSaved && !await this.confirmedUnsavedChanges())
+        let tmpDirectory: string | null = null;
+
+        if (!isAllSaved && !await this.confirmedUnsavedChanges()) {
+            App.logger.info("[Dataset Manager] Dataset load was canceled");
             return { error: false, canceled: true };
-        if (!reloadDataset)
+        }
+
+        if (!reloadDataset) {
+            tmpDirectory = this.loadedDirectory;
             this.loadedDirectory = null;
+        }
 
         const directoryPath = this.loadedDirectory ?? await this.selectDirectory();
-        if (!directoryPath)
+        if (!directoryPath) {
+            this.loadedDirectory = tmpDirectory;
+            App.logger.info("[Dataset Manager] Dataset load was canceled");
             return { error: false, canceled: true };
+        }
 
         try {
             const settings = await App.settings.loadSettings();
 
             const { dataset, globalTags } = await this.processDatasetDirectory(directoryPath, settings.recursiveDatasetLoad, settings.sortImagesAlphabetically);
+            if (dataset.size === 0) {
+                App.logger.warning("[Dataset Manager] Skipping dataset load as it constains 0 elements");
+                return { error: false, canceled: true }
+            }
+
             this.originalDataset = dataset;
             this.loadedDirectory = directoryPath;
 
-            App.logger.info(`[Dataset Manager]`);
-            return { error: false, dataset, globalTags, directoryPath }
+            App.logger.info(`[Dataset Manager] Dataset loaded successfully`);
+            return { error: false, dataset, globalTags }
         } catch (error) {
             console.error(error);
             App.logger.error(`[Dataset Manager] Error loading the dataset: ${Utilities.getErrorMessage(error)}`);
+            this.loadedDirectory = tmpDirectory;
             return { error: true, message: "Error loading the dataset, check the logs for more information" };
         }
     }
@@ -58,11 +74,14 @@ export class DatasetController {
                 await fs.outputFile(filePath, tags, { encoding: "utf-8" });
             }
 
-            App.logger.info("[Dataset Manager] Dataset saved");
+            App.logger.info("[Dataset Manager] Dataset saved successfully");
             this.originalDataset = dataset;
+
+            return { error: false }
         } catch (error) {
             console.error(error);
             App.logger.error(`[Dataset Manager] Error while trying to save the dataset: ${Utilities.getErrorMessage(error)}`);
+            return { error: true, message: "Failed to save the dataset, check the logs for more information" }
         }
     }
 

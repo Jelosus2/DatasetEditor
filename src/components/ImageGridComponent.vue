@@ -2,16 +2,16 @@
 import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 import VirtualImage from './VirtualImage.vue';
 
-import { useDatasetStore, type Image } from '@/stores/datasetStore';
+import { useDatasetStore } from '@/stores/datasetStore';
 import { computed } from 'vue';
 
 const selectedImages = defineModel<Set<string>>('selectedImages', { required: true });
 const filterInput = defineModel<string>('filterInput', { required: true });
 const filterMode = defineModel<string>('filterMode', { required: true });
 
-defineProps({
-  filteredImages: { type: Set<string>, required: true },
-  isFiltering: { type: Boolean, required: true },
+const props = defineProps({
+    filteredImages: { type: Set<string>, required: true },
+    isFiltering: { type: Boolean, required: true },
 });
 
 const emit = defineEmits<{
@@ -22,8 +22,12 @@ const emit = defineEmits<{
 }>();
 
 const datasetStore = useDatasetStore();
-const imageEntries = computed(() => {
-  return [...datasetStore.images] as Array<[string, Image]>;
+const visibleImages = computed(() => {
+    if (!props.isFiltering)
+        return Array.from(datasetStore.images.entries());
+
+    return Array.from(datasetStore.images.entries())
+        .filter(([name]) => props.filteredImages.has(name));
 });
 </script>
 
@@ -33,8 +37,7 @@ const imageEntries = computed(() => {
     class="grid h-fit grid-cols-[repeat(auto-fit,minmax(100px,1fr))] gap-1 overflow-y-auto overflow-x-hidden scroll-smooth scrollbar-stable"
   >
     <VirtualImage
-      v-for="[name, image] in imageEntries"
-      v-show="!isFiltering || filteredImages.has(name)"
+      v-for="[name, image] in visibleImages"
       :key="name"
       :name="name"
       :image="image"

@@ -5,16 +5,17 @@ import TagEditorComponent from '@/components/TagEditorComponent.vue';
 import BackgroundColorModalComponent from '@/components/BackgroundColorModalComponent.vue';
 import CropImageModalComponent from '@/components/CropImageModalComponent.vue';
 
-import { ref, watch, computed, shallowRef, onMounted, onUnmounted } from 'vue';
-import { useDatasetStore } from '@/stores/datasetStore';
+import { useImageSelection } from '@/composables/useImageSelection';
+import { useResizablePane } from '@/composables/useResizablePane';
 import { useTagDisplay } from '@/composables/useTagDisplay';
+import { useDatasetStore } from '@/stores/datasetStore';
+import { ref, watch, computed, shallowRef, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
-  arePreviewsEnabled: { type: Boolean, required: true },
+    arePreviewsEnabled: { type: Boolean, required: true },
 });
 const emit = defineEmits(['trigger_alert']);
 
-const selectedImages = ref<Set<string>>(new Set());
 const lastSelectedIndex = ref<number>(0);
 const modalHtml = ref('');
 const imageModal = ref(false);
@@ -22,7 +23,6 @@ const filterMode = ref('or');
 const filterInput = ref('');
 const isFiltering = computed(() => !!filterInput.value);
 const container = shallowRef<HTMLDivElement | null>(null);
-const containerWidth = ref(0);
 const sortOrder = ref('asc');
 const globalSortMode = ref('alphabetical');
 const globalSortOrder = ref('asc');
@@ -31,45 +31,51 @@ const previewImage = ref('');
 const imageContainerFocused = ref(false);
 
 const datasetStore = useDatasetStore();
-const {
-  displayedTags,
-  displayedGlobalTags,
-  filteredImages,
-  triggerUpdate
-} = useTagDisplay(
-  selectedImages,
-  filterInput,
-  filterMode,
-  sortOrder,
-  globalSortMode,
-  globalSortOrder,
-  globalTagFilterInput,
-);
-
 const imageKeys = computed(() => Array.from(datasetStore.images.keys()));
 
-watch(
-  imageKeys,
-  (newKeys) => {
-    if (newKeys.length > 0) {
-      const firstImage = newKeys[0];
-      selectedImages.value = new Set([firstImage]);
+const {
+    selectedImages,
+    toggleSelection,
+    selectAll,
+    clearSelection
+} = useImageSelection(imageKeys, computed(() => filteredImages.value), isFiltering);
+
+const { containerWidth, startResize } = useResizablePane(container, 300);
+
+const {
+    displayedTags,
+    displayedGlobalTags,
+    filteredImages,
+    triggerUpdate
+} = useTagDisplay(
+    selectedImages,
+    filterInput,
+    filterMode,
+    sortOrder,
+    globalSortMode,
+    globalSortOrder,
+    globalTagFilterInput,
+);
+
+watch(imageKeys, (newKeys) => {
+    if (newKeys.length > 0 && selectedImages.value.size === 0) {
+      clearSelection();
       triggerUpdate();
       datasetStore.resetDatasetStatus();
     }
-  },
-  { immediate: true },
-);
+}, { immediate: true });
 
 watch(filteredImages, (newSet) => {
   if (isFiltering.value) {
     const keptSelection = [...selectedImages.value].filter((id) => newSet.has(id));
-    selectedImages.value = new Set(
-      keptSelection.length ? keptSelection : newSet.size ? [[...newSet][0]] : []
-    );
-    lastSelectedIndex.value = !newSet.has(imageKeys.value[lastSelectedIndex.value])
-      ? 0
-      : lastSelectedIndex.value;
+
+    if (keptSelection.length > 0) {
+        selectedImages.value = new Set(keptSelection)
+    } else if (newSet.size > 0) {
+        selectedImages.value = new Set([Array.from(newSet)[0]]);
+    } else {
+        selectedImages.value = new Set();
+    }
   }
 });
 
@@ -80,55 +86,6 @@ watch(filterInput, (val) => {
   }
 });
 
-function toggleSelection(id: string, event: MouseEvent) {
-  const index = imageKeys.value.indexOf(id);
-
-  if (event.shiftKey) {
-    const start = Math.min(lastSelectedIndex.value, index);
-    const end = Math.max(lastSelectedIndex.value, index);
-    const range = imageKeys.value.slice(start, end + 1);
-    range.forEach((img) => {
-      if (!isFiltering.value || filteredImages.value.has(img)) selectedImages.value.add(img);
-    });
-  } else if (event.ctrlKey) {
-    if (selectedImages.value.has(id) && selectedImages.value.size > 1)
-      selectedImages.value.delete(id);
-    else selectedImages.value.add(id);
-  } else {
-    selectedImages.value = new Set([id]);
-  }
-
-  lastSelectedIndex.value = index;
-  selectedImages.value = new Set(selectedImages.value);
-}
-
-function selectAllImages(e: KeyboardEvent) {
-  if (!imageContainerFocused.value) return;
-  e.preventDefault();
-
-  const images = filteredImages.value.size
-    ? filteredImages.value
-    : datasetStore.images.keys();
-  selectedImages.value = new Set(images);
-}
-
-function selectAllImagesFromUi() {
-  const images = filteredImages.value.size
-    ? filteredImages.value
-    : datasetStore.images.keys();
-  selectedImages.value = new Set(images);
-  lastSelectedIndex.value = 0;
-}
-
-function clearSelectionToFirstImage() {
-  const images = filteredImages.value.size
-    ? [...filteredImages.value]
-    : imageKeys.value;
-  const first = images[0];
-  if (!first) return;
-  selectedImages.value = new Set([first]);
-  lastSelectedIndex.value = imageKeys.value.indexOf(first);
-}
 
 function displayFullImage(id: string) {
   if (props.arePreviewsEnabled) return;
@@ -144,27 +101,6 @@ function displayFullImage(id: string) {
     `;
     modal.showModal();
   }
-}
-
-function resizeContainer(event: MouseEvent) {
-  const startX = event.clientX;
-  const startWidth = container.value?.offsetWidth || 0;
-  const parentWidth = container.value?.parentElement?.getBoundingClientRect().width || 0;
-  const minWidth = Math.max(180, parentWidth * 0.15);
-  const maxWidth = Math.max(minWidth, parentWidth * 0.35);
-
-  function onMouseMove(moveEvent: MouseEvent) {
-    const newWidth = startWidth + (moveEvent.clientX - startX);
-    containerWidth.value = Math.min(maxWidth, Math.max(minWidth, newWidth));
-  }
-
-  function onMouseUp() {
-    window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('mouseup', onMouseUp);
-  }
-
-  window.addEventListener('mousemove', onMouseMove);
-  window.addEventListener('mouseup', onMouseUp);
 }
 
 function clearImageFilter() {
@@ -215,6 +151,7 @@ function navigateSelection(direction: 'left' | 'right' | 'up' | 'down') {
 }
 
 onMounted(() => {
+window.addEventListener('open-image', handleOpenImage as EventListener);
   datasetStore.onChange = [triggerUpdate];
 });
 
@@ -223,15 +160,11 @@ function handleOpenImage(ev: Event) {
   if (id) displayFullImage(id);
 }
 
-onMounted(() => {
-  window.addEventListener('open-image', handleOpenImage as EventListener);
-});
-
 onUnmounted(() => {
   window.removeEventListener('open-image', handleOpenImage as EventListener);
 });
 
-defineExpose({ selectAllImages });
+defineExpose({ selectAll });
 </script>
 
 <template>
@@ -265,7 +198,7 @@ defineExpose({ selectAllImages });
       <div class="relative flex flex-1">
         <div
           class="divider m-0 divider-horizontal cursor-ew-resize not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
-          @mousedown.prevent="resizeContainer"
+          @mousedown.prevent="startResize"
         ></div>
         <div
           v-if="arePreviewsEnabled && previewImage"
@@ -295,8 +228,6 @@ defineExpose({ selectAllImages });
           v-model:global-sort-mode="globalSortMode"
           v-model:global-sort-order="globalSortOrder"
           v-model:global-tag-filter-input="globalTagFilterInput"
-          @select-all-images="selectAllImagesFromUi"
-          @clear-selection="clearSelectionToFirstImage"
         />
         </div>
       </div>

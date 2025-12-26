@@ -17,7 +17,6 @@ const props = defineProps({
   isFiltering: { type: Boolean, required: true },
   filterInput: { type: String, required: true },
 });
-const emit = defineEmits(['select-all-images', 'clear-selection']);
 
 const sortOrder = defineModel<string>('sortOrder', { required: true });
 const globalSortMode = defineModel<string>('globalSortMode', { required: true });
@@ -294,11 +293,11 @@ function replaceTag(mode: 'selected' | 'all') {
             <input v-model="highlightInput" type="text" placeholder="Highlight words..." :disabled="!displayedTags.size" />
           </label>
         </div>
-        <div class="mb-2 flex min-h-0 flex-1 flex-wrap gap-2 overflow-auto scroll-smooth pt-1">
+        <div class="mb-2 flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-auto scroll-smooth pt-1">
           <div
             v-for="tag in displayedTags"
             :key="tag"
-            class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
+            class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
             :class="{
               'dark:bg-warning/50':
                 (
@@ -369,11 +368,11 @@ function replaceTag(mode: 'selected' | 'all') {
             />
           </button>
         </div>
-        <div class="mb-2 flex min-h-0 flex-1 flex-wrap gap-2 overflow-auto scroll-smooth pt-1">
+        <div class="mb-2 flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-auto scroll-smooth pt-1">
           <div
             v-for="tag in displayedGlobalTags"
             :key="tag"
-            class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
+            class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
             @click="removeGlobalTag(tag)"
           >
             {{ settingsStore.showTagCount ? tag + ' | ' + datasetStore.globalTags.get(tag)!.size : tag }}
