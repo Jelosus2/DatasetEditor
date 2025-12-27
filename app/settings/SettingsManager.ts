@@ -25,7 +25,7 @@ export class SettingsManager {
             recursiveDatasetLoad: false,
             autoCheckUpdates: true,
             sortImagesAlphabetically: false,
-            enableHardwareAcceleration: false
+            enableHardwareAcceleration: true
         };
     }
 

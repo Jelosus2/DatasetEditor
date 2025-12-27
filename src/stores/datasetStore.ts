@@ -4,11 +4,10 @@ import { defineStore } from 'pinia';
 import { ref, toRaw } from 'vue';
 
 interface DatasetChangeRecord {
-    type: 'add_tag' | 'remove_tag' | 'add_global_tag' | 'remove_global_tag' | 'replace_tag';
-    images?: Set<string>;
+    type: 'add_tag' | 'remove_tag' | 'replace_tag';
+    images: Set<string>;
     tags: Set<string>;
     tagPosition?: number;
-    previousState?: Map<string, Set<string>>;
     originalTag?: string;
     newTag?: string;
 }
@@ -44,40 +43,9 @@ export const useDatasetStore = defineStore('dataset', () => {
         onChange.value.forEach((fn) => fn());
     }
 
-    function restoreState(previousState: Map<string, Set<string>>) {
-        const rawDataset = toRaw(dataset.value);
-        const rawGlobalTags = toRaw(globalTags.value);
-
-        for (const [imageId, oldTags] of previousState.entries()) {
-            const imageData = rawDataset.get(imageId);
-            if (!imageData)
-                continue;
-
-            for (const tag of imageData.tags) {
-                if (!oldTags.has(tag)) {
-                    const globalSet = rawGlobalTags.get(tag);
-                    if (globalSet) {
-                        globalSet.delete(imageId);
-
-                        if (globalSet.size === 0)
-                            rawGlobalTags.delete(tag);
-                    }
-                }
-            }
-
-            for (const tag of oldTags) {
-                if (!imageData.tags.has(tag)) {
-                    let globalSet = rawGlobalTags.get(tag);
-                    if (!globalSet) {
-                        globalSet = new Set();
-                        rawGlobalTags.set(tag, globalSet);
-                    }
-                    globalSet.add(imageId);
-                }
-            }
-
-            imageData.tags = new Set(oldTags);
-        }
+    function recordHistory(record: DatasetChangeRecord) {
+        datasetUndoStack.value.push(record);
+        datasetRedoStack.value = [];
     }
 
     function addTagsToImages(imageIds: Iterable<string>, tags: Set<string>, position: number = -1, createHistory: boolean = true) {
@@ -87,7 +55,6 @@ export const useDatasetStore = defineStore('dataset', () => {
         if (imagesSet.size === 0 || tagsArray.length === 0)
             return;
 
-        const previousState = createHistory ? new Map<string, Set<string>>() : undefined;
         const changedImages = new Set<string>();
 
         const rawDataset = toRaw(dataset.value);
@@ -99,15 +66,12 @@ export const useDatasetStore = defineStore('dataset', () => {
             if (!imageData)
                 continue;
 
-            const currentTagsArray = [...imageData.tags];
             const existingTagSet = imageData.tags;
 
             const missingTags = tagsArray.filter((tag) => !existingTagSet.has(tag));
             if (position === -1 && missingTags.length === 0)
                 continue;
 
-            if (createHistory && previousState)
-                previousState.set(imageId, new Set(currentTagsArray));
             changedImages.add(imageId);
 
             for (const tag of tagsArray) {
@@ -132,6 +96,7 @@ export const useDatasetStore = defineStore('dataset', () => {
                 }
             }
 
+            const currentTagsArray = [...existingTagSet];
             let newTagsList: string[];
 
             if (position === -1) {
@@ -149,13 +114,12 @@ export const useDatasetStore = defineStore('dataset', () => {
         if (changedImages.size === 0)
             return;
 
-        if (createHistory && previousState) {
-            pushDatasetChange({
+        if (createHistory) {
+            recordHistory({
                 type: "add_tag",
                 images: changedImages,
                 tags: new Set(tagsArray),
-                tagPosition: position,
-                previousState
+                tagPosition: position
             });
         }
 
@@ -167,7 +131,6 @@ export const useDatasetStore = defineStore('dataset', () => {
         if (imagesSet.size === 0 || tags.size === 0)
             return;
 
-        const previousState = createHistory ? new Map<string, Set<string>>() : undefined;
         const changedImages = new Set<string>();
 
         const rawDataset = toRaw(dataset.value);
@@ -190,8 +153,6 @@ export const useDatasetStore = defineStore('dataset', () => {
             if (!hasAnyTag)
                 continue;
 
-            if (createHistory && previousState)
-                previousState.set(imageId, new Set(imageData.tags));
             changedImages.add(imageId);
 
             for (const tag of tags) {
@@ -215,12 +176,11 @@ export const useDatasetStore = defineStore('dataset', () => {
         if (changedImages.size === 0)
             return;
 
-        if (createHistory && previousState) {
-            pushDatasetChange({
+        if (createHistory) {
+            recordHistory({
                 type: "remove_tag",
                 images: changedImages,
-                tags: new Set(tags),
-                previousState
+                tags: new Set(tags)
             });
         }
 
@@ -235,7 +195,6 @@ export const useDatasetStore = defineStore('dataset', () => {
         if (imagesSet.size === 0)
             return;
 
-        const previousState = createHistory ? new Map<string, Set<string>>() : undefined;
         const changedImages = new Set<string>();
 
         const rawDataset = toRaw(dataset.value);
@@ -247,8 +206,6 @@ export const useDatasetStore = defineStore('dataset', () => {
             if (!imageData || !imageData.tags.has(originalTag))
                 continue;
 
-            if (createHistory && previousState)
-                previousState.set(imageId, new Set(imageData.tags));
             changedImages.add(imageId);
 
             const tagsList = [...imageData.tags];
@@ -298,31 +255,35 @@ export const useDatasetStore = defineStore('dataset', () => {
         if (changedImages.size === 0)
             return;
 
-        if (createHistory && previousState) {
-            pushDatasetChange({
+        if (createHistory) {
+            recordHistory({
                 type: "replace_tag",
                 images: changedImages,
                 tags: new Set([newTag]),
                 originalTag,
-                newTag,
-                previousState
+                newTag
             });
         }
 
         triggerUpdate();
     }
 
-    function pushDatasetChange(change: DatasetChangeRecord) {
-        datasetUndoStack.value.push(change);
-        datasetRedoStack.value = [];
-    }
-
     function undoDatasetAction() {
         const change = datasetUndoStack.value.pop();
         if (!change) return;
 
-        if (change.previousState)
-            restoreState(change.previousState);
+        switch (change.type) {
+            case "add_tag":
+                removeTagsFromImages(change.images, change.tags, /* createHistory = */ false);
+                break;
+            case "remove_tag":
+                addTagsToImages(change.images, change.tags, -1, /* createHistory = */ false);
+                break;
+            case "replace_tag":
+                if (change.newTag && change.originalTag)
+                    replaceTagForImages(change.images, change.newTag, change.originalTag, /* createHistory = */ false)
+                break;
+        }
 
         datasetRedoStack.value.push(change);
         triggerUpdate();
@@ -335,15 +296,14 @@ export const useDatasetStore = defineStore('dataset', () => {
 
         switch (change.type) {
             case "add_tag":
-            case "add_global_tag":
-                addTagsToImages(change.images!, change.tags, change.tagPosition, /* createHistory = */ false);
+                addTagsToImages(change.images, change.tags, change.tagPosition, /* createHistory = */ false);
                 break;
             case "remove_tag":
-            case "remove_global_tag":
-                removeTagsFromImages(change.images!, change.tags, /* createHistory = */ false);
+                removeTagsFromImages(change.images, change.tags, /* createHistory = */ false);
                 break;
             case 'replace_tag':
-                replaceTagForImages(change.images!, change.originalTag!, change.newTag!, /* createHistory = */ false);
+                if (change.newTag && change.originalTag)
+                    replaceTagForImages(change.images, change.originalTag, change.newTag, /* createHistory = */ false);
                 break;
         }
 
@@ -481,7 +441,6 @@ export const useDatasetStore = defineStore('dataset', () => {
         removeImage,
         removeImages,
         renameImages,
-        pushDatasetChange,
         undoDatasetAction,
         redoDatasetAction,
         resetDatasetStatus,

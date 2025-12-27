@@ -1,53 +1,62 @@
-import { ref, type Ref } from "vue";
+import { ref, toRaw, type Ref } from "vue";
 
 export function useImageSelection(imageKeys: Ref<string[]>, filteredImages: Ref<Set<string>>, isFiltering: Ref<boolean>) {
     const selectedImages = ref<Set<string>>(new Set());
     const lastSelectedIndex = ref<number>(0);
 
-    const toggleSelection = (id: string, event: MouseEvent) => {
-        const index = imageKeys.value.indexOf(id);
+    function toggleSelection(imageId: string, event: MouseEvent) {
+        const rawImageKeys = toRaw(imageKeys.value);
+
+        const index = rawImageKeys.indexOf(imageId);
+        if (index === -1)
+            return;
+
+        const newSelection = new Set(toRaw(selectedImages.value));
 
         if (event.shiftKey) {
             const start = Math.min(lastSelectedIndex.value, index);
             const end = Math.max(lastSelectedIndex.value, index);
-            const range = imageKeys.value.slice(start, end + 1);
+            const rawFilteredImages = toRaw(filteredImages.value);
 
-            for (const image of range) {
-                if (!isFiltering.value || filteredImages.value.has(image)) {
-                    selectedImages.value.add(image);
-                }
+            for (let i = start; i < end; i++) {
+                const imageId = rawImageKeys[i];
+                if (!isFiltering.value || rawFilteredImages.has(imageId))
+                    newSelection.add(imageId);
             }
         } else if (event.ctrlKey) {
-            if (selectedImages.value.has(id)) {
-                if (selectedImages.value.size > 1) {
-                    selectedImages.value.delete(id);
+            if (newSelection.has(imageId)) {
+                if (newSelection.size > 1) {
+                    newSelection.delete(imageId);
                 }
             } else {
-                selectedImages.value.add(id);
+                newSelection.add(imageId);
             }
         } else {
-            selectedImages.value = new Set([id]);
+            newSelection.clear();
+            newSelection.add(imageId);
         }
 
         lastSelectedIndex.value = index;
-        selectedImages.value = new Set(selectedImages.value);
+        selectedImages.value = newSelection;
     }
 
-    const selectAll = () => {
+    function selectAll() {
         const targetSet = isFiltering.value && filteredImages.value.size > 0
-            ? filteredImages.value
-            : new Set(imageKeys.value);
+            ? toRaw(filteredImages.value)
+            : toRaw(imageKeys.value);
 
         selectedImages.value = new Set(targetSet);
     }
 
-    const clearSelection = () => {
-        if (imageKeys.value.length === 0) {
+    function clearSelection() {
+        const rawImageKeys = toRaw(imageKeys.value);
+
+        if (rawImageKeys.length === 0) {
             selectedImages.value = new Set();
             return;
         }
 
-        const first = imageKeys.value[0];
+        const first = rawImageKeys[0];
         selectedImages.value = new Set([first]);
         lastSelectedIndex.value = 0;
     }

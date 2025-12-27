@@ -9,12 +9,7 @@ import sharp from "sharp";
 
 @IpcClass()
 export class ImageController {
-    readonly MAX_CACHE_SIZE = 2000;
-    readonly thumbnailCache: Map<string, string>;
-
-    constructor() {
-        this.thumbnailCache = new Map();
-    }
+    constructor() {}
 
     @IpcHandle("image:set_background")
     async setBackgroundColor(_event: IpcMainInvokeEvent, images: string[], color: string) {
@@ -55,49 +50,6 @@ export class ImageController {
         }
 
         return { error: false, message: 'Changed background color successfully' };
-    }
-
-    @IpcHandle("image:create_thumbnail")
-    async createThumbnail(_event: IpcMainInvokeEvent, imagePath: string, size?: number) {
-        size ??= 256;
-
-        try {
-            const { mtimeMs } = await fs.stat(imagePath);
-            const key = `${imagePath}|${mtimeMs}|${size}`;
-
-            if (this.thumbnailCache.has(key)) {
-                const value = this.thumbnailCache.get(key);
-                this.thumbnailCache.delete(key);
-                this.thumbnailCache.set(key, value!);
-
-                return value;
-            }
-
-            const buffer = await sharp(imagePath)
-                .rotate()
-                .resize({
-                    width: size,
-                    height: size,
-                    fit: "inside",
-                    withoutEnlargement: true
-                })
-                .webp({ quality: 75 })
-                .toBuffer();
-
-            const dataUrl = `data:image/webp;base64,${buffer.toString("base64")}`;
-
-            if (this.thumbnailCache.size > this.MAX_CACHE_SIZE) {
-                const oldestKey = this.thumbnailCache.keys().next().value;
-                this.thumbnailCache.delete(oldestKey!);
-            }
-
-            this.thumbnailCache.set(key, dataUrl);
-            return dataUrl;
-        } catch (error) {
-            console.error(error);
-            App.logger.error(`[Image Manager] Failed to generate a thumbnail for image ${imagePath}: ${Utilities.getErrorMessage(error)}`)
-            return null;
-        }
     }
 
     @IpcHandle("image:dimensions")

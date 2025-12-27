@@ -11,11 +11,11 @@ import CopyIcon from '@/assets/icons/copy.svg';
 import SortArrowIcon from '@/assets/icons/sort-arrow.svg';
 
 const props = defineProps({
-  selectedImages: { type: Object as PropType<Set<string>>, required: true },
-  displayedTags: { type: Object as PropType<Set<string>>, required: true },
-  displayedGlobalTags: { type: Object as PropType<Set<string>>, required: true },
-  isFiltering: { type: Boolean, required: true },
-  filterInput: { type: String, required: true },
+    selectedImages: { type: Object as PropType<Set<string>>, required: true },
+    displayedTags: { type: Object as PropType<Set<string>>, required: true },
+    displayedGlobalTags: { type: Object as PropType<Set<string>>, required: true },
+    isFiltering: { type: Boolean, required: true },
+    filterInput: { type: String, required: true },
 });
 
 const sortOrder = defineModel<string>('sortOrder', { required: true });
@@ -37,11 +37,12 @@ const topSectionHeight = ref(50);
 const tagGroupWidth = ref(30);
 const areTagsCopied = ref(false);
 
-const highlightWords = computed(() =>
+const highlightRegexes = computed(() =>
     highlightInput.value
         .split(',')
         .map((word) => word.trim())
         .filter(Boolean)
+        .map(word => new RegExp(`(^|[^\\p{L}])${escapeRegExp(word)}([^\\p{L}]|$)`, 'iu'))
 );
 
 const datasetStore = useDatasetStore();
@@ -59,10 +60,10 @@ function escapeRegExp(str: string) {
 }
 
 function matchesHighlight(tag: string) {
-    return highlightWords.value.some((word) => {
-        const regex = new RegExp(`(^|[^\\p{L}])${escapeRegExp(word)}([^\\p{L}]|$)`, 'iu');
-        return regex.test(tag);
-    });
+    if (highlightRegexes.value.length === 0)
+        return false;
+
+    return highlightRegexes.value.some((regex) => regex.test(tag));
 }
 
 function clamp(value: number, min: number, max: number) {
