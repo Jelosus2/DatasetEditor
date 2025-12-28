@@ -114,8 +114,6 @@ function insertTags(tags: Map<string, Set<string>>) {
         }
         }
     }
-
-    datasetStore.onChange.forEach((fn) => fn());
 }
 
 function loadDiff(tags: Map<string, Set<string>>) {

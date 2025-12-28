@@ -1,19 +1,19 @@
 import { ref, type Ref } from "vue";
 
-export function useResizablePane(containerRef: Ref<HTMLElement | null>, initialWidth: number) {
-    const containerWidth = ref<number>(initialWidth);
-    const isResizing = ref<boolean>(false);
+export function useResizablePane(containerRef: Ref<HTMLElement | null>, initialWidth: number, options: { minPercent: number, maxPercent: number }) {
+    const containerWidth = ref(initialWidth);
+    const isResizing = ref(false);
 
     function startResize (event: MouseEvent) {
         event.preventDefault();
         isResizing.value = true;
 
         const startX = event.clientX;
-        const startWidth = containerWidth.value;
-        const parentWidth = containerRef.value?.parentElement?.getBoundingClientRect().width || window.innerWidth;
+        const startWidth = containerRef.value?.getBoundingClientRect().width ?? containerWidth.value;
+        const parentWidth = containerRef.value?.parentElement?.getBoundingClientRect().width ?? window.innerWidth;
 
-        const minWidth = Math.max(200, parentWidth * 0.15);
-        const maxWidth = Math.max(minWidth, parentWidth * 0.4);
+        const minWidth = parentWidth * options.minPercent;
+        const maxWidth = Math.max(minWidth, parentWidth * options.maxPercent);
 
         function onMouseMove(mouseEvent: MouseEvent) {
             const delta = mouseEvent.clientX - startX;

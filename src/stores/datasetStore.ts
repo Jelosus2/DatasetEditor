@@ -1,10 +1,10 @@
-import { DatasetService } from '@/services/datasetService';
-import { useAlert } from '@/composables/useAlert';
-import { defineStore } from 'pinia';
-import { ref, toRaw } from 'vue';
+import { DatasetService } from "@/services/datasetService";
+import { useAlert } from "@/composables/useAlert";
+import { defineStore } from "pinia";
+import { ref, toRaw } from "vue";
 
 interface DatasetChangeRecord {
-    type: 'add_tag' | 'remove_tag' | 'replace_tag';
+    type: "add_tag" | "remove_tag" | "replace_tag";
     images: Set<string>;
     tags: Set<string>;
     tagPosition?: number;
@@ -23,7 +23,7 @@ interface TagDiff {
     original: Set<string>;
 }
 
-export const useDatasetStore = defineStore('dataset', () => {
+export const useDatasetStore = defineStore("dataset", () => {
     const dataset = ref<Map<string, Image>>(new Map());
     const globalTags = ref<Map<string, Set<string>>>(new Map());
     const tagDiff = ref<Map<string, TagDiff>>(new Map());
@@ -33,14 +33,12 @@ export const useDatasetStore = defineStore('dataset', () => {
     const datasetUndoStack = ref<DatasetChangeRecord[]>([]);
     const datasetRedoStack = ref<DatasetChangeRecord[]>([]);
     const sortMode = ref("none");
-    const onChange = ref<(() => void)[]>([]);
 
     const datasetService = new DatasetService();
     const alerts = useAlert();
 
     function triggerUpdate() {
         dataVersion.value++;
-        onChange.value.forEach((fn) => fn());
     }
 
     function recordHistory(record: DatasetChangeRecord) {
@@ -301,7 +299,7 @@ export const useDatasetStore = defineStore('dataset', () => {
             case "remove_tag":
                 removeTagsFromImages(change.images, change.tags, /* createHistory = */ false);
                 break;
-            case 'replace_tag':
+            case "replace_tag":
                 if (change.newTag && change.originalTag)
                     replaceTagForImages(change.images, change.originalTag, change.newTag, /* createHistory = */ false);
                 break;
@@ -384,15 +382,15 @@ export const useDatasetStore = defineStore('dataset', () => {
     }
 
     function normalizePath(path: string) {
-        return path.replace(/\\|\\\\/g, '/');
+        return path.replace(/\\|\\\\/g, "/");
     }
 
     function toFileUrl(path: string) {
         const norm = normalizePath(path);
         if (/^[A-Za-z]:\//.test(norm))
-            return 'file:///' + norm;
+            return "file:///" + norm;
 
-        return 'file://' + norm;
+        return "file://" + norm;
     }
 
     async function loadDataset(reload: boolean = false) {
@@ -433,7 +431,6 @@ export const useDatasetStore = defineStore('dataset', () => {
         globalTags,
         sortMode,
         tagDiff,
-        onChange,
         dataVersion,
         addTagsToImages,
         removeTagsFromImages,

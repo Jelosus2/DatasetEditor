@@ -3,7 +3,7 @@ import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
 import VirtualImage from './VirtualImage.vue';
 
 import { useDatasetStore } from '@/stores/datasetStore';
-import { computed, onMounted, onUnmounted, ref, toRaw } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch, toRaw } from 'vue';
 
 const selectedImages = defineModel<Set<string>>('selectedImages', { required: true });
 const filterInput = defineModel<string>('filterInput', { required: true });
@@ -15,10 +15,11 @@ const props = defineProps({
 });
 
 const emit = defineEmits<{
-  (e: 'toggle-selection', id: string, event: MouseEvent): void;
-  (e: 'hover-image', id: string | null): void;
-  (e: 'display-full-image', id: string): void;
-  (e: 'clear-filter'): void;
+  (e: "toggle-selection", id: string, event: MouseEvent): void;
+  (e: "hover-image", id: string | undefined): void;
+  (e: "display-full-image", id: string): void;
+  (e: "clear-filter"): void;
+  (e: "grid-metrics", metrics: { columns: number }): void;
 }>();
 
 const datasetStore = useDatasetStore();
@@ -29,6 +30,8 @@ const autocompleteList = computed(() => {
     return [...datasetStore.globalTags.keys()];
 });
 
+const selectedSet = computed(() => selectedImages.value);
+
 const containerRef = ref<HTMLElement | null>(null);
 const scrollTop = ref(0);
 const containerWidth = ref(0);
@@ -36,7 +39,7 @@ const containerHeight = ref(0);
 
 const MIN_COLUMN_WIDTH = 100;
 const GAP = 4;
-const BUFFER_ROWS = 4;
+const BUFFER_ROWS = 8;
 
 const allVisibleImages = computed(() => {
     void datasetStore.dataVersion;
@@ -63,6 +66,10 @@ const layout = computed(() => {
 
     return { columns, cellHeight: cellWidth }
 });
+
+const gridMetrics = computed(() => ({
+    columns: layout.value.columns
+}));
 
 const virtualState = computed(() => {
     const totalItems = allVisibleImages.value.length;
@@ -93,6 +100,10 @@ const virtualState = computed(() => {
         cellHeight
     }
 });
+
+watch(gridMetrics, (metrics) => {
+    emit("grid-metrics", metrics);
+}, { immediate: true });
 
 function onScroll(event: Event) {
     scrollTop.value = (event.target as HTMLElement).scrollTop;
@@ -145,16 +156,17 @@ onUnmounted(() => {
                 }"
             >
                 <VirtualImage
-                    v-for="[name, image] in virtualState.visibleItems"
-                    :key="name"
-                    :path="name"
+                    v-for="[imageKey, image] in virtualState.visibleItems"
+                    v-memo="[imageKey, image.filePath, selectedSet.has(imageKey)]"
+                    :key="imageKey"
+                    :path="imageKey"
                     :image="image"
-                    :selected="selectedImages.has(name)"
+                    :selected="selectedSet.has(imageKey)"
                     :style="{ height: layout.cellHeight + 'px' }"
-                    @click="emit('toggle-selection', name, $event)"
-                    @mouseenter="emit('hover-image', name)"
-                    @mouseleave="emit('hover-image', null)"
-                    @dblclick="emit('display-full-image', name)"
+                    @click="emit('toggle-selection', imageKey, $event)"
+                    @mouseenter="emit('hover-image', imageKey)"
+                    @mouseleave="emit('hover-image', undefined)"
+                    @dblclick="emit('display-full-image', imageKey)"
                 />
             </div>
         </div>

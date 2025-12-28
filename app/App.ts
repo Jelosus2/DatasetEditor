@@ -96,8 +96,6 @@ export class App {
     static onActivate = async () => {
         if (!this.window.hasMainWindow())
             await this.window.createMainWindow();
-
-        console.log("Hello")
     }
 
     static setupDanbooruRefererHeader() {

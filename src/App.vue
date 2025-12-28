@@ -40,7 +40,7 @@ useKeyboardShortcuts([
   { key: 'y', ctrl: true, handler: () => appController.redoAction(), preventDefault: true },
   { key: 's', ctrl: true, handler: () => appController.saveChanges(), preventDefault: true },
   { key: 'r', ctrl: true, handler: () => appController.reloadDataset(), preventDefault: true },
-  { key: 'a', ctrl: true, handler: () => mainComponent.value?.selectAll() }
+  { key: 'a', ctrl: true, handler: () => mainComponent.value?.selectAllImages() }
 ]);
 
 const { send } = useIpcRenderer([
