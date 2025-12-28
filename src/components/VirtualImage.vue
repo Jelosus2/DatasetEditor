@@ -21,9 +21,9 @@ const emit = defineEmits<{
         :class="selected ? 'border-primary' : 'border-transparent'"
         :title="path.split('/').pop()"
         @click="emit('click', $event)"
+        @dblclick="emit('dblclick')"
         @mouseenter="emit('mouseenter')"
         @mouseleave="emit('mouseleave')"
-        @dblclick="emit('dblclick')"
     >
         <img
             :src="image.filePath"

@@ -405,6 +405,9 @@ export const useDatasetStore = defineStore("dataset", () => {
 
         if (!reload)
             resetDatasetStatus();
+
+        alerts.showAlert("success", "Dataset loaded successfully");
+
         triggerUpdate();
     }
 

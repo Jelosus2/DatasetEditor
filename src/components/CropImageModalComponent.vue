@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, toRaw } from 'vue';
 import { useDatasetStore } from '@/stores/datasetStore';
 import { cropImage } from '@/services/imageService';
+import { useAlert } from '@/composables/useAlert';
+import { ref, computed, onMounted, onUnmounted, nextTick, toRaw } from 'vue';
 
 const props = defineProps<{ selectedImages: Set<string> }>();
-const emit = defineEmits(['trigger_alert']);
+
+const { showAlert } = useAlert();
 
 const datasetStore = useDatasetStore();
 const imageKeys = computed(() => Array.from(datasetStore.dataset.keys()));
@@ -76,7 +78,7 @@ function endSelection() {
 
 async function save(overwrite: boolean) {
   if (!imageElement.value || crop.value.width === 0 || crop.value.height === 0) {
-    emit('trigger_alert', 'error', 'No crop region selected');
+    showAlert('error', 'No crop region selected');
     return;
   }
   const el = imageElement.value;
@@ -93,7 +95,7 @@ async function save(overwrite: boolean) {
     },
     overwrite,
   );
-  emit('trigger_alert', error ? 'error' : 'success', message);
+  showAlert(error ? 'error' : 'success', message);
   if (!error && overwrite) {
     nextTick(showImage);
   }

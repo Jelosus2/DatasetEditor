@@ -28,18 +28,20 @@ const input = shallowRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
 async function showSuggestions() {
   if (!settingsStore.autocomplete) return;
-  const value = props.multiple ? tagInput.value.split(',').pop()?.trim() : tagInput.value;
+  const rawValue = props.multiple ? tagInput.value.split(',').pop()?.trim() : tagInput.value;
+  const negativePrefix = props.customList?.length ? rawValue?.startsWith("-") : false;
+  const query = negativePrefix ? rawValue!.slice(1) : rawValue;
 
   const results = props.customList?.length
     ? props.customList
         .filter((tag) => {
-          if (!value) return false;
+          if (!query) return false;
           return !props.containsMode
-            ? tag.toLowerCase().startsWith(value!.toLowerCase())
-            : tag.toLowerCase().includes(value!.toLowerCase());
+            ? tag.toLowerCase().startsWith(query.toLowerCase())
+            : tag.toLowerCase().includes(query.toLowerCase());
         })
-        .map((tag) => ({ tag, output: tag }))
-    : ((await window.ipcRenderer.invoke('load_tag_suggestions', value)) as {
+        .map((tag) => ({ tag: (negativePrefix ? '-' : '') + tag, output: (negativePrefix ? "-" : "") + tag }))
+    : ((await window.ipcRenderer.invoke('load_tag_suggestions', query)) as {
         tag: string;
         type?: number;
         output: string;

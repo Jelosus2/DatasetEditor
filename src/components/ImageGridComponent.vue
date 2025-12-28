@@ -39,17 +39,19 @@ const containerHeight = ref(0);
 
 const MIN_COLUMN_WIDTH = 100;
 const GAP = 4;
-const BUFFER_ROWS = 8;
+const BUFFER_ROWS = 6;
 
-const allVisibleImages = computed(() => {
+const allImages = computed(() => {
     void datasetStore.dataVersion;
 
-    const rawDataset = toRaw(datasetStore.dataset);
-    if (!props.isFiltering)
-        return Array.from(rawDataset.entries());
+    return Array.from(toRaw(datasetStore.dataset).entries());
+});
 
-    return Array.from(rawDataset.entries())
-        .filter(([imageId]) => props.filteredImages.has(imageId));
+const visibleImages = computed(() => {
+    if (!props.isFiltering)
+        return allImages.value;
+
+    return allImages.value.filter(([imageId]) => props.filteredImages.has(imageId));
 });
 
 const layout = computed(() => {
@@ -72,7 +74,7 @@ const gridMetrics = computed(() => ({
 }));
 
 const virtualState = computed(() => {
-    const totalItems = allVisibleImages.value.length;
+    const totalItems = visibleImages.value.length;
     const { columns, cellHeight } = layout.value;
     const rowHeight = cellHeight + GAP;
 
@@ -90,7 +92,7 @@ const virtualState = computed(() => {
 
     const paddingTop = bufferedStartRow * rowHeight;
 
-    const visibleItems = allVisibleImages.value.slice(startIndex, endIndex);
+    const visibleItems = visibleImages.value.slice(startIndex, endIndex);
 
     return {
         totalHeight,
@@ -105,8 +107,43 @@ watch(gridMetrics, (metrics) => {
     emit("grid-metrics", metrics);
 }, { immediate: true });
 
+let rafId: number | null = null;
+
 function onScroll(event: Event) {
-    scrollTop.value = (event.target as HTMLElement).scrollTop;
+    if (rafId !== null)
+        return;
+
+    rafId = requestAnimationFrame(() => {
+        scrollTop.value = (event.target as HTMLElement).scrollTop;
+        rafId = null;
+    });
+}
+
+const clickTimers = new Map<string, number>();
+
+function handleClick(imageKey: string, event: MouseEvent) {
+    const existing = clickTimers.get(imageKey);
+    if (existing) {
+        clearTimeout(existing);
+        clickTimers.delete(imageKey);
+    }
+
+    const timer = setTimeout(() => {
+        emit("toggle-selection", imageKey, event);
+        clickTimers.delete(imageKey);
+    }, 250);
+
+    clickTimers.set(imageKey, timer);
+}
+
+function handleDblClick(imageKey: string) {
+    const existing = clickTimers.get(imageKey);
+    if (existing) {
+        clearTimeout(existing);
+        clickTimers.delete(imageKey);
+    }
+
+    emit("display-full-image", imageKey);
 }
 
 let resizeObserver: ResizeObserver | null = null;
@@ -134,6 +171,8 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    if (rafId !== null)
+        cancelAnimationFrame(rafId);
     if (resizeObserver)
         resizeObserver.disconnect();
     if (containerRef.value)
@@ -157,16 +196,16 @@ onUnmounted(() => {
             >
                 <VirtualImage
                     v-for="[imageKey, image] in virtualState.visibleItems"
-                    v-memo="[imageKey, image.filePath, selectedSet.has(imageKey)]"
+                    v-memo="[imageKey, image.filePath, selectedSet.has(imageKey), layout.cellHeight]"
                     :key="imageKey"
                     :path="imageKey"
                     :image="image"
                     :selected="selectedSet.has(imageKey)"
                     :style="{ height: layout.cellHeight + 'px' }"
-                    @click="emit('toggle-selection', imageKey, $event)"
+                    @click="handleClick(imageKey, $event)"
+                    @dblclick="handleDblClick(imageKey)"
                     @mouseenter="emit('hover-image', imageKey)"
                     @mouseleave="emit('hover-image', undefined)"
-                    @dblclick="emit('display-full-image', imageKey)"
                 />
             </div>
         </div>
@@ -180,7 +219,7 @@ onUnmounted(() => {
                 v-model="filterInput"
                 :disabled="datasetStore.dataset.size === 0"
                 :id="'filter-completion-list'"
-                :placeholder="'Type a tag to filter the images...'"
+                :placeholder="'Type tags… use -tag to exclude'"
                 :multiple="true"
                 :custom-list="autocompleteList"
                 :contains-mode="true"
@@ -195,7 +234,6 @@ onUnmounted(() => {
             <div class="not-focus-within:hover:tooltip" data-tip="Mode to filter the images">
                 <select v-model.lazy="filterMode" class="select w-fit outline-none!">
                     <option value="or" selected>OR</option>
-                    <option value="no">NO</option>
                     <option value="and">AND</option>
                 </select>
             </div>

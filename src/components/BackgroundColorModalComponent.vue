@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import { applyBackgroundColor } from '@/services/imageService';
+import { useAlert } from '@/composables/useAlert';
+import { ref } from 'vue';
 
 const props = defineProps<{ selectedImages: Set<string> }>();
-const emit = defineEmits(['trigger_alert']);
+
+const { showAlert } = useAlert();
 
 const color = ref('#ffffff');
 const predefined = ['#ffffff', '#000000', '#ff0000', '#00ff00', '#0000ff'];
@@ -15,17 +17,17 @@ function closeModal() {
 
 async function changeColor() {
   if (!props.selectedImages.size) {
-    emit('trigger_alert', 'error', 'Dataset not loaded');
+    showAlert('error', 'Dataset not loaded');
     return;
   }
 
   const { error, message } = await applyBackgroundColor([...props.selectedImages], color.value);
   if (error) {
-    emit('trigger_alert', 'error', message);
+    showAlert('error', message);
     return;
   }
 
-  emit('trigger_alert', 'success', message);
+  showAlert('success', message);
   closeModal();
 }
 </script>

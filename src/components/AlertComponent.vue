@@ -46,6 +46,7 @@ watch([() => props.message, () => props.timestamp], () => {
       :class="{
         'alert-info': type === 'info',
         'alert-success': type === 'success',
+        'alert-warning': type === 'warning',
         'alert-error': type === 'error',
       }"
     >

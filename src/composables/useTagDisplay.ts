@@ -108,49 +108,63 @@ export function useTagDisplay(
         if (!filterInput.value)
             return result;
 
-        const tags = filterInput.value
+        const rawTags = filterInput.value
             .split(',')
-            .map((t) => t.trim().toLowerCase())
+            .map((tag) => tag.trim().toLowerCase())
             .filter(Boolean);
 
+        const includeTags = rawTags.filter((tag) => !tag.startsWith("-"));
+        const excludeTags = rawTags
+            .filter((tag) => tag.startsWith("-") && tag.length > 1)
+            .map((tag) => tag.slice(1));
+
+        const excludedImageIds = new Set<string>();
+        for (const tag of excludeTags) {
+            const globalSet = rawGlobalTags.get(tag);
+            if (globalSet)
+                globalSet.forEach((imageId) => excludedImageIds.add(imageId));
+        }
+
         if (filterMode.value === 'or') {
-            for (const tag of tags) {
-                const globalSet = rawGlobalTags.get(tag);
-                if (globalSet)
-                    globalSet.forEach((imageId) => result.add(imageId));
+            if (includeTags.length === 0) {
+                for (const imageId of rawDataset.keys()) {
+                    if (!excludedImageIds.has(imageId)) {
+                        result.add(imageId);
+                    }
+                }
+            } else {
+                for (const tag of includeTags) {
+                    const globalSet = rawGlobalTags.get(tag);
+                    if (globalSet)
+                        globalSet.forEach((imageId) => result.add(imageId));
+                }
+
+                for (const imageId of excludedImageIds)
+                    result.delete(imageId);
             }
-        } else if (filterMode.value === 'and') {
-            const countMap = new Map<string, number>();
+        } else {
+            if (includeTags.length === 0) {
+                for (const imageId of rawDataset.keys()) {
+                    if (!excludedImageIds.has(imageId)) {
+                        result.add(imageId);
+                    }
+                }
+            } else {
+                const countMap = new Map<string, number>();
 
-            for (const tag of tags) {
-                const globalSet = rawGlobalTags.get(tag);
-                if (!globalSet)
-                    return result;
+                for (const tag of includeTags) {
+                    const globalSet = rawGlobalTags.get(tag);
+                    if (!globalSet)
+                        return result;
 
-                globalSet.forEach((imageId) => countMap.set(imageId, (countMap.get(imageId) || 0) + 1));
+                    globalSet.forEach((imageId) => countMap.set(imageId, (countMap.get(imageId) || 0) + 1));
+                }
+
+                for (const [imageId, count] of countMap.entries()) {
+                    if (count === includeTags.length && !excludedImageIds.has(imageId))
+                        result.add(imageId);
+                }
             }
-
-            for (const [imageId, count] of countMap.entries()) {
-                if (count === tags.length)
-                    result.add(imageId);
-            }
-        } else if (filterMode.value === 'no') {
-            const excluded = new Set<string>();
-
-            for (const tag of tags) {
-                const globalSet = rawGlobalTags.get(tag);
-                if (globalSet)
-                    globalSet.forEach((imageId) => excluded.add(imageId));
-            }
-
-            for (const imageId of rawDataset.keys()) {
-                if (!excluded.has(imageId))
-                    result.add(imageId);
-            }
-
-            datasetStore.dataset.forEach((_image, name) => {
-                if (!excluded.has(name)) result.add(name);
-            });
         }
 
         return result;

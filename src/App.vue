@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import NavbarComponent from '@/components/NavbarComponent.vue';
-import MainComponent from '@/components/MainComponent.vue';
+import DatasetTab from '@/components/DatasetTab.vue';
 import TagGroupEditorComponent from '@/components/TagGroupEditorComponent.vue';
 import AlertComponent from '@/components/AlertComponent.vue';
 import AutotaggerModalComponent from '@/components/AutotaggerModalComponent.vue';
@@ -20,7 +20,7 @@ import { useAlert } from '@/composables/useAlert';
 import { AppController } from '@/controllers/AppController';
 
 const arePreviewsEnabled = ref(false);
-const mainComponent = ref<InstanceType<typeof MainComponent> | null>(null);
+const datasetTab = ref<InstanceType<typeof DatasetTab> | null>(null);
 const { message: alertMessage, type: alertType, timestamp: alertTimestamp, showAlert } = useAlert();
 
 const datasetStore = useDatasetStore();
@@ -40,7 +40,7 @@ useKeyboardShortcuts([
   { key: 'y', ctrl: true, handler: () => appController.redoAction(), preventDefault: true },
   { key: 's', ctrl: true, handler: () => appController.saveChanges(), preventDefault: true },
   { key: 'r', ctrl: true, handler: () => appController.reloadDataset(), preventDefault: true },
-  { key: 'a', ctrl: true, handler: () => mainComponent.value?.selectAllImages() }
+  { key: 'a', ctrl: true, handler: () => datasetTab.value?.selectAllImages() }
 ]);
 
 const { send } = useIpcRenderer([
@@ -78,7 +78,7 @@ onMounted(async () => {
       @trigger_alert="showAlert"
     />
     <div class="tabs-border tabs min-h-0 flex-1 overflow-hidden text-base">
-      <MainComponent ref="mainComponent" :are-previews-enabled="arePreviewsEnabled" @trigger_alert="showAlert" />
+      <DatasetTab ref="datasetTab" :are-previews-enabled="arePreviewsEnabled" />
       <TagGroupEditorComponent @trigger_alert="showAlert" />
       <SettingComponent @trigger-alert="showAlert" />
       <LogsComponent />

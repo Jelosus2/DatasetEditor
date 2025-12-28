@@ -15,7 +15,6 @@ import { ref, watch, computed, shallowRef, onMounted, onUnmounted } from "vue";
 const props = defineProps({
     arePreviewsEnabled: { type: Boolean, required: true },
 });
-const emit = defineEmits(["trigger_alert"]);
 
 const filterMode = ref("or");
 const filterInput = ref("");
@@ -99,11 +98,7 @@ watch(filteredImages, (newSet) => {
         const keptSelection = [...selectedImages.value].filter((id) => newSet.has(id));
 
         if (keptSelection.length > 0) {
-            selectedImages.value = new Set(keptSelection);
-
-            const index = imageKeys.value.indexOf(keptSelection[0]);
-            if (index !== 1)
-                lastSelectedIndex.value = index;
+            setSingleSelection(keptSelection[0]);
         } else if (newSet.size > 0) {
             setSingleSelection(newSet.values().next().value!);
         } else {
@@ -217,9 +212,15 @@ defineExpose({ selectAllImages });
                         />
                     </div>
                 </div>
-                <div class="flex w-[30%] items-center justify-center" :title="selectedTitle">
+                <div class="flex w-[30%] items-center justify-center">
                     <template v-if="selectedImages.size > 0">
-                        <img :src="selectedImage?.filePath" decoding="async" draggable="false" class="max-h-full" />
+                        <img
+                            :src="selectedImage?.filePath"
+                            :title="selectedTitle"
+                            decoding="async"
+                            draggable="false"
+                            class="max-h-full"
+                        />
                     </template>
                     <div v-else class="text-center text-lg opacity-60">
                         No image selected
@@ -250,6 +251,6 @@ defineExpose({ selectAllImages });
             />
         </div>
     </ModalComponent>
-    <BackgroundColorModalComponent :selected-images="selectedImages" @trigger_alert="(t, m) => emit('trigger_alert', t, m)" />
-    <CropImageModalComponent :selected-images="selectedImages" @trigger_alert="(t, m) => emit('trigger_alert', t, m)" />
+    <BackgroundColorModalComponent :selected-images="selectedImages" />
+    <CropImageModalComponent :selected-images="selectedImages" />
 </template>
