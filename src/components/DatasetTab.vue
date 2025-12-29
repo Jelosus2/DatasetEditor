@@ -10,10 +10,10 @@ import { useGridNavigation } from "@/composables/useGridNavigation";
 import { useResizablePane } from "@/composables/useResizablePane";
 import { useTagDisplay } from "@/composables/useTagDisplay";
 import { useDatasetStore } from "@/stores/datasetStore";
-import { ref, watch, computed, shallowRef, onMounted, onUnmounted } from "vue";
+import { ref, watch, computed, shallowRef, onActivated, onDeactivated } from "vue";
 
 const props = defineProps({
-    arePreviewsEnabled: { type: Boolean, required: true },
+    arePreviewsEnabled: { type: Boolean, required: true }
 });
 
 const filterMode = ref("or");
@@ -74,8 +74,7 @@ const { setSingleSelection } = useGridNavigation(
     lastSelectedIndex,
     filteredImages,
     isFiltering,
-    computed(() => gridMetrics.value.columns),
-    isDatasetTabActive
+    computed(() => gridMetrics.value.columns)
 );
 
 watch(imageKeys, (newKeys) => {
@@ -156,16 +155,11 @@ function handleOpenImage(ev: Event) {
         displayFullImage(id);
 }
 
-function isDatasetTabActive() {
-  const tab = document.getElementById('dataset-tab') as HTMLInputElement | null;
-  return !!tab?.checked;
-}
-
-onMounted(() => {
+onActivated(() => {
     window.addEventListener("open-image", handleOpenImage as EventListener);
 });
 
-onUnmounted(() => {
+onDeactivated(() => {
     window.removeEventListener("open-image", handleOpenImage as EventListener);
 });
 
@@ -173,7 +167,6 @@ defineExpose({ selectAllImages });
 </script>
 
 <template>
-    <input id="dataset-tab" type="radio" name="editor_tabs" class="tab" aria-label="Dataset" checked />
     <div class="tab-content min-h-0 border-t-base-300 bg-base-100">
         <div class="flex h-full min-h-0">
             <div

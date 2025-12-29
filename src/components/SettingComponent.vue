@@ -46,7 +46,6 @@ async function saveSettings() {
 </script>
 
 <template>
-  <input type="radio" name="editor_tabs" class="tab" aria-label="Settings" />
   <div class="tab-content min-h-0 overflow-auto border-0 border-t border-base-300 bg-base-100 p-6">
     <div class="flex flex-col items-center justify-center">
       <div class="w-3xl space-y-8">

@@ -19,8 +19,12 @@ import { useIpcRenderer } from '@/composables/useIpcRenderer';
 import { useAlert } from '@/composables/useAlert';
 import { AppController } from '@/controllers/AppController';
 
+type ActiveTab = "dataset" | "tag-groups" | "settings" | "logs";
+
 const arePreviewsEnabled = ref(false);
 const datasetTab = ref<InstanceType<typeof DatasetTab> | null>(null);
+const activeTab = ref<ActiveTab>("dataset");
+
 const { message: alertMessage, type: alertType, timestamp: alertTimestamp, showAlert } = useAlert();
 
 const datasetStore = useDatasetStore();
@@ -78,10 +82,30 @@ onMounted(async () => {
       @trigger_alert="showAlert"
     />
     <div class="tabs-border tabs min-h-0 flex-1 overflow-hidden text-base">
-      <DatasetTab ref="datasetTab" :are-previews-enabled="arePreviewsEnabled" />
-      <TagGroupEditorComponent @trigger_alert="showAlert" />
-      <SettingComponent @trigger-alert="showAlert" />
-      <LogsComponent />
+      <input type="radio" name="editor_tabs" class="tab" aria-label="Dataset" value="dataset" v-model="activeTab" />
+      <KeepAlive>
+        <DatasetTab
+            ref="datasetTab"
+            v-if="activeTab === 'dataset'"
+            :are-previews-enabled="arePreviewsEnabled"
+            :is-tab-active="activeTab === 'dataset'"
+        />
+      </KeepAlive>
+
+      <input type="radio" name="editor_tabs" class="tab" aria-label="Tag Groups" value="tag-groups" v-model="activeTab" />
+      <KeepAlive>
+        <TagGroupEditorComponent v-if="activeTab === 'tag-groups'" @trigger_alert="showAlert" />
+      </KeepAlive>
+
+      <input type="radio" name="editor_tabs" class="tab" aria-label="Settings" value="settings" v-model="activeTab" />
+      <KeepAlive>
+        <SettingComponent v-if="activeTab === 'settings'" @trigger-alert="showAlert" />
+      </KeepAlive>
+
+      <input type="radio" name="editor_tabs" class="tab" aria-label="Logs" value="logs" v-model="activeTab" />
+      <KeepAlive>
+        <LogsComponent v-if="activeTab === 'logs'" />
+      </KeepAlive>
     </div>
   </div>
   <AutotaggerModalComponent @trigger_alert="showAlert" />

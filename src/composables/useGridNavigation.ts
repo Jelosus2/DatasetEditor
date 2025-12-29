@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted, watch, type Ref } from 'vue';
+import { onActivated, onDeactivated, watch, type Ref } from 'vue';
 
 type Direction = 'left' | 'right' | 'up' | 'down';
 
@@ -8,8 +8,7 @@ export function useGridNavigation(
     lastSelectedIndex: Ref<number>,
     filteredImages: Ref<Set<string>>,
     isFiltering: Ref<boolean>,
-    columns: Ref<number>,
-    isActive: () => boolean
+    columns: Ref<number>
 ) {
     function getVisibleKeys() {
         if (!isFiltering.value)
@@ -71,8 +70,6 @@ export function useGridNavigation(
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-        if (!isActive())
-            return;
         if (shouldIgnoreArrowKeys())
             return;
 
@@ -104,8 +101,8 @@ export function useGridNavigation(
             lastSelectedIndex.value = index;
     });
 
-    onMounted(() => window.addEventListener("keydown", handleKeyDown));
-    onUnmounted(() => window.removeEventListener("keydown", handleKeyDown));
+    onActivated(() => window.addEventListener("keydown", handleKeyDown));
+    onDeactivated(() => window.removeEventListener("keydown", handleKeyDown));
 
     return { setSingleSelection }
 }

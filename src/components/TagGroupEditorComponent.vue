@@ -164,7 +164,6 @@ function renameTagGroup(event: KeyboardEvent) {
 </script>
 
 <template>
-  <input type="radio" name="editor_tabs" class="tab" aria-label="Tag Groups" />
   <div class="tab-content min-h-0 border-t-base-300 bg-base-100">
     <div class="flex h-full">
       <div class="flex w-[25%] flex-col gap-2 overflow-auto pt-1 pl-1">
