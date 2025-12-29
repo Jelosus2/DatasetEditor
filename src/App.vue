@@ -84,12 +84,7 @@ onMounted(async () => {
     <div class="tabs-border tabs min-h-0 flex-1 overflow-hidden text-base">
       <input type="radio" name="editor_tabs" class="tab" aria-label="Dataset" value="dataset" v-model="activeTab" />
       <KeepAlive>
-        <DatasetTab
-            ref="datasetTab"
-            v-if="activeTab === 'dataset'"
-            :are-previews-enabled="arePreviewsEnabled"
-            :is-tab-active="activeTab === 'dataset'"
-        />
+        <DatasetTab ref="datasetTab" v-if="activeTab === 'dataset'" :are-previews-enabled="arePreviewsEnabled" />
       </KeepAlive>
 
       <input type="radio" name="editor_tabs" class="tab" aria-label="Tag Groups" value="tag-groups" v-model="activeTab" />
