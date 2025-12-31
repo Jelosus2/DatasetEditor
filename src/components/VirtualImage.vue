@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import type { Image } from '@/stores/datasetStore';
+import type { DatasetImage } from "../../shared/dataset";
 
 defineProps<{
-    image: Image;
+    image: DatasetImage;
     path: string;
     selected: boolean;
 }>();
 
 const emit = defineEmits<{
-    (e: 'click', event: MouseEvent): void;
-    (e: 'mouseenter'): void;
-    (e: 'mouseleave'): void;
-    (e: 'dblclick'): void;
+    (e: "click", event: MouseEvent): void;
+    (e: "mouseenter"): void;
+    (e: "mouseleave"): void;
+    (e: "dblclick"): void;
 }>();
 </script>
 

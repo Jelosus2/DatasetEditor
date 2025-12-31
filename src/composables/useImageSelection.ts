@@ -1,4 +1,6 @@
-import { ref, toRaw, type Ref } from "vue";
+import type { Ref } from "vue";
+
+import { ref, toRaw } from "vue";
 
 export function useImageSelection(imageKeys: Ref<string[]>, filteredImages: Ref<Set<string>>, isFiltering: Ref<boolean>) {
     const selectedImages = ref<Set<string>>(new Set());

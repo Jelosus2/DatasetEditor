@@ -1,12 +1,12 @@
-import type { AlertType } from '@/composables/useAlert';
+import type { AlertType } from '@/types/alert';
 import type { useDatasetStore } from '@/stores/datasetStore';
-import type { useTagGroupStore } from '@/stores/tagGroupStore';
+import type { useTagGroupsStore } from '@/stores/tagGroupsStore';
 import type { useSettingsStore } from '@/stores/settingsStore';
 import { useLogStore } from '@/stores/logStore';
 
 export interface AppControllerDependencies {
   datasetStore: ReturnType<typeof useDatasetStore>;
-  tagGroupsStore: ReturnType<typeof useTagGroupStore>;
+  tagGroupsStore: ReturnType<typeof useTagGroupsStore>;
   settingsStore: ReturnType<typeof useSettingsStore>;
   showAlert: (type: AlertType, message: string) => void;
 }
@@ -24,17 +24,7 @@ export class AppController {
 
   async loadDataset(reload = false) {
     try {
-      const loaded = await this.deps.datasetStore.loadDataset(reload);
-
-      if (loaded) {
-        if (this.deps.datasetStore.dataset.size > 0) {
-          this.deps.showAlert('success', 'Dataset loaded');
-        } else {
-          this.deps.showAlert('error', 'Found no images to load');
-        }
-      } else if (this.deps.datasetStore.dataset.size === 0) {
-        this.deps.showAlert('error', 'Found no images to load');
-      }
+      await this.deps.datasetStore.loadDataset(reload);
     } catch (error) {
       this.deps.showAlert('error', 'Failed to load dataset');
       this.logStore.addLog('error', `Error loading dataset: ${(error as Error).message}`);
@@ -51,7 +41,7 @@ export class AppController {
     if (activeTab === 'Dataset') {
       this.deps.datasetStore.undoDatasetAction();
     } else if (activeTab === 'Tag Groups') {
-      this.deps.tagGroupsStore.undoTagGroupAction();
+      this.deps.tagGroupsStore.undoTagGroupsAction();
     } else if (activeTab === 'Settings') {
       this.deps.settingsStore.undoSettingsAction();
     }
@@ -63,7 +53,7 @@ export class AppController {
     if (activeTab === 'Dataset') {
       this.deps.datasetStore.redoDatasetAction();
     } else if (activeTab === 'Tag Groups') {
-      this.deps.tagGroupsStore.redoTagGroupAction();
+      this.deps.tagGroupsStore.redoTagGroupsAction();
     } else if (activeTab === 'Settings') {
       this.deps.settingsStore.redoSettingsAction();
     }
@@ -74,15 +64,9 @@ export class AppController {
 
     try {
       if (activeTab === 'Dataset') {
-        this.logStore.addLog('info', 'Saving dataset');
         await this.deps.datasetStore.saveDataset();
-        this.deps.showAlert('success', 'Dataset saved successfully');
-        this.logStore.addLog('info', 'Dataset saved');
       } else if (activeTab === 'Tag Groups') {
-        this.logStore.addLog('info', 'Saving tag groups');
         await this.deps.tagGroupsStore.saveTagGroups();
-        this.deps.showAlert('success', 'Tag groups saved successfully');
-        this.logStore.addLog('info', 'Tag groups saved');
       } else if (activeTab === 'Settings') {
         this.logStore.addLog('info', 'Saving settings');
         await this.deps.settingsStore.saveSettings();

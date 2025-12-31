@@ -1,18 +1,18 @@
-import type { Image } from '@/stores/datasetStore';
+import type { Dataset } from "../../shared/dataset";
 
-import { useIpcRenderer } from '@/composables/useIpcRenderer';
-import { useAlert } from '@/composables/useAlert';
-import { useLogStore } from '@/stores/logStore';
-import { toRaw } from 'vue';
+import { useIpcRenderer } from "@/composables/useIpcRenderer";
+import { useAlert } from "@/composables/useAlert";
+import { toRaw } from "vue";
 
 export class DatasetService {
     private ipc = useIpcRenderer([]);
-    private logStore = useLogStore();
     private alert = useAlert();
 
-    private getRawDataset(dataset: Map<string, Image>) {
+    constructor() {}
+
+    private getRawDataset(dataset: Dataset) {
         const rawMap = toRaw(dataset);
-        const cleanMap = new Map<string, Image>();
+        const cleanMap: Dataset = new Map();
 
         for (const [imageName, properties] of rawMap.entries()) {
             const rawProperties = toRaw(properties);
@@ -28,43 +28,35 @@ export class DatasetService {
     }
 
     async loadDataset(isAllSaved: boolean, reloadDataset: boolean = false) {
-        this.logStore.addLog('info', 'Requesting dataset load...');
-
-        const result = await this.ipc.invoke<{
-            error: boolean
-            canceled?: boolean
-            message?: string
-            dataset?: Map<string, Image>
-            globalTags?: Map<string, Set<string>>
-            directoryPath?: string
-        }>("dataset:load", isAllSaved, reloadDataset);
+        const result = await this.ipc.invoke("dataset:load", isAllSaved, reloadDataset);
 
         if (result.error) {
             this.alert.showAlert("error", result.message!);
             return null;
         }
 
-        if (!result.error && result.canceled) {
-            this.alert.showAlert("error", "Dataset load was canceled, check the logs for more information");
+        if (result.canceled) {
+            this.alert.showAlert("info", "Dataset load was canceled");
             return null;
         }
 
         return result;
     }
 
-    async saveDataset(dataset: Map<string, Image>) {
+    async saveDataset(dataset: Dataset) {
         const rawDataset = this.getRawDataset(dataset);
-        const result = await this.ipc.invoke<{ error: boolean, message?: string }>("dataset:save", rawDataset);
+        const result = await this.ipc.invoke("dataset:save", rawDataset);
 
-        if (result.error)
+        if (result.error) {
             this.alert.showAlert("error", result.message!);
+            return;
+        }
+
+        this.alert.showAlert("success", "Dataset saved successfully");
     }
 
-    async compareDatasets(dataset: Map<string, Image>) {
-        if (dataset.size === 0)
-            return true;
-
+    async compareDatasets(dataset: Dataset) {
         const rawDataset = this.getRawDataset(dataset);
-        return this.ipc.invoke<boolean>("dataset:compare", rawDataset);
+        return this.ipc.invoke("dataset:compare", rawDataset);
     }
 }

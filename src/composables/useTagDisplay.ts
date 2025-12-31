@@ -1,5 +1,7 @@
-import { computed, toRaw, type Ref } from 'vue';
-import { useDatasetStore } from '@/stores/datasetStore';
+import type { Ref } from "vue";
+
+import { useDatasetStore } from "@/stores/datasetStore";
+import { computed, toRaw } from "vue";
 
 export function useTagDisplay(
     selectedImages: Ref<Set<string>>,
@@ -32,7 +34,7 @@ export function useTagDisplay(
         const firstTag = allTags[0];
         let rest = allTags.length > 1 ? allTags.slice(1) : [];
 
-        if (datasetStore.sortMode === 'alphabetical') {
+        if (datasetStore.sortMode === "alphabetical") {
             const keyed = rest.map((s) => [s, s.toLocaleLowerCase()]);
             keyed.sort((a, b) => a[1].localeCompare(b[1]));
             rest = keyed.map(([s]) => s);
@@ -59,7 +61,7 @@ export function useTagDisplay(
         if (allTags.length === 0)
             return output;
 
-        if (globalSortMode.value === 'alphabetical') {
+        if (globalSortMode.value === "alphabetical") {
             const keyed = allTags.map(s => [s, s.toLocaleLowerCase()]);
             keyed.sort((a, b) => a[1].localeCompare(b[1]));
             allTags = keyed.map(([s]) => s);
@@ -69,11 +71,11 @@ export function useTagDisplay(
             allTags = keyed.map(([s]) => s as string);
         }
 
-        if (globalSortOrder.value === 'desc')
+        if (globalSortOrder.value === "desc")
             allTags.reverse();
 
         const filterTags = globalTagFilterInput.value
-            .split(',')
+            .split(",")
             .map((t) => t.trim().toLowerCase())
             .filter(Boolean);
 
@@ -109,7 +111,7 @@ export function useTagDisplay(
             return result;
 
         const rawTags = filterInput.value
-            .split(',')
+            .split(",")
             .map((tag) => tag.trim().toLowerCase())
             .filter(Boolean);
 
@@ -125,7 +127,7 @@ export function useTagDisplay(
                 globalSet.forEach((imageId) => excludedImageIds.add(imageId));
         }
 
-        if (filterMode.value === 'or') {
+        if (filterMode.value === "or") {
             if (includeTags.length === 0) {
                 for (const imageId of rawDataset.keys()) {
                     if (!excludedImageIds.has(imageId)) {

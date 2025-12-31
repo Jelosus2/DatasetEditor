@@ -1,6 +1,9 @@
-import { ref, type Ref } from "vue";
+import type { ResizablePaneOptions } from "@/types/composables";
+import type { Ref } from "vue";
 
-export function useResizablePane(containerRef: Ref<HTMLElement | null>, initialWidth: number, options: { minPercent: number, maxPercent: number }) {
+import { ref } from "vue";
+
+export function useResizablePane(containerRef: Ref<HTMLElement | null>, initialWidth: number, options: ResizablePaneOptions) {
     const containerWidth = ref(initialWidth);
     const isResizing = ref(false);
 

@@ -1,3 +1,4 @@
+import type { LogType } from "../../shared/log.js";
 import type { BrowserWindow } from "electron";
 
 export class Logger {
@@ -23,8 +24,8 @@ export class Logger {
         this.sendLog("error", message);
     }
 
-    sendLog(type: "info" | "warning" | "error", message: string) {
+    sendLog(type: LogType, message: string) {
         if (this.mainWindow && !this.mainWindow.isDestroyed())
-            this.mainWindow.webContents.send("app-log", { type, message });
+            this.mainWindow.webContents.send("app:log", { type, message });
     }
 }

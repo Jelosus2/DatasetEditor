@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
-import VirtualImage from './VirtualImage.vue';
+import AutocompletionComponent from "@/components/AutocompletionComponent.vue";
+import VirtualImage from "@/components/VirtualImage.vue";
 
-import { useDatasetStore } from '@/stores/datasetStore';
-import { computed, onMounted, onUnmounted, ref, watch, toRaw } from 'vue';
+import { useDatasetStore } from "@/stores/datasetStore";
+import { computed, onActivated, onDeactivated, ref, watch, toRaw } from "vue";
 
-const selectedImages = defineModel<Set<string>>('selectedImages', { required: true });
-const filterInput = defineModel<string>('filterInput', { required: true });
-const filterMode = defineModel<string>('filterMode', { required: true });
+const selectedImages = defineModel<Set<string>>("selectedImages", { required: true });
+const filterInput = defineModel<string>("filterInput", { required: true });
+const filterMode = defineModel<string>("filterMode", { required: true });
 
-const props = defineProps({
-    filteredImages: { type: Set<string>, required: true },
-    isFiltering: { type: Boolean, required: true },
-});
+const props = defineProps<{
+    filteredImages: Set<string>;
+    isFiltering: boolean
+}>();
 
 const emit = defineEmits<{
   (e: "toggle-selection", id: string, event: MouseEvent): void;
@@ -148,7 +148,7 @@ function handleDblClick(imageKey: string) {
 
 let resizeObserver: ResizeObserver | null = null;
 
-onMounted(() => {
+onActivated(() => {
     if (!containerRef.value)
         return;
 
@@ -170,7 +170,7 @@ onMounted(() => {
     containerRef.value.addEventListener("scroll", onScroll, { passive: true });
 });
 
-onUnmounted(() => {
+onDeactivated(() => {
     if (rafId !== null)
         cancelAnimationFrame(rafId);
     if (resizeObserver)

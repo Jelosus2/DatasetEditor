@@ -1,37 +1,37 @@
 <script setup lang="ts">
-import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
+import AutocompletionComponent from "@/components/AutocompletionComponent.vue";
 
-import { ref, shallowRef, computed, toRaw, type PropType } from 'vue';
-import { useDatasetStore } from '@/stores/datasetStore';
-import { useTagGroupStore } from '@/stores/tagGroupStore';
-import { useSettingsStore } from '@/stores/settingsStore';
-import { useTagOperations } from '@/composables/useTagOperations';
+import { useDatasetStore } from "@/stores/datasetStore";
+import { useTagGroupsStore } from "@/stores/tagGroupsStore";
+import { useSettingsStore } from "@/stores/settingsStore";
+import { useTagOperations } from "@/composables/useTagOperations";
+import { ref, shallowRef, computed, toRaw } from "vue";
 
-import CopyIcon from '@/assets/icons/copy.svg';
-import SortArrowIcon from '@/assets/icons/sort-arrow.svg';
+import CopyIcon from "@/assets/icons/copy.svg";
+import SortArrowIcon from "@/assets/icons/sort-arrow.svg";
 
-const props = defineProps({
-    selectedImages: { type: Object as PropType<Set<string>>, required: true },
-    displayedTags: { type: Object as PropType<Set<string>>, required: true },
-    displayedGlobalTags: { type: Object as PropType<Set<string>>, required: true },
-    isFiltering: { type: Boolean, required: true },
-    filterInput: { type: String, required: true },
-});
+const props = defineProps<{
+    selectedImages: Set<string>;
+    displayedTags: Set<string>;
+    displayedGlobalTags: Set<string>;
+    isFiltering: boolean;
+    filterInput: string;
+}>();
 
-const sortOrder = defineModel<string>('sortOrder', { required: true });
-const globalSortMode = defineModel<string>('globalSortMode', { required: true });
-const globalSortOrder = defineModel<string>('globalSortOrder', { required: true });
-const globalTagFilterInput = defineModel<string>('globalTagFilterInput', { required: true });
+const sortOrder = defineModel<string>("sortOrder", { required: true });
+const globalSortMode = defineModel<string>("globalSortMode", { required: true });
+const globalSortOrder = defineModel<string>("globalSortOrder", { required: true });
+const globalTagFilterInput = defineModel<string>("globalTagFilterInput", { required: true });
 
-const tagInput = ref('');
-const globalTagInput = ref('');
-const editMode = ref<'individual' | 'mass'>('individual');
+const tagInput = ref("");
+const globalTagInput = ref("");
+const editMode = ref<"individual" | "mass">("individual");
 const tagPosition = ref(-1);
-const highlightInput = ref('');
+const highlightInput = ref("");
 const selectedTagGroups = ref<Set<string>>(new Set());
-const tagGroupFilterInput = ref('');
-const replaceSourceInput = ref('');
-const replaceTargetInput = ref('');
+const tagGroupFilterInput = ref("");
+const replaceSourceInput = ref("");
+const replaceTargetInput = ref("");
 const mainSectionContainer = shallowRef<HTMLDivElement | null>(null);
 const topSectionHeight = ref(50);
 const tagGroupWidth = ref(30);
@@ -39,24 +39,24 @@ const areTagsCopied = ref(false);
 
 const highlightRegexes = computed(() =>
     highlightInput.value
-        .split(',')
+        .split(",")
         .map((word) => word.trim())
         .filter(Boolean)
-        .map(word => new RegExp(`(^|[^\\p{L}])${escapeRegExp(word)}([^\\p{L}]|$)`, 'iu'))
+        .map(word => new RegExp(`(^|[^\\p{L}])${escapeRegExp(word)}([^\\p{L}]|$)`, "iu"))
 );
 
 const datasetStore = useDatasetStore();
-const tagGroupsStore = useTagGroupStore();
+const tagGroupsStore = useTagGroupsStore();
 const settingsStore = useSettingsStore();
 const tagOperations = useTagOperations();
 
 const tagEditorMainWidth = computed(() => 70 - tagGroupWidth.value);
 const showTopSection = computed(() =>
-    editMode.value === 'mass' ? true : settingsStore.showDiffSection
+    editMode.value === "mass" ? true : settingsStore.showDiffSection
 );
 
 function escapeRegExp(str: string) {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function matchesHighlight(tag: string) {
@@ -85,12 +85,12 @@ function resizeMainSection(moveEvent: MouseEvent) {
     }
 
     function onMouseUp() {
-        window.removeEventListener('mousemove', onMouseMove);
-        window.removeEventListener('mouseup', onMouseUp);
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
     }
 
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
 }
 
 function resizeTagGroupWidth(moveEvent: MouseEvent) {
@@ -110,12 +110,12 @@ function resizeTagGroupWidth(moveEvent: MouseEvent) {
     }
 
     function onMouseUp() {
-        window.removeEventListener('mousemove', onMouseMove);
-        window.removeEventListener('mouseup', onMouseUp);
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
     }
 
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
 }
 
 function addTag(tag?: string, imageId?: string) {
@@ -126,7 +126,7 @@ function addTag(tag?: string, imageId?: string) {
     const imageIds = imageId ? new Set([imageId]) : new Set(props.selectedImages);
     tagPosition.value = tagOperations.validateTagPosition(tagPosition.value);
     tagOperations.addTag(newTag, imageIds, tagPosition.value);
-    tagInput.value = '';
+    tagInput.value = "";
 }
 
 function addGlobalTag() {
@@ -135,7 +135,7 @@ function addGlobalTag() {
 
     tagPosition.value = tagOperations.validateTagPosition(tagPosition.value);
     tagOperations.addGlobalTag(globalTagInput.value, tagPosition.value);
-    globalTagInput.value = '';
+    globalTagInput.value = "";
 }
 
 function removeTag(tag: string, imageId?: string) {
@@ -168,7 +168,7 @@ function addOrRemoveTag(tag: string) {
 }
 
 function copyTextToClipboard(tags: Set<string>) {
-    navigator.clipboard.writeText([...tags].join(', '));
+    navigator.clipboard.writeText([...tags].join(", "));
     areTagsCopied.value = true;
 
     setTimeout(() => {
@@ -187,7 +187,7 @@ function handleTagGroupChange(tagGroup: string) {
         selectedTagGroups.value.add(tagGroup);
 }
 
-function replaceTag(mode: 'selected' | 'all') {
+function replaceTag(mode: "selected" | "all") {
     const originalTag = replaceSourceInput.value.trim();
     const tag = replaceTargetInput.value.trim();
     if (!tag || !originalTag || tag === originalTag)
@@ -195,11 +195,11 @@ function replaceTag(mode: 'selected' | 'all') {
 
     const rawDataset = toRaw(datasetStore.dataset);
 
-    const images = mode === 'selected' ? new Set(props.selectedImages) : new Set(rawDataset.keys());
+    const images = mode === "selected" ? new Set(props.selectedImages) : new Set(rawDataset.keys());
     tagOperations.replaceTag(originalTag, tag, images);
 
-    replaceSourceInput.value = '';
-    replaceTargetInput.value = '';
+    replaceSourceInput.value = "";
+    replaceTargetInput.value = "";
 }
 </script>
 

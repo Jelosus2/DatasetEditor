@@ -1,6 +1,7 @@
-import { onActivated, onDeactivated, watch, type Ref } from 'vue';
+import type { ArrowDirection } from "@/types/composables";
+import type { Ref } from "vue";
 
-type Direction = 'left' | 'right' | 'up' | 'down';
+import { onActivated, onDeactivated, watch } from "vue";
 
 export function useGridNavigation(
     imageKeys: Ref<string[]>,
@@ -40,7 +41,7 @@ export function useGridNavigation(
         return false;
     }
 
-    function navigateSelection(direction: Direction) {
+    function navigateSelection(direction: ArrowDirection) {
         const visibleKeys = getVisibleKeys();
         const total = visibleKeys.length;
         if (total === 0)

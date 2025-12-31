@@ -1,6 +1,6 @@
 {
   "extends": "@tsconfig/node22",
-  "include": ["app/**/*"],
+  "include": ["app/**/*", "shared/**/*"],
   "compilerOptions": {
     "module": "nodenext",
     "target": "es2023",

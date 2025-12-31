@@ -1,11 +1,12 @@
 <script setup lang="ts">
-defineProps({
-  isImage: {
-    type: Boolean,
-    required: true,
-    default: false
-  },
-});
+withDefaults(
+    defineProps<{
+        isImage?: boolean;
+    }>(),
+    {
+        isImage: false
+    }
+);
 </script>
 
 <template>

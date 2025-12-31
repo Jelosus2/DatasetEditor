@@ -1,32 +1,15 @@
+import type { Dataset, GlobalTags, RenameMapping } from "../../shared/dataset";
+import type { DatasetChangeRecord, TagDiffs } from "@/types/dataset-store";
+
 import { DatasetService } from "@/services/datasetService";
 import { useAlert } from "@/composables/useAlert";
 import { defineStore } from "pinia";
 import { ref, toRaw } from "vue";
 
-interface DatasetChangeRecord {
-    type: "add_tag" | "remove_tag" | "replace_tag";
-    images: Set<string>;
-    tags: Set<string>;
-    tagPosition?: number;
-    originalTag?: string;
-    newTag?: string;
-}
-
-export interface Image {
-    tags: Set<string>;
-    path: string;
-    filePath: string;
-}
-
-interface TagDiff {
-    tagger: Set<string>;
-    original: Set<string>;
-}
-
 export const useDatasetStore = defineStore("dataset", () => {
-    const dataset = ref<Map<string, Image>>(new Map());
-    const globalTags = ref<Map<string, Set<string>>>(new Map());
-    const tagDiff = ref<Map<string, TagDiff>>(new Map());
+    const dataset = ref<Dataset>(new Map());
+    const globalTags = ref<GlobalTags>(new Map());
+    const tagDiff = ref<TagDiffs>(new Map());
 
     const dataVersion = ref(0);
 
@@ -35,7 +18,7 @@ export const useDatasetStore = defineStore("dataset", () => {
     const sortMode = ref("none");
 
     const datasetService = new DatasetService();
-    const alerts = useAlert();
+    const alert = useAlert();
 
     function triggerUpdate() {
         dataVersion.value++;
@@ -284,7 +267,6 @@ export const useDatasetStore = defineStore("dataset", () => {
         }
 
         datasetRedoStack.value.push(change);
-        triggerUpdate();
     }
 
     function redoDatasetAction() {
@@ -306,7 +288,6 @@ export const useDatasetStore = defineStore("dataset", () => {
         }
 
         datasetUndoStack.value.push(change);
-        triggerUpdate();
     }
 
     function removeImages(imageIds: Iterable<string>) {
@@ -344,7 +325,7 @@ export const useDatasetStore = defineStore("dataset", () => {
         removeImages([imageId]);
     }
 
-    function renameImages(mappings: { from: string; to: string; mtime?: number }[]) {
+    function renameImages(mappings: RenameMapping[]) {
         if (mappings.length === 0)
             return;
 
@@ -406,14 +387,14 @@ export const useDatasetStore = defineStore("dataset", () => {
         if (!reload)
             resetDatasetStatus();
 
-        alerts.showAlert("success", "Dataset loaded successfully");
+        alert.showAlert("success", "Dataset loaded successfully");
 
         triggerUpdate();
     }
 
     async function saveDataset() {
         if (dataset.value.size === 0) {
-            alerts.showAlert("warning", "The dataset has not been loaded yet");
+            alert.showAlert("warning", "The dataset has not been loaded yet");
             return;
         }
 
@@ -447,5 +428,5 @@ export const useDatasetStore = defineStore("dataset", () => {
         loadDataset,
         saveDataset,
         isDatasetSaved
-    };
+    }
 });

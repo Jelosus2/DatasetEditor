@@ -12,3 +12,9 @@ export type RenamePair = {
     to: string;
     temp: string;
 }
+
+export type RenameMapping = {
+    from: string;
+    to: string;
+    mtime: number;
+}

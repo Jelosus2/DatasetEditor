@@ -12,9 +12,9 @@ import { useTagDisplay } from "@/composables/useTagDisplay";
 import { useDatasetStore } from "@/stores/datasetStore";
 import { ref, watch, computed, shallowRef, onActivated, onDeactivated } from "vue";
 
-const props = defineProps({
-    arePreviewsEnabled: { type: Boolean, required: true }
-});
+const props = defineProps<{
+    arePreviewsEnabled: boolean;
+}>();
 
 const filterMode = ref("or");
 const filterInput = ref("");

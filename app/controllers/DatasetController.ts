@@ -1,4 +1,4 @@
-import type { Dataset, GlobalTags, RenamePair } from "../types/dataset.js";
+import type { Dataset, GlobalTags, RenamePair } from "../../shared/dataset.js";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
@@ -48,13 +48,13 @@ export class DatasetController {
             const { dataset, globalTags } = await this.processDatasetDirectory(directoryPath, settings.recursiveDatasetLoad, settings.sortImagesAlphabetically);
             if (dataset.size === 0) {
                 App.logger.warning("[Dataset Manager] Skipping dataset load as it constains 0 elements");
-                return { error: false, canceled: true }
+                return { error: true, message: "Failed to load the dataset, check the logs for more information" }
             }
 
             this.originalDataset = dataset;
             this.loadedDirectory = directoryPath;
 
-            App.logger.info(`[Dataset Manager] Dataset loaded successfully`);
+            App.logger.info("[Dataset Manager] Dataset loaded successfully");
             return { error: false, dataset, globalTags }
         } catch (error) {
             console.error(error);

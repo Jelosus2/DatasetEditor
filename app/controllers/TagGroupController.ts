@@ -1,4 +1,5 @@
-import type { TagGroupsRaw, TagGroups } from "../types/tag-groups.js";
+import type { TagGroups } from "../../shared/tag-groups.js";
+import type { TagGroupsRaw } from "../types/tag-groups.js";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
@@ -34,6 +35,7 @@ export class TagGroupsController {
 
             this.originalTagGroups = tagGroups;
 
+            App.logger.info("[Tag Groups Manager] Tag groups loaded successfully");
             return { error: false, tagGroups }
         } catch (error) {
             console.error(error);
@@ -52,6 +54,7 @@ export class TagGroupsController {
             await fs.outputJson(App.paths.tagGroupsFilePath, jsonOutput, { spaces: 2, encoding: "utf-8" });
             this.originalTagGroups = tagGroups;
 
+            App.logger.info("[Tag Groups Manager] Tag groups saved successfully");
             return { error: false }
         } catch (error) {
             console.error(error);
@@ -75,8 +78,10 @@ export class TagGroupsController {
             });
 
             const filePath = result.filePaths[0];
-            if (!filePath)
-                return { error: false, tagGroups: null }
+            if (!filePath) {
+                App.logger.info("[Tag Groups Manager] Tag groups import was canceled by the user");
+                return { error: false, canceled: true }
+            }
 
             const data: TagGroupsRaw = await fs.readJson(filePath);
             if (!this.validateTagGroupsData(data)) {
@@ -113,8 +118,10 @@ export class TagGroupsController {
             });
 
             const filePath = result.filePath;
-            if (!filePath)
-                return { error: false }
+            if (!filePath) {
+                App.logger.info("[Tag Groups Manager] Tag groups export was canceled by the user");
+                return { error: false, canceled: true }
+            }
 
             const jsonOutput: TagGroupsRaw = {};
             for (const [groupName, tagsSet] of tagGroups)

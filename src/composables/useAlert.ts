@@ -1,9 +1,9 @@
-import { ref } from 'vue';
+import type { AlertType } from "@/types/alert";
 
-export type AlertType = 'success' | 'error' | 'warning' | 'info';
+import { ref } from "vue";
 
-const message = ref('');
-const type = ref<AlertType>('info');
+const message = ref("");
+const type = ref<AlertType>("info");
 const timestamp = ref(Date.now());
 
 export function useAlert() {

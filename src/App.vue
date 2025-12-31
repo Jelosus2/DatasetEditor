@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import NavbarComponent from '@/components/NavbarComponent.vue';
 import DatasetTab from '@/components/DatasetTab.vue';
-import TagGroupEditorComponent from '@/components/TagGroupEditorComponent.vue';
+import TagGroupsTab from '@/components/TagGroupsTab.vue';
 import AlertComponent from '@/components/AlertComponent.vue';
 import AutotaggerModalComponent from '@/components/AutotaggerModalComponent.vue';
 import SettingComponent from '@/components/SettingComponent.vue';
@@ -10,16 +10,17 @@ import WikiSearchModalComponent from '@/components/WikiSearchModalComponent.vue'
 import DuplicateFinderModalComponent from '@/components/DuplicateFinderModalComponent.vue';
 import RenameFilesModalComponent from '@/components/RenameFilesModalComponent.vue';
 
-import { ref, onMounted } from 'vue';
+import type { ActiveTab } from '@/types/app';
+
 import { useDatasetStore } from '@/stores/datasetStore';
-import { useTagGroupStore } from '@/stores/tagGroupStore';
+import { useTagGroupsStore } from '@/stores/tagGroupsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { useIpcRenderer } from '@/composables/useIpcRenderer';
 import { useAlert } from '@/composables/useAlert';
 import { AppController } from '@/controllers/AppController';
+import { ref, onMounted } from 'vue';
 
-type ActiveTab = "dataset" | "tag-groups" | "settings" | "logs";
 
 const arePreviewsEnabled = ref(false);
 const datasetTab = ref<InstanceType<typeof DatasetTab> | null>(null);
@@ -28,7 +29,7 @@ const activeTab = ref<ActiveTab>("dataset");
 const { message: alertMessage, type: alertType, timestamp: alertTimestamp, showAlert } = useAlert();
 
 const datasetStore = useDatasetStore();
-const tagGroupsStore = useTagGroupStore();
+const tagGroupsStore = useTagGroupsStore();
 const settingsStore = useSettingsStore();
 
 const appController = new AppController({
@@ -89,7 +90,7 @@ onMounted(async () => {
 
       <input type="radio" name="editor_tabs" class="tab" aria-label="Tag Groups" value="tag-groups" v-model="activeTab" />
       <KeepAlive>
-        <TagGroupEditorComponent v-if="activeTab === 'tag-groups'" @trigger_alert="showAlert" />
+        <TagGroupsTab v-if="activeTab === 'tag-groups'" />
       </KeepAlive>
 
       <input type="radio" name="editor_tabs" class="tab" aria-label="Settings" value="settings" v-model="activeTab" />
