@@ -1,4 +1,7 @@
+import { AppStatusPayload } from "../../shared/app-status.js";
+
 import { ipcMain, BrowserWindow } from "electron";
+import { Logger } from "../utils/Logger.js";
 import { App } from "../App.js";
 
 export class WindowManager {
@@ -25,6 +28,8 @@ export class WindowManager {
                 devTools: App.IS_DEVELOPMENT || this.debugFlag,
             },
         });
+
+        App.logger = Logger.setupLogging(this.mainWindow);
 
         if (this.mainWindow.isMaximizable())
             this.mainWindow.maximize();
@@ -79,5 +84,9 @@ export class WindowManager {
 
     ipcSend(channel: string, ...args: unknown[]) {
         this.mainWindow?.webContents.send(channel, ...args);
+    }
+
+    sendStatus(payload: AppStatusPayload) {
+        this.ipcSend("app:status", payload);
     }
 }

@@ -1,4 +1,4 @@
-import type { Settings } from "./types/settings.js";
+import type { Settings } from "../shared/settings-schema.js";
 
 import { SettingsManager } from "./settings/SettingsManager.js";
 import { UpdateManager } from "./updater/UpdateManager.js";
@@ -30,9 +30,9 @@ export class App {
         // Check if it's a portable installation
         const portableTestPath = path.join(path.dirname(app.getPath("exe")), "Uninstall Dataset Editor.exe");
         if (!this.IS_DEVELOPMENT && await fs.pathExists(portableTestPath))
-            basePath = process.resourcesPath
+            basePath = process.resourcesPath;
 
-        return basePath
+        return basePath;
     }
 
     static async isPortableInstallation() {
@@ -71,19 +71,18 @@ export class App {
         }
     }
 
-    static async onAppReady(settings: Settings | null) {
+    static async onAppReady(settings: Settings) {
         try {
             await this.window.createMainWindow();
-            this.logger = Logger.setupLogging(this.window.mainWindow!);
 
             this.database.tryLoadDefaultCsv();
             this.setupDanbooruRefererHeader();
 
-            if (settings?.autoCheckUpdates && !this.isPortableInstallation())
+            if (settings.autoCheckUpdates && !this.isPortableInstallation())
                 this.updater.checkForUpdates();
         } catch (error) {
             console.error(error);
-            this.logger?.error(`[App] Error during initialization: ${Utilities.getErrorMessage(error)}`);
+            this.logger.error(`[App] Error during initialization: ${Utilities.getErrorMessage(error)}`);
         }
     }
 
@@ -118,5 +117,33 @@ export class App {
 
     static async showSaveDialog(options: Electron.SaveDialogOptions) {
         return await dialog.showSaveDialog(this.window.mainWindow!, options);
+    }
+
+    static async importTagsCsvFromDialog() {
+        try {
+            const result = await this.showOpenDialog({
+                title: "Select the tags CSV file",
+                properties: ["openFile"],
+                filters: [
+                    {
+                        name: "CSV File",
+                        extensions: ["csv"]
+                    }
+                ],
+            });
+
+            const filePath = result.filePaths[0];
+            if (!filePath)
+                return { error: false, canceled: true }
+
+            await this.database.loadCsv(filePath, /* resetTable = */ true);
+
+            this.logger.info("[Database Manager] Successfully inserted tags into the database");
+            return { error: false }
+        } catch (error) {
+            console.log(error);
+            this.logger.error(`[Database Manager] Failed to insert tags into database: ${Utilities.getErrorMessage(error)}`);
+            return { error: true, message: "Failed to insert tags, check the logs for more information" }
+        }
     }
 }

@@ -127,7 +127,7 @@ onUnmounted(() => {
 
 <template>
   <input type="checkbox" id="crop_image_modal" class="modal-toggle" />
-  <div class="modal" role="dialog" @click.stop>
+  <div class="modal z-50" role="dialog" @click.stop>
     <div class="modal-box w-11/12 max-w-5xl" @click.stop>
       <label for="crop_image_modal" class="absolute right-2 top-1 cursor-pointer">✕</label>
       <div class="flex items-center justify-center gap-4">

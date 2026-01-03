@@ -1,14 +1,6 @@
-export type Settings = {
-    showTagCount: boolean;
-    showDiffSection: boolean;
-    showCaptionDiffList: boolean;
-    showTagGroups: boolean;
-    theme: string;
-    autocomplete: boolean;
-    tagsIgnored: string[];
-    taggerPort: number;
-    recursiveDatasetLoad: boolean;
-    autoCheckUpdates: boolean;
-    sortImagesAlphabetically: boolean;
-    enableHardwareAcceleration: boolean;
-}
+import type { AppSettings } from "../settings/AppSettings.ts";
+import type { SettingDefinition } from "../../shared/settings-schema.js";
+
+export type AppSettingKey = keyof AppSettings;
+export type AppSettingValue = AppSettings[AppSettingKey];
+export type TypedSettingDef = Omit<SettingDefinition, "key"> & { key: AppSettingKey };

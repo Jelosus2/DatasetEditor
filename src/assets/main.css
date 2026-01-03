@@ -16,7 +16,7 @@
         line-height: 1.428571;
     }
 
-    .btn-sm, .btn-xs {
+    .btn-xs {
         --size-field: 0.3rem;
     }
 

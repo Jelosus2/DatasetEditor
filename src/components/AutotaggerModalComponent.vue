@@ -165,7 +165,7 @@ onUnmounted(() => {
 
 <template>
   <input type="checkbox" id="autotagger_modal" class="modal-toggle" />
-  <div class="modal" role="dialog">
+  <div class="modal z-50" role="dialog">
     <div class="modal-box w-11/12 max-w-6xl">
       <label for="autotagger_modal" class="absolute top-1 right-2 cursor-pointer">✕</label>
       <div class="flex h-[500px] gap-3">

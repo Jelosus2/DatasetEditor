@@ -9,8 +9,15 @@ export interface ShortcutConfig {
   preventDefault?: boolean;
 }
 
-export function useKeyboardShortcuts(shortcuts: ShortcutConfig[]) {
+export interface ShortcutOptions {
+  isEnabled?: () => boolean;
+}
+
+export function useKeyboardShortcuts(shortcuts: ShortcutConfig[], options: ShortcutOptions = {}) {
+  const isEnabled = options.isEnabled ?? (() => true);
+
   const handleKeydown = async (event: KeyboardEvent) => {
+    if (!isEnabled()) return;
     if (event.repeat) return;
 
     for (const shortcut of shortcuts) {

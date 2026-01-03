@@ -75,7 +75,7 @@ const updateInfo = computed(() => {
         </div>
         <ul
           tabindex="0"
-          class="dropdown-content menu z-1 w-55 rounded-box bg-base-100 p-2 shadow"
+          class="dropdown-content menu z-20 w-55 rounded-box bg-base-100 p-2 shadow"
         >
           <li @click="emit('load_dataset')">
             <div class="justify-between">
@@ -119,7 +119,7 @@ const updateInfo = computed(() => {
         </div>
         <ul
           tabindex="0"
-          class="dropdown-content menu z-1 w-52 rounded-box bg-base-100 p-2 shadow"
+          class="dropdown-content menu z-20 w-52 rounded-box bg-base-100 p-2 shadow"
         >
           <li @click="emit('undo')">
             <div class="justify-between">
@@ -153,7 +153,7 @@ const updateInfo = computed(() => {
         </div>
         <ul
           tabindex="0"
-          class="dropdown-content menu z-1 w-52 rounded-box bg-base-100 p-2 shadow"
+          class="dropdown-content menu z-20 w-52 rounded-box bg-base-100 p-2 shadow"
         >
           <li>
             <div @click.self="arePreviewsEnabled = !arePreviewsEnabled">
@@ -173,7 +173,7 @@ const updateInfo = computed(() => {
         </div>
         <ul
           tabindex="0"
-          class="dropdown-content menu z-1 w-75 rounded-box bg-base-100 p-2 shadow"
+          class="dropdown-content menu z-20 w-75 rounded-box bg-base-100 p-2 shadow"
         >
           <li>
             <label for="autotagger_modal">Autotag Images</label>

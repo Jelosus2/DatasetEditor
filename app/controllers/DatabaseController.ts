@@ -22,27 +22,6 @@ export class DatabaseController {
 
     @IpcHandle("database:load_csv")
     async loadCsv() {
-        try {
-            const result = await App.showOpenDialog({
-                title: "Select the autocomplete file",
-                properties: ["openFile"],
-                filters: [
-                    {
-                        name: "CSV File",
-                        extensions: ["csv"],
-                    },
-                ],
-            });
-
-            const filePath = result.filePaths[0];
-            if (!filePath)
-                return;
-
-            await App.database.loadCsv(filePath);
-            App.logger.info("[Database Manager] Imported tags from CSV file successfully");
-        } catch (error) {
-            console.log(error);
-            App.logger.error(`[Database Manager] Error while loading CSV file into database: ${Utilities.getErrorMessage(error)}`);
-        }
+        return await App.importTagsCsvFromDialog();
     }
 }

@@ -18,6 +18,7 @@ export class AppController {
 
   async initialize() {
     await this.deps.tagGroupsStore.loadTagGroups();
+    await this.deps.settingsStore.loadSchema();
     await this.deps.settingsStore.loadSettings();
     this.deps.settingsStore.loadTheme();
   }
@@ -68,10 +69,8 @@ export class AppController {
       } else if (activeTab === 'Tag Groups') {
         await this.deps.tagGroupsStore.saveTagGroups();
       } else if (activeTab === 'Settings') {
-        this.logStore.addLog('info', 'Saving settings');
+        // TODO: Make that it shows alert when trying to save through shortcut but there's no actual changes.
         await this.deps.settingsStore.saveSettings();
-        this.deps.showAlert('success', 'Settings saved successfully');
-        this.logStore.addLog('info', 'Settings saved');
       }
     } catch (error) {
       this.deps.showAlert('error', (error as Error).message);

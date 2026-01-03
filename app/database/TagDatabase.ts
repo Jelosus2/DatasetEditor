@@ -1,4 +1,3 @@
-import type { Database as DatabaseType } from "better-sqlite3";
 import type { TagBatch } from "../types/database.js";
 
 import { Utilities } from "../utils/Utilities.js";
@@ -8,9 +7,9 @@ import fs from "fs-extra";
 
 export class TagDatabase {
     readonly BATCH_SIZE = 2000;
-    database: DatabaseType;
+    database: ReturnType<typeof Database>;
 
-    constructor(database: DatabaseType) {
+    constructor(database: ReturnType<typeof Database>) {
         this.database = database;
     }
 
@@ -64,7 +63,30 @@ export class TagDatabase {
                 statement.run(row.tag, row.type, row.results);
         });
 
-        await App.paths.readTagsCsv(csvPath, this.BATCH_SIZE, /* onBatchComplete = */ insertMany);
+        const taskId = "db:load_csv";
+        const title = "Loading tags into the database";
+        let taskError = false;
+        let globalProgress = 0;
+
+        App.window.sendStatus({ id: taskId, title, state: "start" });
+
+        await App.paths.readTagsCsv(csvPath, this.BATCH_SIZE, (batch, progress, error) => {
+            if (batch.length > 0) {
+                insertMany(batch);
+                globalProgress = progress;
+
+                App.window.sendStatus({ id: taskId, title, message: `Inserted ${progress} tags...`, state: "progress" });
+            }
+
+            if (error) {
+                App.window.sendStatus({ id: taskId, title, message: "Failed to insert tags, check the logs for more information", state: "error" });
+                App.logger.error(`[Database Manager] Error while loading CSV file into database: ${Utilities.getErrorMessage(error)}`);
+                taskError = true;
+            }
+        });
+
+        if (!taskError)
+            App.window.sendStatus({ id: taskId, title, message: `Successfully inserted ${globalProgress} tags`, state: "success" });
     }
 
     retrieveTagCompletions(tagHint: string) {

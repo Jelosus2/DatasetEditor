@@ -57,7 +57,7 @@ onUnmounted(() => {
 
 <template>
   <input type="checkbox" id="danbooru_wiki_modal" class="modal-toggle" />
-  <div class="modal" role="dialog">
+  <div class="modal z-50" role="dialog">
     <div class="modal-box w-11/12 max-w-5xl h-9/12">
       <label for="danbooru_wiki_modal" class="absolute right-2 top-1 cursor-pointer">✕</label>
       <div class="flex justify-center items-end gap-2 pb-4">

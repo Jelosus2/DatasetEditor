@@ -48,49 +48,61 @@ export class PathsBuilder {
 
     }
 
-    async readTagsCsv(csvPath: string, batchSize: number, onBatchComplete: (batch: TagBatch[]) => void) {
-        const stream = fs.createReadStream(csvPath);
-        const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-
+    async readTagsCsv(csvPath: string, batchSize: number, onBatchComplete: (batch: TagBatch[], progress: number, error?: unknown) => void) {
         let batch: TagBatch[] = [];
         let processedCount = 0;
 
-        for await (const line of rl) {
-            if (!line.trim())
-                continue;
+        try {
+            const stream = fs.createReadStream(csvPath);
+            const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
 
-            const cleanLine = line.replaceAll('"', "");
-            const parts = cleanLine.split(",");
+            for await (const line of rl) {
+                if (!line.trim())
+                    continue;
 
-            if (parts.length < 3)
-                continue;
+                const cleanLine = line.replaceAll('"', "");
+                const parts = cleanLine.split(",");
 
-            const tag = parts[0].replaceAll("_", " ");
-            const type = parts[1];
-            const results = parts[2];
+                if (parts.length < 3)
+                    continue;
 
-            if (!Utilities.isStringNumeric(type) || !Utilities.isStringNumeric(results))
-                continue;
+                const tag = parts[0].replaceAll("_", " ");
+                const type = parts[1];
+                const results = parts[2];
 
-            batch.push({
-                tag,
-                type: parseInt(type, 10),
-                results: parseInt(results, 10)
-            });
+                if (!Utilities.isStringNumeric(type) || !Utilities.isStringNumeric(results))
+                    continue;
 
-            if (batch.length >= batchSize) {
-                onBatchComplete(batch);
-                processedCount += batch.length;
-                batch = [];
+                batch.push({
+                    tag,
+                    type: parseInt(type, 10),
+                    results: parseInt(results, 10)
+                });
+
+                if (batch.length >= batchSize) {
+                    processedCount += batch.length;
+                    onBatchComplete(batch, processedCount);
+                    batch = [];
+                }
             }
-        }
 
-        if (batch.length > 0) {
-            onBatchComplete(batch);
-            processedCount += batch.length;
-        }
+            if (batch.length > 0) {
+                processedCount += batch.length;
+                onBatchComplete(batch, processedCount);
+            }
 
-        console.log(`[CSV Reader] Successfully processed ${processedCount} tags`);
+            console.log(`[CSV Reader] Successfully processed ${processedCount} tags`);
+        } catch (error) {
+            console.error(error);
+
+            if (batch.length > 0) {
+                processedCount += batch.length;
+                onBatchComplete(batch, processedCount, error);
+                return;
+            }
+
+            onBatchComplete([], 0, error);
+        }
     }
 
     __dirname(fileURL: string): string {

@@ -105,7 +105,7 @@ function renameTagGroup(event: KeyboardEvent) {
                     v-for="[name, tags] in tagGroupsList"
                     v-memo="[name, tags.size]"
                     :key="name"
-                    class="collapse shrink-0 rounded-none border border-base-300 bg-base-100"
+                    class="collapse shrink-0 rounded-none border border-base-content/30 bg-base-100"
                 >
                     <input type="checkbox" />
                     <div class="collapse-title pr-4 text-center font-semibold break-all">

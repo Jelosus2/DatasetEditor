@@ -194,7 +194,7 @@ defineExpose({ selectAllImages });
                 ></div>
                 <div
                     v-if="arePreviewsEnabled && previewImage"
-                    class="absolute inset-0 z-2 flex items-center justify-center"
+                    class="absolute inset-0 z-30 flex items-center justify-center"
                 >
                     <div class="bg-transparent p-2">
                         <img

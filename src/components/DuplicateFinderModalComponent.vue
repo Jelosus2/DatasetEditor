@@ -186,7 +186,7 @@ watch(() => results.value, () => {
 
 <template>
   <input type="checkbox" id="duplicate_finder_modal" class="modal-toggle" />
-  <div class="modal" role="dialog">
+  <div class="modal z-50" role="dialog">
     <div class="modal-box w-11/12 max-w-5xl h-11/12 max-h-11/12 overflow-y-auto">
       <label for="duplicate_finder_modal" class="absolute right-2 top-1 cursor-pointer" @click="resetState">✕</label>
       <div class="flex flex-col gap-3">
@@ -268,7 +268,7 @@ watch(() => results.value, () => {
               </div>
             </div>
           </div>
-          <div v-if="keepMode" class="sticky bottom-0 left-0 right-0 z-10">
+          <div v-if="keepMode" class="sticky bottom-0 left-0 right-0 z-30">
             <div class="flex justify-center">
               <button class="btn btn-error no-disabled-opacity" :disabled="trashing" @click="trashNotKept">
                 <span v-if="trashing" class="loading loading-spinner mr-1 h-4 w-4"></span>

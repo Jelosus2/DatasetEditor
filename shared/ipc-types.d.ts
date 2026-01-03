@@ -1,4 +1,6 @@
+import type { SettingsDefinition, Settings } from "./settings-schema";
 import type { Dataset, GlobalTags } from "./dataset";
+import type { AppStatusPayload } from "./app-status";
 import type { TagGroups } from "./tag-groups";
 import type { LogType } from "./log";
 
@@ -46,10 +48,45 @@ export type IpcInvokeMap = {
         args: [tagGroups: TagGroups];
         result: boolean;
     }
+    "settings:get_schema": {
+        args: [];
+        result: SettingsDefinition[];
+    }
+    "settings:load": {
+        args: [];
+        result: Settings;
+    }
+    "settings:update": {
+        args: [partial: Partial<Settings>];
+        result: {
+            error: boolean;
+            message?: string;
+            settings?: Settings;
+        }
+    }
+    "settings:compare": {
+        args: [settings: Settings];
+        result: boolean;
+    }
+    "settings:action": {
+        args: [actionId: string];
+        result: {
+            error: boolean;
+            canceled?: boolean;
+            message?: string;
+        }
+    }
+    "utilities:restart_app": {
+        args: [];
+        result: void;
+    }
 }
 
 export type IpcOnMap = {
     "app:log": {
         args: [{ type: LogType; message: string; }];
+    }
+    "app:status": {
+        args: [AppStatusPayload];
     }
 }

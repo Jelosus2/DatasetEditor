@@ -1,241 +1,249 @@
-import { defineStore } from 'pinia';
-import { ref, toRaw, watch, type Ref } from 'vue';
-import { SettingsService } from '@/services/settingsService';
+import type { SettingsDefinition, Settings } from "../../shared/settings-schema";
+import type { SettingsChangeRecord } from "@/types/settings-store";
 
-export interface Settings {
-  showTagCount: boolean;
-  showDiffSection: boolean;
-  showCaptionDiffList: boolean;
-  showTagGroups: boolean;
-  theme: string;
-  autocomplete: boolean;
-  autocompleteFile: string;
-  tagsIgnored: string[];
-  taggerPort: number;
-  recursiveDatasetLoad: boolean;
-  autoCheckUpdates: boolean;
-  sortImagesAlphabetically: boolean;
-}
+import { SettingsService } from "@/services/settingsService";
+import { computed, reactive, ref, toRaw } from "vue";
+import isEqual from "lodash/isEqual";
+import { defineStore } from "pinia";
 
-interface SettingsChangeRecord {
-  key: keyof Settings;
-  previous: Settings[keyof Settings];
-  value: Settings[keyof Settings];
-}
-
-export const useSettingsStore = defineStore('settings', () => {
-  const showTagCount = ref<boolean>(false);
-  const showDiffSection = ref<boolean>(true);
-  const showCaptionDiffList = ref<boolean>(true);
-  const showTagGroups = ref<boolean>(true);
-  const theme = ref<string>('dark');
-  const autocomplete = ref<boolean>(true);
-  const autocompleteFile = ref<string>('');
-  const tagsIgnored = ref<string[]>([]);
-  const taggerPort = ref<number>(3067);
-  const recursiveDatasetLoad = ref<boolean>(false);
-  const autoCheckUpdates = ref<boolean>(true);
-  const sortImagesAlphabetically = ref<boolean>(false);
-  const settingsUndoStack = ref<SettingsChangeRecord[]>([]);
-  const settingsRedoStack = ref<SettingsChangeRecord[]>([]);
-  const isInitialized = ref(false);
-  const settingsService = new SettingsService();
-  const settingsMap: Record<keyof Settings, Ref<Settings[keyof Settings]>> = {
-    showTagCount,
-    showDiffSection,
-    showCaptionDiffList,
-    showTagGroups,
-    theme,
-    autocomplete,
-    autocompleteFile,
-    tagsIgnored,
-    taggerPort,
-    recursiveDatasetLoad,
-    autoCheckUpdates,
-    sortImagesAlphabetically,
-  };
-
-  function pushSettingsChange(change: SettingsChangeRecord) {
-    settingsUndoStack.value.push(change);
-    settingsRedoStack.value = [];
-  }
-
-  function undoSettingsAction() {
-    const change = settingsUndoStack.value.pop();
-    if (!change) return;
-
-    settingsRedoStack.value.push(change);
-    isInitialized.value = false;
-    settingsMap[change.key].value = change.previous as Settings[keyof Settings];
-
-    if (change.key === 'theme') loadTheme(theme.value);
-    setTimeout(() => isInitialized.value = true, 0);
-  }
-
-  function redoSettingsAction() {
-    const change = settingsRedoStack.value.pop();
-    if (!change) return;
-
-    settingsUndoStack.value.push(change);
-    isInitialized.value = false;
-    settingsMap[change.key].value = change.value as Settings[keyof Settings];
-
-    if (change.key === 'theme') loadTheme(theme.value);
-    setTimeout(() => isInitialized.value = true, 0);
-  }
-
-  function resetSettingsStatus() {
-    settingsUndoStack.value = [];
-    settingsRedoStack.value = [];
-  }
-
-  watch(showTagCount, (newVal, oldVal) => {
-    if (!isInitialized.value) return;
-    pushSettingsChange({ key: 'showTagCount', previous: oldVal, value: newVal });
-  });
-
-  watch(showDiffSection, (newVal, oldVal) => {
-    if (!isInitialized.value) return;
-    pushSettingsChange({ key: 'showDiffSection', previous: oldVal, value: newVal });
-  });
-
-  watch(showCaptionDiffList, (newVal, oldVal) => {
-    if (!isInitialized.value) return;
-    pushSettingsChange({ key: 'showCaptionDiffList', previous: oldVal, value: newVal });
-  });
-
-  watch(showTagGroups, (newVal, oldVal) => {
-    if (!isInitialized.value) return;
-    pushSettingsChange({ key: 'showTagGroups', previous: oldVal, value: newVal });
-  });
-
-  watch(theme, (newVal, oldVal) => {
-    if (!isInitialized.value) return;
-    pushSettingsChange({ key: 'theme', previous: oldVal, value: newVal });
-  });
-
-  watch(autocomplete, (newVal, oldVal) => {
-    if (!isInitialized.value) return;
-    pushSettingsChange({ key: 'autocomplete', previous: oldVal, value: newVal });
-  });
-
-  watch(autocompleteFile, (newVal, oldVal) => {
-    if (!isInitialized.value) return;
-    pushSettingsChange({ key: 'autocompleteFile', previous: oldVal, value: newVal });
-  });
-
-  watch(tagsIgnored, (newVal, oldVal) => {
-    if (!isInitialized.value) return;
-    pushSettingsChange({ key: 'tagsIgnored', previous: [...oldVal], value: [...newVal] });
-  });
-
-  watch(taggerPort, (newVal, oldVal) => {
-    if (!isInitialized.value) return;
-    pushSettingsChange({ key: 'taggerPort', previous: oldVal, value: newVal });
-  });
-
-  watch(recursiveDatasetLoad, (newVal, oldVal) => {
-    if (!isInitialized.value) return;
-    pushSettingsChange({ key: 'recursiveDatasetLoad', previous: oldVal, value: newVal });
-  });
-
-  watch(autoCheckUpdates, (newVal, oldVal) => {
-    if (!isInitialized.value) return;
-    pushSettingsChange({ key: 'autoCheckUpdates', previous: oldVal, value: newVal });
-  });
-
-  watch(sortImagesAlphabetically, (newVal, oldVal) => {
-    if (!isInitialized.value) return;
-    pushSettingsChange({ key: 'sortImagesAlphabetically', previous: oldVal, value: newVal });
-  });
-
-  async function loadSettings() {
-    isInitialized.value = false;
-    const settings = (await settingsService.loadSettings()) as Settings;
-    theme.value = settings.theme ?? theme.value;
-    showTagCount.value = settings.showTagCount ?? showTagCount.value;
-    showDiffSection.value = settings.showDiffSection ?? showDiffSection.value;
-    showCaptionDiffList.value = settings.showCaptionDiffList ?? showCaptionDiffList.value;
-    showTagGroups.value = settings.showTagGroups ?? showTagGroups.value;
-    autocomplete.value = settings.autocomplete ?? autocomplete.value;
-    autocompleteFile.value = settings.autocompleteFile ?? autocompleteFile.value;
-    tagsIgnored.value = [...new Set(settings.tagsIgnored ?? tagsIgnored.value)];
-    taggerPort.value = settings.taggerPort ?? taggerPort.value;
-    recursiveDatasetLoad.value = settings.recursiveDatasetLoad ?? recursiveDatasetLoad.value;
-    autoCheckUpdates.value = settings.autoCheckUpdates ?? autoCheckUpdates.value;
-    sortImagesAlphabetically.value = settings.sortImagesAlphabetically ?? sortImagesAlphabetically.value;
-    resetSettingsStatus();
-    isInitialized.value = true;
-  }
-
-  async function saveSettings() {
-    await settingsService.saveSettings({
-      showTagCount: toRaw(showTagCount.value),
-      showDiffSection: toRaw(showDiffSection.value),
-      showCaptionDiffList: toRaw(showCaptionDiffList.value),
-      showTagGroups: toRaw(showTagGroups.value),
-      theme: toRaw(theme.value),
-      autocomplete: toRaw(autocomplete.value),
-      autocompleteFile: toRaw(autocompleteFile.value),
-      tagsIgnored: [...new Set(tagsIgnored.value)],
-      taggerPort: toRaw(taggerPort.value),
-      recursiveDatasetLoad: toRaw(recursiveDatasetLoad.value),
-      autoCheckUpdates: toRaw(autoCheckUpdates.value),
-      sortImagesAlphabetically: toRaw(sortImagesAlphabetically.value),
+export const useSettingsStore = defineStore("settings", () => {
+    const settings = reactive<Settings>({
+        showTagCount: false,
+        showDiffSection: true,
+        showCaptionDiffList: true,
+        showTagGroups: true,
+        theme: "dark",
+        autocomplete: true,
+        tagsIgnored: [],
+        taggerPort: 3067,
+        recursiveDatasetLoad: false,
+        autoCheckUpdates: true,
+        sortImagesAlphabetically: false,
+        enableHardwareAcceleration: true
     });
-    resetSettingsStatus();
-  }
 
-  async function areSettingsSaved() {
-    return settingsService.compareSettingsChanges({
-      showTagCount: toRaw(showTagCount.value),
-      showDiffSection: toRaw(showDiffSection.value),
-      showCaptionDiffList: toRaw(showCaptionDiffList.value),
-      showTagGroups: toRaw(showTagGroups.value),
-      theme: toRaw(theme.value),
-      autocomplete: toRaw(autocomplete.value),
-      autocompleteFile: toRaw(autocompleteFile.value),
-      tagsIgnored: [...new Set(tagsIgnored.value)],
-      taggerPort: toRaw(taggerPort.value),
-      recursiveDatasetLoad: toRaw(recursiveDatasetLoad.value),
-      autoCheckUpdates: toRaw(autoCheckUpdates.value),
-      sortImagesAlphabetically: toRaw(sortImagesAlphabetically.value),
+    const settingsUndoStack = ref<SettingsChangeRecord[]>([]);
+    const settingsRedoStack = ref<SettingsChangeRecord[]>([]);
+    const schema = ref<SettingsDefinition[]>([]);
+    const lastSaved = ref<Settings | null>(null);
+    const showRestartPrompt = ref(false);
+    const isApplying = ref(false);
+
+    const hasChanges = computed(() => {
+        if (!lastSaved.value)
+            return false;
+
+        return !isEqual(buildSettings(/* snapshot = */ true), lastSaved.value);
     });
-  }
 
-  function loadTheme(th?: string) {
-    const app = document.documentElement;
-    app.dataset.theme = th || theme.value;
-    if (th) theme.value = th;
-  }
+    const restartKeys = computed(() =>
+        new Set(schema.value.filter((definition) => definition.requiresRestart).map((definition) => definition.key))
+    );
 
-  async function changeAutocompleteFile() {
-    const filePath = (await settingsService.changeAutocompleteFile()) as string | null;
-    if (filePath) {
-      autocompleteFile.value = filePath;
-      await saveSettings();
+    const restartRequired = computed(() => {
+        if (!lastSaved.value)
+            return false;
+
+        const current = buildSettings(/* snapshot = */ true);
+        for (const key of restartKeys.value) {
+            if (!isEqual(current[key], lastSaved.value[key]))
+                return true;
+        }
+
+        return false;
+    });
+
+    const settingsService = new SettingsService();
+
+    function normalizeValue<K extends keyof Settings>(key: K, value: Settings[K]) {
+        if (key === "tagsIgnored") {
+            const unique = [...new Set(value as string[])];
+            return unique as Settings[K];
+        }
+
+        return value;
     }
-  }
 
-  return {
-    showTagCount,
-    showDiffSection,
-    showCaptionDiffList,
-    showTagGroups,
-    theme,
-    autocomplete,
-    autocompleteFile,
-    tagsIgnored,
-    taggerPort,
-    recursiveDatasetLoad,
-    autoCheckUpdates,
-    sortImagesAlphabetically,
-    undoSettingsAction,
-    redoSettingsAction,
-    loadSettings,
-    saveSettings,
-    areSettingsSaved,
-    loadTheme,
-    changeAutocompleteFile,
-  };
+    function isSameValue(a: Settings[keyof Settings], b: Settings[keyof Settings]) {
+        return isEqual(a, b);
+    }
+
+    function applyTheme(value: string) {
+        document.documentElement.dataset.theme = value;
+    }
+
+    function recordHistory(change: SettingsChangeRecord) {
+        settingsUndoStack.value.push(change);
+        settingsRedoStack.value = [];
+    }
+
+    function getSetting<K extends keyof Settings>(key: K): Settings[K] {
+        return settings[key];
+    }
+
+    function setSetting<K extends keyof Settings>(key: K, value: Settings[K]) {
+        const normalized = normalizeValue(key, value);
+        const previous = settings[key];
+
+        if (isSameValue(previous, normalized))
+            return;
+
+        if (!isApplying.value)
+            recordHistory({ key, previous, value: normalized });
+        settings[key] = normalized;
+
+        if (key === "theme")
+            applyTheme(normalized as string);
+    }
+
+    function useSettingField<K extends keyof Settings>(key: K) {
+        return computed({
+            get: () => settings[key],
+            set: (value) => setSetting(key, value)
+        });
+    }
+
+    const showTagCount = useSettingField("showTagCount");
+    const showDiffSection = useSettingField("showDiffSection");
+    const showCaptionDiffList = useSettingField("showCaptionDiffList");
+    const showTagGroups = useSettingField("showTagGroups");
+    const theme = useSettingField("theme");
+    const autocomplete = useSettingField("autocomplete");
+    const tagsIgnored = useSettingField("tagsIgnored");
+    const taggerPort = useSettingField("taggerPort");
+    const recursiveDatasetLoad = useSettingField("recursiveDatasetLoad");
+    const autoCheckUpdates = useSettingField("autoCheckUpdates");
+    const sortImagesAlphabetically = useSettingField("sortImagesAlphabetically");
+    const enableHardwareAcceleration = useSettingField("enableHardwareAcceleration");
+
+    function buildSettings(snapshot: boolean = false) {
+        return {
+            ...(snapshot ? settings : toRaw(settings)),
+            tagsIgnored: [...settings.tagsIgnored]
+        }
+    }
+
+    function applySettings(next: Settings) {
+        isApplying.value = true;
+
+        for (const key of Object.keys(settings) as (keyof Settings)[]) {
+            const value = next[key];
+            if (value !== undefined)
+                setSetting(key, value);
+        }
+
+        isApplying.value = false;
+    }
+
+    function undoSettingsAction() {
+        const change = settingsUndoStack.value.pop();
+        if (!change)
+            return;
+
+        settingsRedoStack.value.push(change);
+
+        isApplying.value = true;
+        setSetting(change.key, change.previous);
+        isApplying.value = false;
+    }
+
+    function redoSettingsAction() {
+        const change = settingsRedoStack.value.pop();
+        if (!change)
+            return;
+
+        settingsUndoStack.value.push(change);
+
+        isApplying.value = true;
+        setSetting(change.key, change.value);
+        isApplying.value = false;
+    }
+
+    function resetSettingsStatus() {
+        settingsUndoStack.value = [];
+        settingsRedoStack.value = [];
+    }
+
+    async function loadSchema() {
+        schema.value = await settingsService.loadSchema();
+    }
+
+    async function loadSettings() {
+        const loaded = await settingsService.loadSettings();
+        applySettings(loaded);
+        resetSettingsStatus();
+        lastSaved.value = buildSettings();
+    }
+
+    async function saveSettings() {
+        const needsRestart = restartRequired.value;
+
+        const result = await settingsService.updateSettings(buildSettings());
+        if (result) {
+            applySettings(result);
+            resetSettingsStatus();
+            lastSaved.value = buildSettings();
+
+            if (needsRestart)
+                showRestartPrompt.value = true;
+        }
+    }
+
+    async function areSettingsSaved() {
+        return settingsService.compareSettings(buildSettings());
+    }
+
+    function dismissRestartPrompt() {
+        showRestartPrompt.value = false;
+    }
+
+    async function restartApp() {
+        showRestartPrompt.value = false;
+        await settingsService.restartApp();
+    }
+
+    function loadTheme(newTheme?: string) {
+        if (newTheme !== undefined) {
+            isApplying.value = true;
+            setSetting("theme", newTheme);
+            isApplying.value = false;
+        } else {
+            applyTheme(settings.theme);
+        }
+    }
+
+    async function importTagsFromCsv() {
+        await settingsService.importTagsFromCsv();
+    }
+
+    return {
+        showTagCount,
+        showDiffSection,
+        showCaptionDiffList,
+        showTagGroups,
+        theme,
+        autocomplete,
+        tagsIgnored,
+        taggerPort,
+        recursiveDatasetLoad,
+        autoCheckUpdates,
+        sortImagesAlphabetically,
+        enableHardwareAcceleration,
+        schema,
+        hasChanges,
+        restartRequired,
+        showRestartPrompt,
+        getSetting,
+        setSetting,
+        undoSettingsAction,
+        redoSettingsAction,
+        loadSchema,
+        loadSettings,
+        saveSettings,
+        dismissRestartPrompt,
+        restartApp,
+        areSettingsSaved,
+        loadTheme,
+        importTagsFromCsv
+    }
 });

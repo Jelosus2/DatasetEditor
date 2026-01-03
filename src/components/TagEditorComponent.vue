@@ -435,11 +435,11 @@ function replaceTag(mode: "selected" | "all") {
                     <button class="btn btn-outline btn-error" @click="selectedTagGroups.clear()">Close All</button>
                 </div>
                 <span>Tag Groups</span>
-                <div class="flex h-[calc(100%-50px)] flex-wrap content-start gap-2 overflow-auto pb-1">
+                <div class="mt-2 flex h-[calc(100%-50px)] flex-wrap content-start gap-2 overflow-auto pb-1">
                     <button
                         v-for="name in tagGroupsStore.tagGroups.keys()"
                         :key="name"
-                        class="btn text-sm font-normal"
+                        class="btn btn-sm"
                         :class="{
                             '[--btn-color:var(--color-rose-900)]': [...displayedTags].some((tag) => tagGroupsStore.tagGroups.get(name)?.has(tag)),
                             '[--btn-color:#a6d9e2] dark:[--btn-color:var(--color-gray-700)]': ![...displayedTags].some((tag) => tagGroupsStore.tagGroups.get(name)?.has(tag)),
@@ -453,7 +453,7 @@ function replaceTag(mode: "selected" | "all") {
             </div>
             <div class="h-[60%] overflow-auto border-t-3 dark:border-base-content/50">
                 <div v-for="name in selectedTagGroups" :key="name">
-                    <div class="divider my-2 text-sm">
+                    <div class="divider my-2">
                         {{ name }}
                         <span class="cursor-pointer border px-1 font-bold hover:text-error" @click="selectedTagGroups.delete(name)">X</span>
                     </div>
@@ -461,7 +461,7 @@ function replaceTag(mode: "selected" | "all") {
                         <div
                             v-for="tag in tagGroupsStore.tagGroups.get(name)"
                             :key="tag"
-                            class="h-fit w-fit px-1.5 text-sm hover:cursor-pointer"
+                            class="h-fit w-fit px-1.5 hover:cursor-pointer"
                             :class="{
                                 'bg-rose-900': displayedTags.has(tag),
                                 'bg-[#a6d9e2] dark:bg-gray-700': !displayedTags.has(tag),

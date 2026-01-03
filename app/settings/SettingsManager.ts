@@ -1,6 +1,9 @@
-import type { Settings } from "../types/settings.js";
+import type { AppSettingKey, AppSettingValue, TypedSettingDef } from "../types/settings.js";
+import type { Settings } from "../../shared/settings-schema.js";
 
+import { getSettingsMetadata } from "../decorators/settings.js";
 import { Utilities } from "../utils/Utilities.js";
+import { AppSettings } from "./AppSettings.js";
 import { App } from "../App.js";
 import fs from "fs-extra";
 import _ from "lodash";
@@ -12,43 +15,41 @@ export class SettingsManager {
         this.originalSettings = null;
     }
 
-    getDefaultSettings(): Settings {
-        return {
-            showTagCount: false,
-            showDiffSection: true,
-            showCaptionDiffList: true,
-            showTagGroups: true,
-            theme: 'dark',
-            autocomplete: true,
-            tagsIgnored: [],
-            taggerPort: 3067,
-            recursiveDatasetLoad: false,
-            autoCheckUpdates: true,
-            sortImagesAlphabetically: false,
-            enableHardwareAcceleration: true
-        };
+    getSchema() {
+        return getSettingsMetadata(AppSettings);
     }
 
-    async saveSettings(settings: Settings | null, isDarkThemeDefault?: boolean) {
-        if (!settings && await fs.pathExists(App.paths.settingsPath))
-            return;
+    private buildDefaults(overrides: Partial<Settings> = {}) {
+        const instance = new AppSettings();
+        const schema = this.getSchema() as TypedSettingDef[];
 
-        const defaultSettings = this.getDefaultSettings();
-        if (!settings && !isDarkThemeDefault)
-            defaultSettings.theme = "winter";
+        const defaults = {} as Record<AppSettingKey, AppSettingValue>;
 
-        settings = settings ?? defaultSettings;
-        await fs.outputJson(App.paths.settingsPath, settings, { spaces: 2, encoding: "utf-8" });
-        this.originalSettings = settings;
+        for (const item of schema) {
+            if (item.type === "action")
+                continue;
+
+            defaults[item.key] = instance[item.key];
+        }
+
+        return { ...defaults, ...overrides } as Settings;
+    }
+
+    async saveSettings(settings: Settings) {
+        const sanitized = this.buildDefaults(settings);
+        await fs.outputJson(App.paths.settingsPath, sanitized, { spaces: 2, encoding: "utf-8" });
+
+        this.originalSettings = sanitized;
+        return sanitized;
     }
 
     async loadSettings() {
         try {
             if (!await fs.pathExists(App.paths.settingsPath))
-                return this.getDefaultSettings();
+                return this.buildDefaults();
 
             const loadedSettings: Settings = await fs.readJson(App.paths.settingsPath, { encoding: "utf-8" });
-            const settings = { ...this.getDefaultSettings(), ...loadedSettings };
+            const settings = this.buildDefaults(loadedSettings);
 
             if (!_.isEqual(loadedSettings, settings))
                 await this.saveSettings(settings);
@@ -58,8 +59,14 @@ export class SettingsManager {
         } catch (error) {
             console.error(error);
             App.logger?.error(`[Settings Manager] Failed to load settings from file, using defaults: ${Utilities.getErrorMessage(error)}`);
-            return this.getDefaultSettings();
+            return this.buildDefaults();
         }
+    }
+
+    async updatePartial(partial: Partial<Settings>) {
+        const current = await this.loadSettings();
+        const settings = await this.saveSettings({ ...current, ...partial });
+        return settings;
     }
 
     compare(settings: Settings): boolean {
@@ -70,6 +77,13 @@ export class SettingsManager {
     }
 
     async initializeWithDefaults(isDarkThemeDefault: boolean) {
-        await this.saveSettings(null, isDarkThemeDefault);
+        if (await fs.pathExists(App.paths.settingsPath))
+            return;
+
+        const defaults = this.buildDefaults({
+            theme: isDarkThemeDefault ? "dark" : "winter"
+        });
+
+        await this.saveSettings(defaults);
     }
 }

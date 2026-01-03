@@ -10,7 +10,7 @@ withDefaults(
 </script>
 
 <template>
-  <dialog id="my_modal_1" class="modal z-1000">
+  <dialog id="my_modal_1" class="modal z-50">
     <div class="modal-box w-fit max-w-[90%]" :class="{ 'p-0': isImage }">
         <slot />
     </div>

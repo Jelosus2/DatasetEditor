@@ -80,7 +80,7 @@ async function beginRenaming() {
 
 <template>
   <input type="checkbox" id="rename_files_modal" class="modal-toggle" />
-  <div class="modal" role="dialog">
+  <div class="modal z-50" role="dialog">
     <div class="modal-box w-11/12 max-w-xl">
       <label for="rename_files_modal" class="absolute right-2 top-1 cursor-pointer" @click="resetState">✕</label>
       <div class="flex flex-col gap-4">
