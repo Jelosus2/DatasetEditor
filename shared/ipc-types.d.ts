@@ -76,6 +76,10 @@ export type IpcInvokeMap = {
             message?: string;
         }
     }
+    "utilities:open_url": {
+        args: [url: string];
+        result: void;
+    }
     "utilities:restart_app": {
         args: [];
         result: void;

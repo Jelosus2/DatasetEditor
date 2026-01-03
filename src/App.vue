@@ -6,7 +6,7 @@ import AlertComponent from '@/components/AlertComponent.vue';
 import AutotaggerModalComponent from '@/components/AutotaggerModalComponent.vue';
 import SettingsTab from '@/components/SettingsTab.vue';
 import RestartRequiredModal from '@/components/RestartRequiredModal.vue';
-import LogsComponent from '@/components/LogsComponent.vue';
+import LogsTab from '@/components/LogsTab.vue';
 import AppStatusOverlay from '@/components/AppStatusOverlay.vue';
 import WikiSearchModalComponent from '@/components/WikiSearchModalComponent.vue';
 import DuplicateFinderModalComponent from '@/components/DuplicateFinderModalComponent.vue';
@@ -111,7 +111,7 @@ onMounted(async () => {
 
       <input type="radio" name="editor_tabs" class="tab" aria-label="Logs" value="logs" v-model="activeTab" />
       <KeepAlive>
-        <LogsComponent v-if="activeTab === 'logs'" />
+        <LogsTab v-if="activeTab === 'logs'" />
       </KeepAlive>
     </div>
   </div>

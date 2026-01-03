@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import ModalComponent from "@/components/ModalComponent.vue";
-import ImageGridComponent from "@/components/ImageGridComponent.vue";
-import TagEditorComponent from "@/components/TagEditorComponent.vue";
+import ImageGrid from "@/components/ImageGrid.vue";
+import TagEditor from "@/components/TagEditor.vue";
 import BackgroundColorModalComponent from "@/components/BackgroundColorModalComponent.vue";
 import CropImageModalComponent from "@/components/CropImageModalComponent.vue";
 
@@ -174,7 +174,7 @@ defineExpose({ selectAllImages });
                 :style="{ width: containerWidth + 'px' }"
                 ref="container"
             >
-                <ImageGridComponent
+                <ImageGrid
                     v-model:selected-images="selectedImages"
                     v-model:filter-input="filterInput"
                     v-model:filter-mode="filterMode"
@@ -219,7 +219,7 @@ defineExpose({ selectAllImages });
                         No image selected
                     </div>
                 </div>
-                <TagEditorComponent
+                <TagEditor
                     :selected-images="selectedImages"
                     :displayed-tags="displayedTags"
                     :displayed-global-tags="displayedGlobalTags"
