@@ -42,8 +42,65 @@ const highlightRegexes = computed(() =>
         .split(",")
         .map((word) => word.trim())
         .filter(Boolean)
-        .map(word => new RegExp(`(^|[^\\p{L}])${escapeRegExp(word)}([^\\p{L}]|$)`, "iu"))
+        .map((word) => new RegExp(`(^|[^\\p{L}])${escapeRegExp(word)}([^\\p{L}]|$)`, "iu"))
 );
+
+const selectedImageId = computed(() => {
+    const iterator = props.selectedImages.values().next();
+    return iterator.done ? null : iterator.value;
+});
+
+const hasSingleSelection = computed(() => selectedImageId.value !== null);
+
+const filterTagsSet = computed(() => new Set(
+    props.filterInput.split(",").map((tag) => tag.trim().toLowerCase()).filter(Boolean)
+));
+
+const highlightSet = computed(() => {
+    const tagsSet = new Set<string>();
+    if (highlightRegexes.value.length === 0)
+        return tagsSet;
+
+    for (const tag of props.displayedTags) {
+        if (highlightRegexes.value.some((regex) => regex.test(tag)))
+            tagsSet.add(tag);
+    }
+
+    return tagsSet;
+});
+
+const tagGroupsList = computed(() => {
+    void tagGroupsStore.dataVersion;
+
+    return Array.from(tagGroupsStore.tagGroups.entries());
+});
+
+const filteredTagGroups = computed(() => {
+    const query = tagGroupFilterInput.value.trim().toLowerCase();
+    if (!query)
+        return tagGroupsList.value;
+
+    return tagGroupsList.value.filter(([name]) => name.toLowerCase().includes(query));
+});
+
+const displayedTagsList = computed(() => Array.from(props.displayedTags));
+const displayedGlobalTagsList = computed(() => Array.from(props.displayedGlobalTags));
+
+const groupsWithMatches = computed(() => {
+    void tagGroupsStore.dataVersion;
+
+    const matches = new Set<string>();
+    for (const [name, tags] of tagGroupsStore.tagGroups) {
+        for (const tag of tags) {
+            if (props.displayedTags.has(tag)) {
+                matches.add(name);
+                break;
+            }
+        }
+    }
+
+    return matches;
+});
 
 const datasetStore = useDatasetStore();
 const tagGroupsStore = useTagGroupsStore();
@@ -57,13 +114,6 @@ const showTopSection = computed(() =>
 
 function escapeRegExp(str: string) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function matchesHighlight(tag: string) {
-    if (highlightRegexes.value.length === 0)
-        return false;
-
-    return highlightRegexes.value.some((regex) => regex.test(tag));
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -230,12 +280,12 @@ function replaceTag(mode: "selected" | "all") {
                         <div class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-base-content/10">
                             <p>Tags detected by autotagger but not in the captions</p>
                         </div>
-                        <div v-if="selectedImages.size === 1" class="mb-2 flex min-h-0 flex-1 flex-wrap gap-2 overflow-auto scroll-smooth pt-2">
+                        <div v-if="hasSingleSelection" class="mb-2 flex min-h-0 flex-1 flex-wrap gap-2 overflow-auto scroll-smooth pt-2">
                             <div
-                                v-for="tag in datasetStore.tagDiff.get([...selectedImages][0])?.tagger"
+                                v-for="tag in datasetStore.tagDiff.get(selectedImageId!)?.tagger"
                                 :key="tag"
                                 class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer dark:bg-gray-700"
-                                @click="addTag(tag, [...selectedImages][0])"
+                                @click="addTag(tag, selectedImageId!)"
                             >
                                 {{ tag }}
                             </div>
@@ -249,12 +299,12 @@ function replaceTag(mode: "selected" | "all") {
                         <div class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-base-content/10">
                             <p>Tags in captions but not detected by the autotagger</p>
                         </div>
-                        <div v-if="selectedImages.size === 1" class="mb-2 flex min-h-0 flex-1 flex-wrap gap-2 overflow-auto scroll-smooth pt-2">
+                        <div v-if="hasSingleSelection" class="mb-2 flex min-h-0 flex-1 flex-wrap gap-2 overflow-auto scroll-smooth pt-2">
                             <div
-                                v-for="tag in datasetStore.tagDiff.get([...selectedImages][0])?.original"
+                                v-for="tag in datasetStore.tagDiff.get(selectedImageId!)?.original"
                                 :key="tag"
                                 class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer dark:bg-rose-900"
-                                @click="removeTag(tag, [...selectedImages][0])"
+                                @click="removeTag(tag, selectedImageId!)"
                             >
                                 {{ tag }}
                             </div>
@@ -272,7 +322,7 @@ function replaceTag(mode: "selected" | "all") {
                                 :id="'replace-source-list'"
                                 :placeholder="'Type the tag to replace...'"
                                 :multiple="false"
-                                :custom-list="[...displayedGlobalTags]"
+                                :custom-list="displayedGlobalTagsList"
                             />
                         </label>
                         <label class="input w-full outline-none!">
@@ -287,7 +337,7 @@ function replaceTag(mode: "selected" | "all") {
                         </label>
                     </div>
                     <div class="flex gap-2">
-                        <button class="btn btn-outline w-[50%]" :disabled="!selectedImages.size" @click="replaceTag('selected')">
+                        <button class="btn btn-outline w-[50%]" :disabled="selectedImages.size === 0" @click="replaceTag('selected')">
                             Replace Selected
                         </button>
                         <button class="btn btn-outline w-[50%]" :disabled="datasetStore.dataset.size === 0" @click="replaceTag('all')">
@@ -314,23 +364,17 @@ function replaceTag(mode: "selected" | "all") {
                             </div>
                         </div>
                         <label class="input w-full mt-2 outline-none!">
-                            <input v-model="highlightInput" type="text" placeholder="Highlight words..." :disabled="!displayedTags.size" />
+                            <input v-model="highlightInput" type="text" placeholder="Highlight words..." :disabled="displayedTagsList.length === 0" />
                         </label>
                     </div>
                     <div class="mb-2 flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-auto scroll-smooth pt-1">
                         <div
-                            v-for="tag in displayedTags"
+                            v-for="tag in displayedTagsList"
+                            v-memo="[tag, isFiltering, filterTagsSet, highlightSet]"
                             :key="tag"
                             class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
                             :class="{
-                            'dark:bg-warning/50':
-                                (
-                                isFiltering &&
-                                filterInput
-                                    .split(',')
-                                    .map((tag) => tag.trim())
-                                    .includes(tag)
-                                ) || matchesHighlight(tag),
+                                'dark:bg-warning/50': (isFiltering && filterTagsSet.has(tag.toLowerCase())) || highlightSet.has(tag)
                             }"
                             @click="removeTag(tag)"
                         >
@@ -340,14 +384,14 @@ function replaceTag(mode: "selected" | "all") {
                     <div class="mt-auto flex flex-col gap-2 border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
                         <div class="flex gap-2">
                             <div class="tooltip" :class="{ 'tooltip-success': areTagsCopied }" :data-tip="areTagsCopied ? 'Tags copied!' : 'Click to copy the tags'">
-                                <button class="btn btn-circle border-none p-0.5 btn-ghost dark:hover:bg-[#323841]" :disabled="!displayedTags.size" @click="copyTextToClipboard(displayedTags)">
+                                <button class="btn btn-circle border-none p-0.5 btn-ghost dark:hover:bg-[#323841]" :disabled="displayedTagsList.length === 0" @click="copyTextToClipboard(displayedTags)">
                                     <CopyIcon class="h-full w-full fill-none" />
                                 </button>
                             </div>
                             <label class="input relative w-full pl-1 outline-none!">
                                 <AutocompletionComponent
                                     v-model="tagInput"
-                                    :disabled="!selectedImages.size"
+                                    :disabled="selectedImages.size === 0"
                                     :id="'completion-list'"
                                     :placeholder="'Type to add a tag...'"
                                     :multiple="true"
@@ -355,12 +399,12 @@ function replaceTag(mode: "selected" | "all") {
                                 />
                             </label>
                             <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
-                                <select v-model.lazy="datasetStore.sortMode" class="select relative w-fit outline-none!" :disabled="!displayedTags.size">
+                                <select v-model.lazy="datasetStore.sortMode" class="select relative w-fit outline-none!" :disabled="displayedTagsList.length === 0">
                                     <option value="none" selected>None</option>
                                     <option value="alphabetical">Alphabetical</option>
                                 </select>
                             </div>
-                            <button class="btn btn-circle overflow-hidden border-none dark:bg-[#323841]" :disabled="!displayedTags.size" @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'">
+                            <button class="btn btn-circle overflow-hidden border-none dark:bg-[#323841]" :disabled="displayedTagsList.length === 0" @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'">
                                 <SortArrowIcon
                                     class="swap-off h-full w-full fill-none transition-[transform] duration-500"
                                     :class="{
@@ -375,15 +419,15 @@ function replaceTag(mode: "selected" | "all") {
                     <div class="flex items-center gap-2 border-b-2 border-gray-400 pb-3 dark:border-base-content/10">
                         <label class="input w-full outline-none!">
                             <span class="label">Filter Global Tags</span>
-                            <input v-model="globalTagFilterInput" type="text" placeholder="Type to filter..." :disabled="!datasetStore.globalTags.size" />
+                            <input v-model="globalTagFilterInput" type="text" placeholder="Type to filter..." :disabled="datasetStore.globalTags.size === 0" />
                         </label>
                         <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
-                            <select v-model.lazy="globalSortMode" class="select relative w-fit outline-none!" :disabled="!displayedGlobalTags.size">
+                            <select v-model.lazy="globalSortMode" class="select relative w-fit outline-none!" :disabled="displayedGlobalTagsList.length === 0">
                                 <option value="alphabetical" selected>Alphabetical</option>
                                 <option value="tag_count">Tag Count</option>
                             </select>
                         </div>
-                        <button class="btn btn-circle overflow-hidden border-none dark:bg-[#323841]" :disabled="!displayedGlobalTags.size" @click="globalSortOrder = globalSortOrder === 'asc' ? 'desc' : 'asc'">
+                        <button class="btn btn-circle overflow-hidden border-none dark:bg-[#323841]" :disabled="displayedGlobalTagsList.length === 0" @click="globalSortOrder = globalSortOrder === 'asc' ? 'desc' : 'asc'">
                             <SortArrowIcon
                                 class="swap-off h-full w-full fill-none transition-[transform] duration-500"
                                 :class="{
@@ -394,7 +438,7 @@ function replaceTag(mode: "selected" | "all") {
                     </div>
                     <div class="mb-2 flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-auto scroll-smooth pt-1">
                         <div
-                            v-for="tag in displayedGlobalTags"
+                            v-for="tag in displayedGlobalTagsList"
                             :key="tag"
                             class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
                             @click="removeGlobalTag(tag)"
@@ -426,49 +470,56 @@ function replaceTag(mode: "selected" | "all") {
     ></div>
     <div class="flex h-full min-h-0 flex-col pt-1 pr-1" :style="{ width: tagGroupWidth + '%' }">
         <div v-if="settingsStore.showTagGroups" class="flex min-h-0 flex-1 flex-col gap-2 overflow-auto pb-1">
-            <div class="h-[40%] pb-1">
-                <div class="flex gap-2 mb-1">
-                    <label class="input w-full outline-none!">
-                        <span class="label">Group Search</span>
-                        <input v-model="tagGroupFilterInput" type="text" placeholder="Type to seach for a group..." />
-                    </label>
-                    <button class="btn btn-outline btn-error" @click="selectedTagGroups.clear()">Close All</button>
-                </div>
-                <span>Tag Groups</span>
-                <div class="mt-2 flex h-[calc(100%-50px)] flex-wrap content-start gap-2 overflow-auto pb-1">
+            <div class="flex flex-col gap-2">
+                <div class="flex items-center gap-2">
+                    <input
+                        class="input w-full outline-none!"
+                        v-model="tagGroupFilterInput"
+                        :disabled="tagGroupsStore.tagGroups.size === 0"
+                        placeholder="Search groups..."
+                    />
                     <button
-                        v-for="name in tagGroupsStore.tagGroups.keys()"
-                        :key="name"
-                        class="btn btn-sm"
-                        :class="{
-                            '[--btn-color:var(--color-rose-900)]': [...displayedTags].some((tag) => tagGroupsStore.tagGroups.get(name)?.has(tag)),
-                            '[--btn-color:#a6d9e2] dark:[--btn-color:var(--color-gray-700)]': ![...displayedTags].some((tag) => tagGroupsStore.tagGroups.get(name)?.has(tag)),
-                            hidden: tagGroupFilterInput && !name.toLowerCase().includes(tagGroupFilterInput.toLowerCase()),
-                        }"
-                        @click="handleTagGroupChange(name)"
+                        class="btn btn-outline"
+                        :disabled="tagGroupsStore.tagGroups.size === 0"
+                        @click="selectedTagGroups = new Set()"
                     >
-                        {{ name }}
+                        Collapse All
                     </button>
                 </div>
-            </div>
-            <div class="h-[60%] overflow-auto border-t-3 dark:border-base-content/50">
-                <div v-for="name in selectedTagGroups" :key="name">
-                    <div class="divider my-2">
-                        {{ name }}
-                        <span class="cursor-pointer border px-1 font-bold hover:text-error" @click="selectedTagGroups.delete(name)">X</span>
-                    </div>
-                    <div class="flex flex-wrap content-start gap-2">
-                        <div
-                            v-for="tag in tagGroupsStore.tagGroups.get(name)"
-                            :key="tag"
-                            class="h-fit w-fit px-1.5 hover:cursor-pointer"
-                            :class="{
-                                'bg-rose-900': displayedTags.has(tag),
-                                'bg-[#a6d9e2] dark:bg-gray-700': !displayedTags.has(tag),
-                            }"
-                            @click="addOrRemoveTag(tag)"
-                        >
-                            {{ tag }}
+                <div class="text-sm uppercase text-base-content/60">Tag Groups</div>
+                <div class="flex flex-col gap-2 overflow-auto">
+                    <div
+                        v-for="[name, tags] in filteredTagGroups"
+                        :key="name"
+                        class="collapse collapse-arrow rounded-box border border-base-content/30 bg-base-200/40"
+                        :class="{ 'collapse-open': selectedTagGroups.has(name) }"
+                    >
+                        <div class="collapse-title flex items-center pr-6" @click="handleTagGroupChange(name)">
+                            <span
+                                class="truncate"
+                                :class="{ 'border border-accent px-2': groupsWithMatches.has(name) }"
+                            >
+                                {{ name }}
+                            </span>
+                            <span class="px-2 rounded-full bg-info text-info-content font-semibold tabular-nums border border-info ml-3">
+                                {{ tagGroupsStore.tagGroups.get(name)?.size ?? 0 }}
+                            </span>
+                        </div>
+                        <div v-if="selectedTagGroups.has(name)" class="collapse-content">
+                            <div class="flex flex-wrap gap-2">
+                                <div
+                                    v-for="tag in tags"
+                                    :key="tag"
+                                    class="h-fit w-fit px-1.5 hover:cursor-pointer"
+                                    :class="{
+                                        'bg-rose-900': displayedTags.has(tag),
+                                        'bg-[#a6d9e2] dark:bg-gray-700': !displayedTags.has(tag),
+                                    }"
+                                    @click="addOrRemoveTag(tag)"
+                                >
+                                    {{ tag }}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

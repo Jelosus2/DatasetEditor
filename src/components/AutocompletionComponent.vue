@@ -11,6 +11,7 @@ const props = defineProps({
   placeholder: { type: String },
   multiple: { type: Boolean },
   customList: { type: Array<string> },
+  keyEnterEmpty: { type: Boolean },
   containsMode: { type: Boolean },
   textarea: { type: Boolean, default: false },
   rows: { type: [Number, String] },
@@ -80,7 +81,7 @@ async function onArrowDown() {
 }
 
 function onKeyEnter() {
-  if (!tagInput.value) return;
+  if (!props.keyEnterEmpty && !tagInput.value) return;
 
   if (selectedIndex.value !== -1) {
     const parts = tagInput.value.split(',').map((part) => part.trim());

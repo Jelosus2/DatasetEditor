@@ -68,7 +68,7 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
             });
         }
 
-        tagGroups.value.clear();
+        tagGroups.value = new Map();
         triggerUpdate();
     }
 

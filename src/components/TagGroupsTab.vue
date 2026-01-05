@@ -14,7 +14,12 @@ const selectedGroup = ref("");
 const groupNameInput = ref("");
 const groupTags = ref("");
 const tagInput = ref("");
+const renameInput = ref("");
+const tagGroupSearch = ref("");
+const importGroupSearch = ref("");
 const importedGroups = ref<TagGroups>(new Map());
+const expandedGroups = ref<Set<string>>(new Set());
+const importExpandedGroups = ref<Set<string>>(new Set());
 
 const tagGroupsOperations = useTagGroupsOperations();
 const tagGroupsStore = useTagGroupsStore();
@@ -25,19 +30,35 @@ const tagGroupsList = computed(() => {
     return Array.from(tagGroupsStore.tagGroups.entries());
 });
 
-const tagGroupNames = computed(() => {
-    void tagGroupsStore.dataVersion;
-
-    return Array.from(tagGroupsStore.tagGroups.keys());
-})
+const importedGroupsList = computed(() => Array.from(importedGroups.value.entries()));
 
 const selectedGroupTags = computed(() => {
     void tagGroupsStore.dataVersion;
 
     return Array.from(tagGroupsStore.tagGroups.get(selectedGroup.value) ?? []);
-})
+});
+
+const filteredTagGroups = computed(() => {
+    const query = tagGroupSearch.value.trim().toLowerCase();
+    if (!query)
+        return tagGroupsList.value;
+
+    return tagGroupsList.value.filter(([name]) => name.toLowerCase().includes(query));
+});
+
+const filteredImportedGroups = computed(() => {
+    const query = importGroupSearch.value.trim().toLowerCase();
+    if (!query)
+        return importedGroupsList.value;
+
+    return importedGroupsList.value.filter(([name]) => name.toLowerCase().includes(query));
+});
+
 
 function createGroup() {
+    if (!groupNameInput.value)
+        return;
+
     const noLineBreaks = groupTags.value.split("\n").join("");
     tagGroupsOperations.addGroup(groupNameInput.value, noLineBreaks);
 
@@ -52,6 +73,7 @@ function deleteGroup(mode: "selected" | "all") {
         tagGroupsOperations.clearGroups();
 
     selectedGroup.value = "";
+    renameInput.value = "";
 }
 
 function addTag() {
@@ -82,18 +104,48 @@ async function exportGroupToJSON(mode: "one" | "all") {
 function addImportedGroupsToCurrent(override: boolean) {
     tagGroupsOperations.mergeTagGroups(importedGroups.value, override);
 
-    importedGroups.value.clear();
+    clearImports();
 }
 
-function renameTagGroup(event: KeyboardEvent) {
-    const target = event.target as HTMLInputElement;
-    const newName = target.value?.trim();
-
+function renameTagGroup() {
+    const newName = renameInput.value.trim();
     const renamed = tagGroupsOperations.renameGroup(selectedGroup.value, newName);
 
     if (renamed)
         selectedGroup.value = newName;
-    target.value = "";
+    renameInput.value = "";
+}
+
+function handleGroupHeaderClick(name: string) {
+    if (selectedGroup.value !== name) {
+        selectedGroup.value = name;
+        expandedGroups.value.add(name);
+        renameInput.value = name;
+
+        return;
+    }
+
+    toggleGroupExpand(name);
+}
+
+function toggleGroupExpand(name: string) {
+    if (expandedGroups.value.has(name))
+        expandedGroups.value.delete(name);
+    else
+        expandedGroups.value.add(name);
+}
+
+function toggleImportedGroup(name: string) {
+    if (importExpandedGroups.value.has(name))
+        importExpandedGroups.value.delete(name);
+    else
+        importExpandedGroups.value.add(name);
+}
+
+function clearImports() {
+    importedGroups.value = new Map();
+    importExpandedGroups.value = new Set();
+    importGroupSearch.value = "";
 }
 </script>
 
@@ -101,17 +153,36 @@ function renameTagGroup(event: KeyboardEvent) {
     <div class="tab-content min-h-0 border-t-base-300 bg-base-100">
         <div class="flex h-full">
             <div class="flex w-[25%] flex-col gap-2 overflow-auto pt-1 pl-1">
+                <div class="flex items-center gap-2 mt-2">
+                    <input
+                        class="input w-full outline-none!"
+                        v-model="tagGroupSearch"
+                        :disabled="tagGroupsStore.tagGroups.size === 0"
+                        placeholder="Search groups..."
+                    />
+                    <button
+                        class="btn btn-outline"
+                        :disabled="tagGroupsStore.tagGroups.size === 0"
+                        @click="expandedGroups = new Set()"
+                    >
+                        Collapse All
+                    </button>
+                </div>
+                <div class="divider m-0"></div>
                 <div
-                    v-for="[name, tags] in tagGroupsList"
-                    v-memo="[name, tags.size]"
+                    v-for="[name, tags] in filteredTagGroups"
                     :key="name"
-                    class="collapse shrink-0 rounded-none border border-base-content/30 bg-base-100"
+                    class="collapse shrink-0 rounded-none border bg-base-100"
+                    :class="{
+                        'collapse-open': expandedGroups.has(name),
+                        'border-primary': selectedGroup === name,
+                        'border-base-content/30': selectedGroup !== name
+                    }"
                 >
-                    <input type="checkbox" />
-                    <div class="collapse-title pr-4 text-center font-semibold break-all">
+                    <div class="collapse-title pr-4 text-center font-semibold break-all" @click="handleGroupHeaderClick(name)">
                         {{ name }}
                     </div>
-                    <div class="collapse-content flex flex-wrap gap-2 overflow-auto scroll-smooth">
+                    <div v-if="expandedGroups.has(name)" class="collapse-content flex flex-wrap gap-2 overflow-auto scroll-smooth">
                         <div
                             v-for="tag in tags"
                             :key="tag"
@@ -131,22 +202,10 @@ function renameTagGroup(event: KeyboardEvent) {
                             <div class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-base-content/10">
                                 <p>Edit tag group</p>
                             </div>
-                            <select
-                                v-model.lazy="selectedGroup"
-                                class="select w-full text-center outline-none!"
-                            >
-                                <option value="" selected></option>
-                                <option
-                                    v-for="name in tagGroupNames"
-                                    :key="name"
-                                    :value="name"
-                                >
-                                    {{ name }}
-                                </option>
-                            </select>
                             <label class="input w-full px-2 outline-none!">
                                 <span class="label">Rename Group</span>
                                 <input
+                                    v-model="renameInput"
                                     type="text"
                                     placeholder="New name for the tag group..."
                                     :disabled="!selectedGroup"
@@ -196,6 +255,7 @@ function renameTagGroup(event: KeyboardEvent) {
                                     v-model.trim="groupNameInput"
                                     type="text"
                                     placeholder="Name for the tag group..."
+                                    @keyup.enter="createGroup"
                                 />
                             </label>
                             <div class="relative flex-1">
@@ -206,7 +266,9 @@ function renameTagGroup(event: KeyboardEvent) {
                                     :textarea="true"
                                     :multiple="true"
                                     :dropdown-below="true"
+                                    :key-enter-empty="true"
                                     :placeholder="'Tags separated by comma to be added to the group...'"
+                                    @on-complete="createGroup"
                                 />
                             </div>
                             <button
@@ -269,23 +331,46 @@ function renameTagGroup(event: KeyboardEvent) {
                             >
                                 Override Current Groups
                             </button>
+                            <button
+                                class="btn btn-outline btn-error"
+                                :disabled="importedGroups.size === 0"
+                                @click="clearImports"
+                            >
+                                Clear Imports
+                            </button>
                         </div>
                     </div>
                     <div class="flex h-[70%] w-full flex-col gap-2">
-                        <div class="flex items-center justify-center border-y-2 border-gray-400 text-center dark:border-base-content/10">
+                        <div class="flex items-center justify-center border-y-2 border-gray-400 text-center dark:border-base-content/10 mb-2">
                             <p>Import Preview</p>
                         </div>
+                        <div class="flex items-center gap-2">
+                            <input
+                                class="input w-full outline-none!"
+                                v-model="importGroupSearch"
+                                placeholder="Search imported groups..."
+                                :disabled="importedGroups.size === 0"
+                            />
+                            <button
+                                class="btn btn-outline"
+                                :disabled="importedGroups.size === 0"
+                                @click="importExpandedGroups = new Set()"
+                            >
+                                Collapse All
+                            </button>
+                        </div>
+                        <div class="divider m-0"></div>
                         <div class="flex flex-col gap-2 overflow-auto">
                             <div
-                                v-for="[name, tags] in importedGroups"
+                                v-for="[name, tags] in filteredImportedGroups"
                                 :key="name"
-                                class="collapse shrink-0 rounded-none border border-base-300 bg-base-100"
+                                class="collapse shrink-0 rounded-none border border-base-content/30 bg-base-100"
+                                :class="{ 'collapse-open': importExpandedGroups.has(name) }"
                             >
-                                <input type="checkbox" />
-                                <div class="collapse-title pr-4 text-center font-semibold break-all">
+                                <div class="collapse-title pr-4 text-center font-semibold break-all cursor-pointer" @click="toggleImportedGroup(name)">
                                     {{ name }}
                                 </div>
-                                <div class="collapse-content flex flex-wrap gap-2 overflow-auto scroll-smooth">
+                                <div v-if="importExpandedGroups.has(name)" class="collapse-content flex flex-wrap gap-2 overflow-auto scroll-smooth">
                                     <div
                                         v-for="tag in tags"
                                         :key="tag"

@@ -76,7 +76,7 @@ export function useTagDisplay(
 
         const filterTags = globalTagFilterInput.value
             .split(",")
-            .map((t) => t.trim().toLowerCase())
+            .map((tag) => tag.trim().toLowerCase())
             .filter(Boolean);
 
         if (filterTags.length === 0) {
