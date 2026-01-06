@@ -249,20 +249,58 @@ export const useDatasetStore = defineStore("dataset", () => {
         triggerUpdate();
     }
 
+    function reorderTagInImage(imageId: string, tag: string, toIndex: number, createHistory: boolean = true) {
+        const rawDataset = toRaw(dataset.value);
+        const imageData = rawDataset.get(imageId);
+        if (!imageData)
+            return;
+
+        const tagsList = [...imageData.tags];
+        const fromIndex = tagsList.indexOf(tag);
+        if (fromIndex === -1)
+            return;
+
+        tagsList.splice(fromIndex, 1);
+
+        const insertIndex = Math.max(0, Math.min(toIndex, tagsList.length));
+
+        tagsList.splice(insertIndex, 0, tag);
+        imageData.tags = new Set(tagsList);
+
+        if (createHistory) {
+            recordHistory({
+                type: "reorder_tag",
+                images: new Set([imageId]),
+                tag,
+                fromIndex,
+                toIndex: insertIndex
+            });
+        }
+
+        triggerUpdate();
+    }
+
     function undoDatasetAction() {
         const change = datasetUndoStack.value.pop();
         if (!change) return;
 
         switch (change.type) {
             case "add_tag":
-                removeTagsFromImages(change.images, change.tags, /* createHistory = */ false);
+                removeTagsFromImages(change.images, change.tags!, /* createHistory = */ false);
                 break;
             case "remove_tag":
-                addTagsToImages(change.images, change.tags, -1, /* createHistory = */ false);
+                addTagsToImages(change.images, change.tags!, -1, /* createHistory = */ false);
                 break;
             case "replace_tag":
                 if (change.newTag && change.originalTag)
-                    replaceTagForImages(change.images, change.newTag, change.originalTag, /* createHistory = */ false)
+                    replaceTagForImages(change.images, change.newTag, change.originalTag, /* createHistory = */ false);
+                break;
+            case "reorder_tag":
+                const imageId = change.images.values().next().value;
+                if (!imageId || !change.tag)
+                    break;
+
+                reorderTagInImage(imageId, change.tag, change.fromIndex!, /* createHistory = */ false);
                 break;
         }
 
@@ -276,14 +314,21 @@ export const useDatasetStore = defineStore("dataset", () => {
 
         switch (change.type) {
             case "add_tag":
-                addTagsToImages(change.images, change.tags, change.tagPosition, /* createHistory = */ false);
+                addTagsToImages(change.images, change.tags!, change.tagPosition, /* createHistory = */ false);
                 break;
             case "remove_tag":
-                removeTagsFromImages(change.images, change.tags, /* createHistory = */ false);
+                removeTagsFromImages(change.images, change.tags!, /* createHistory = */ false);
                 break;
             case "replace_tag":
                 if (change.newTag && change.originalTag)
                     replaceTagForImages(change.images, change.originalTag, change.newTag, /* createHistory = */ false);
+                break;
+            case "reorder_tag":
+                const imageId = change.images.values().next().value;
+                if (!imageId || !change.tag)
+                    break;
+
+                reorderTagInImage(imageId, change.tag, change.toIndex!, /* createHistory = */ false);
                 break;
         }
 
@@ -419,6 +464,7 @@ export const useDatasetStore = defineStore("dataset", () => {
         addTagsToImages,
         removeTagsFromImages,
         replaceTagForImages,
+        reorderTagInImage,
         removeImage,
         removeImages,
         renameImages,

@@ -36,6 +36,8 @@ const mainSectionContainer = shallowRef<HTMLDivElement | null>(null);
 const topSectionHeight = ref(50);
 const tagGroupWidth = ref(30);
 const areTagsCopied = ref(false);
+const draggingTag = ref<string | null>(null);
+const dropIndex = ref<number | null>(null);
 
 const highlightRegexes = computed(() =>
     highlightInput.value
@@ -83,7 +85,14 @@ const filteredTagGroups = computed(() => {
     return tagGroupsList.value.filter(([name]) => name.toLowerCase().includes(query));
 });
 
-const displayedTagsList = computed(() => Array.from(props.displayedTags));
+const displayedTagsList = computed(() => {
+    const list = Array.from(props.displayedTags);
+    if (draggingTag.value)
+        return list.filter(t => t !== draggingTag.value);
+
+    return list;
+});
+
 const displayedGlobalTagsList = computed(() => Array.from(props.displayedGlobalTags));
 
 const groupsWithMatches = computed(() => {
@@ -101,6 +110,8 @@ const groupsWithMatches = computed(() => {
 
     return matches;
 });
+
+const isDraggable = computed(() => editMode.value === "individual" && hasSingleSelection.value);
 
 const datasetStore = useDatasetStore();
 const tagGroupsStore = useTagGroupsStore();
@@ -174,8 +185,9 @@ function addTag(tag?: string, imageId?: string) {
         return;
 
     const imageIds = imageId ? new Set([imageId]) : new Set(props.selectedImages);
-    tagPosition.value = tagOperations.validateTagPosition(tagPosition.value);
-    tagOperations.addTag(newTag, imageIds, tagPosition.value);
+    const position = editMode.value === "mass" ? tagOperations.validateTagPosition(tagPosition.value) : -1;
+
+    tagOperations.addTag(newTag, imageIds, position);
     tagInput.value = "";
 }
 
@@ -183,8 +195,9 @@ function addGlobalTag() {
     if (!globalTagInput.value)
         return;
 
-    tagPosition.value = tagOperations.validateTagPosition(tagPosition.value);
-    tagOperations.addGlobalTag(globalTagInput.value, tagPosition.value);
+    const position = editMode.value === "mass" ? tagOperations.validateTagPosition(tagPosition.value) : -1;
+
+    tagOperations.addGlobalTag(globalTagInput.value, position);
     globalTagInput.value = "";
 }
 
@@ -211,10 +224,12 @@ function addOrRemoveTag(tag: string) {
         }
     }
 
+    const position = editMode.value === "mass" ? tagOperations.validateTagPosition(tagPosition.value) : -1;
+
     if (toRemove.size > 0)
         tagOperations.removeTag(tag, toRemove);
     if (toAdd.size > 0)
-        tagOperations.addTag(tag, toAdd);
+        tagOperations.addTag(tag, toAdd, position);
 }
 
 function copyTextToClipboard(tags: Set<string>) {
@@ -250,6 +265,68 @@ function replaceTag(mode: "selected" | "all") {
 
     replaceSourceInput.value = "";
     replaceTargetInput.value = "";
+}
+
+function onTagListDragOver(event: DragEvent) {
+    if (!isDraggable.value)
+        return;
+
+    if (event.dataTransfer)
+        event.dataTransfer.dropEffect = "move";
+}
+
+function onTagListDrop() {
+    onTagDrop();
+}
+
+function onTagDragStart(tag: string, event: DragEvent) {
+    if (event.dataTransfer && event.target instanceof HTMLElement) {
+        const chip = event.target.closest(".h-fit.w-fit");
+        if (chip)
+            event.dataTransfer.setDragImage(chip, 0, 0);
+
+        event.dataTransfer.setData("text/plain", tag);
+        event.dataTransfer.effectAllowed = "move";
+    }
+
+    requestAnimationFrame(() => {
+        draggingTag.value = tag;
+        dropIndex.value = null;
+    });
+}
+
+function onTagDragEnd() {
+    draggingTag.value = null;
+    dropIndex.value = null;
+}
+
+function setDropIndex(event: DragEvent, tag: string, index: number) {
+    if (!isDraggable.value || draggingTag.value === tag)
+        return;
+
+    const element = event.currentTarget as HTMLElement;
+    const bounds = element.getBoundingClientRect();
+    const after = event.clientX >= bounds.left + bounds.width / 2;
+
+    const nextIndex = after ? index + 1 : index;
+    if (nextIndex !== dropIndex.value)
+        dropIndex.value = nextIndex;
+}
+
+function setDropIndexToEnd() {
+    if (!isDraggable.value)
+        return;
+
+    dropIndex.value = displayedTagsList.value.length;
+}
+
+function onTagDrop() {
+    if (!isDraggable.value || !draggingTag.value || !selectedImageId.value || dropIndex.value === null)
+        return;
+
+    tagOperations.reorderTag(selectedImageId.value, draggingTag.value, dropIndex.value);
+    draggingTag.value = null;
+    dropIndex.value = null;
 }
 </script>
 
@@ -354,31 +431,55 @@ function replaceTag(mode: "selected" | "all") {
             <div class="flex min-h-0 flex-1 flex-col">
                 <div v-if="editMode === 'individual'" class="flex min-h-0 h-full flex-col border-gray-400 py-1 dark:border-base-content/10">
                     <div class="border-b-2 border-gray-400 pb-3 dark:border-base-content/10">
-                        <div class="flex w-full gap-2">
-                            <label class="input gap-0 outline-none! w-full">
-                                <span class="label">Tag Position</span>
-                                <input type="text" v-model.trim.number.lazy="tagPosition" @blur="validateTagPosition" />
-                            </label>
-                            <div class="tooltip" data-tip="Resets the tag position back to -1">
-                                <button class="btn btn-outline btn-error" @click="tagPosition = -1">Reset</button>
-                            </div>
-                        </div>
-                        <label class="input w-full mt-2 outline-none!">
+                        <label class="input w-full outline-none!">
                             <input v-model="highlightInput" type="text" placeholder="Highlight words..." :disabled="displayedTagsList.length === 0" />
                         </label>
                     </div>
-                    <div class="mb-2 flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-auto scroll-smooth pt-1">
+                    <div
+                        class="mb-2 flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-auto scroll-smooth pt-1"
+                        data-role="tag-list"
+                        @dragover.prevent="onTagListDragOver($event)"
+                        @drop.prevent="onTagListDrop"
+                    >
+                        <template v-for="(tag, index) in displayedTagsList" :key="tag">
+                            <div
+                                v-if="draggingTag && dropIndex === index"
+                                class="h-fit w-fit rounded px-1.5 border border-success text-success bg-success/20 pointer-events-none"
+                            >
+                                {{ draggingTag }}
+                            </div>
+                            <div
+                                class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-gray-700"
+                                :class="{
+                                    'dark:bg-warning/50': (isFiltering && filterTagsSet.has(tag.toLowerCase())) || highlightSet.has(tag),
+                                    'hover:bg-rose-900': !draggingTag
+                                }"
+                                @dragover.stop.prevent="setDropIndex($event, tag, index)"
+                                @drop.stop.prevent="onTagDrop"
+                                @click="removeTag(tag)"
+                            >
+                                <span
+                                    class="cursor-grab select-none opacity-70 pr-2"
+                                    draggable="true"
+                                    @mousedown.stop
+                                    @click.stop
+                                    @dragstart="onTagDragStart(tag, $event)"
+                                    @dragend="onTagDragEnd"
+                                >⋮⋮</span>
+                                <span>{{ tag }}</span>
+                            </div>
+                        </template>
                         <div
-                            v-for="tag in displayedTagsList"
-                            v-memo="[tag, isFiltering, filterTagsSet, highlightSet]"
-                            :key="tag"
-                            class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
-                            :class="{
-                                'dark:bg-warning/50': (isFiltering && filterTagsSet.has(tag.toLowerCase())) || highlightSet.has(tag)
-                            }"
-                            @click="removeTag(tag)"
+                            v-if="draggingTag && dropIndex === displayedTagsList.length"
+                            class="h-fit w-fit rounded px-1.5 border border-success text-success bg-success/20 pointer-events-none"
                         >
-                            {{ tag }}
+                            {{ draggingTag }}
+                        </div>
+                        <div
+                            class="h-6 w-full"
+                            @dragenter.prevent="setDropIndexToEnd"
+                            @dragover.prevent="setDropIndexToEnd"
+                            @drop.prevent="onTagDrop">
                         </div>
                     </div>
                     <div class="mt-auto flex flex-col gap-2 border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
@@ -416,7 +517,7 @@ function replaceTag(mode: "selected" | "all") {
                     </div>
                 </div>
                 <div v-else class="flex min-h-0 h-full flex-col border-gray-400 pt-3 pb-1 dark:border-base-content/10">
-                    <div class="flex items-center gap-2 border-b-2 border-gray-400 pb-3 dark:border-base-content/10">
+                    <div class="flex items-center gap-2 pb-3">
                         <label class="input w-full outline-none!">
                             <span class="label">Filter Global Tags</span>
                             <input v-model="globalTagFilterInput" type="text" placeholder="Type to filter..." :disabled="datasetStore.globalTags.size === 0" />
@@ -435,6 +536,15 @@ function replaceTag(mode: "selected" | "all") {
                                 }"
                             />
                         </button>
+                    </div>
+                    <div class="flex w-full gap-2 pb-3 border-b-2 border-gray-400 dark:border-base-content/10">
+                        <label class="input gap-0 outline-none! w-full">
+                            <span class="label">Tag Position</span>
+                            <input type="text" v-model.trim.number.lazy="tagPosition" @blur="validateTagPosition" />
+                        </label>
+                        <div class="tooltip" data-tip="Resets the tag position back to -1">
+                            <button class="btn btn-outline btn-error" @click="tagPosition = -1">Reset</button>
+                        </div>
                     </div>
                     <div class="mb-2 flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-auto scroll-smooth pt-1">
                         <div

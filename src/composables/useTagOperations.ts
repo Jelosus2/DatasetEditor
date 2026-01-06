@@ -49,12 +49,17 @@ export function useTagOperations() {
         datasetStore.replaceTagForImages(images, originalTag, newTag);
     }
 
+    function reorderTag(imageId: string, tag: string, toIndex: number) {
+        datasetStore.reorderTagInImage(imageId, tag, toIndex);
+    }
+
     return {
         addTag,
         removeTag,
         addGlobalTag,
         removeGlobalTag,
         replaceTag,
+        reorderTag,
         validateTagPosition,
     };
 }
