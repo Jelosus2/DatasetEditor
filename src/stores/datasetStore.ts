@@ -48,44 +48,45 @@ export const useDatasetStore = defineStore("dataset", () => {
                 continue;
 
             const existingTagSet = imageData.tags;
-
             const missingTags = tagsArray.filter((tag) => !existingTagSet.has(tag));
             if (position === -1 && missingTags.length === 0)
                 continue;
 
             changedImages.add(imageId);
 
-            for (const tag of tagsArray) {
-                if (!existingTagSet.has(tag)) {
-                    let globalSet = rawGlobalTags.get(tag);
-                    if (!globalSet) {
-                        globalSet = new Set();
-                        rawGlobalTags.set(tag, globalSet);
-                    }
-                    globalSet.add(imageId);
-                }
-
-                if (rawTagDiff.size > 0 && !existingTagSet.has(tag)) {
-                    const diff = rawTagDiff.get(imageId);
-                    if (!diff)
-                        continue;
-
-                    if (diff.tagger.has(tag))
-                        diff.tagger.delete(tag);
-                    else
-                        diff.original.add(tag);
-                }
-            }
-
             const currentTagsArray = [...existingTagSet];
             let newTagsList: string[];
 
             if (position === -1) {
-                newTagsList = [...currentTagsArray, ...missingTags];
+                newTagsList = [...currentTagsArray];
+
+                for (const tag of missingTags) {
+                    insertTagAtIndex(
+                        imageId,
+                        tag,
+                        newTagsList.length,
+                        newTagsList,
+                        existingTagSet,
+                        rawGlobalTags,
+                        rawTagDiff
+                    );
+                }
             } else {
                 const filteredCurrent = currentTagsArray.filter((tag) => !tagsArray.includes(tag));
                 const actualPosition = Math.min(position - 1, filteredCurrent.length);
-                filteredCurrent.splice(actualPosition, 0, ...tagsArray);
+
+                tagsArray.forEach((tag, offset) => {
+                    insertTagAtIndex(
+                        imageId,
+                        tag,
+                        actualPosition + offset,
+                        filteredCurrent,
+                        existingTagSet,
+                        rawGlobalTags,
+                        rawTagDiff
+                    );
+                });
+
                 newTagsList = filteredCurrent;
             }
 
@@ -113,6 +114,7 @@ export const useDatasetStore = defineStore("dataset", () => {
             return;
 
         const changedImages = new Set<string>();
+        const removedPositions = new Map<string, Map<string, number>>();
 
         const rawDataset = toRaw(dataset.value);
         const rawGlobalTags = toRaw(globalTags.value);
@@ -123,16 +125,23 @@ export const useDatasetStore = defineStore("dataset", () => {
             if (!imageData)
                 continue;
 
+            const currentTags = [...imageData.tags];
+            const positions = new Map<string, number>();
+
             let hasAnyTag = false;
             for (const tag of tags) {
-                if (imageData.tags.has(tag)) {
+                if (imageData.tags.has(tag))
                     hasAnyTag = true;
-                    break;
-                }
+
+                const index = currentTags.indexOf(tag);
+                if (index !== -1)
+                    positions.set(tag, index);
             }
 
             if (!hasAnyTag)
                 continue;
+            if (positions.size > 0)
+                removedPositions.set(imageId, positions);
 
             changedImages.add(imageId);
 
@@ -140,16 +149,7 @@ export const useDatasetStore = defineStore("dataset", () => {
                 if (imageData.tags.has(tag)) {
                     imageData.tags.delete(tag);
 
-                    const imagesWithTag = rawGlobalTags.get(tag);
-                    if (imagesWithTag) {
-                        imagesWithTag.delete(imageId);
-
-                        if (imagesWithTag.size === 0)
-                            rawGlobalTags.delete(tag);
-                    }
-
-                    if (rawTagDiff.size > 0)
-                        rawTagDiff.get(imageId)?.original.delete(tag);
+                    removeTagMetadata(imageId, tag, rawGlobalTags, rawTagDiff);
                 }
             }
         }
@@ -161,7 +161,8 @@ export const useDatasetStore = defineStore("dataset", () => {
             recordHistory({
                 type: "remove_tag",
                 images: changedImages,
-                tags: new Set(tags)
+                tags: new Set(tags),
+                tagPositions: removedPositions
             });
         }
 
@@ -206,31 +207,8 @@ export const useDatasetStore = defineStore("dataset", () => {
 
             imageData.tags = new Set(tagsList);
 
-            const originalGlobal = rawGlobalTags.get(originalTag);
-            if (originalGlobal) {
-                originalGlobal.delete(imageId);
-
-                if (originalGlobal.size === 0)
-                    rawGlobalTags.delete(originalTag);
-            }
-
-            let newGlobal = rawGlobalTags.get(newTag);
-            if (!newGlobal) {
-                newGlobal = new Set();
-                rawGlobalTags.set(newTag, newGlobal);
-            }
-            newGlobal.add(imageId);
-
-            if (rawTagDiff.size > 0) {
-                const diff = rawTagDiff.get(imageId);
-                if (!diff)
-                    continue;
-
-                if (diff.tagger.has(newTag))
-                    diff.tagger.delete(newTag);
-                else
-                    diff.original.add(newTag);
-            }
+            removeTagMetadata(imageId, originalTag, rawGlobalTags, rawTagDiff);
+            addTagMetadata(imageId, newTag, rawGlobalTags, rawTagDiff);
         }
 
         if (changedImages.size === 0)
@@ -260,10 +238,11 @@ export const useDatasetStore = defineStore("dataset", () => {
         if (fromIndex === -1)
             return;
 
-        tagsList.splice(fromIndex, 1);
-
         const insertIndex = Math.max(0, Math.min(toIndex, tagsList.length));
+        if (insertIndex === fromIndex)
+            return;
 
+        tagsList.splice(fromIndex, 1);
         tagsList.splice(insertIndex, 0, tag);
         imageData.tags = new Set(tagsList);
 
@@ -280,6 +259,103 @@ export const useDatasetStore = defineStore("dataset", () => {
         triggerUpdate();
     }
 
+    function restoreTagsWithPositions(tagPositions: Map<string, Map<string, number>>) {
+        const rawDataset = toRaw(dataset.value);
+        const rawGlobalTags = toRaw(globalTags.value);
+        const rawTagDiff = toRaw(tagDiff.value);
+
+        for (const [imageId, positions] of tagPositions) {
+            const imageData = rawDataset.get(imageId);
+            if (!imageData)
+                continue;
+
+            const tagsList = [...imageData.tags];
+            const ordered = [...positions.entries()].sort((a, b) => a[1] - b[1]);
+
+            for (const [tag, index] of ordered) {
+                insertTagAtIndex(
+                    imageId,
+                    tag,
+                    index,
+                    tagsList,
+                    imageData.tags,
+                    rawGlobalTags,
+                    rawTagDiff
+                )
+            }
+
+            imageData.tags = new Set(tagsList);
+        }
+
+        triggerUpdate();
+    }
+
+    function insertTagAtIndex(
+        imageId: string,
+        tag: string,
+        index: number,
+        tagsList: string[],
+        existingTagSet: Set<string>,
+        rawGlobalTags: GlobalTags,
+        rawTagDiff: TagDiffs
+    ) {
+        const insertAt = Math.min(index, tagsList.length);
+        tagsList.splice(insertAt, 0, tag);
+
+        if (existingTagSet.has(tag))
+            return;
+
+        existingTagSet.add(tag);
+        addTagMetadata(imageId, tag, rawGlobalTags, rawTagDiff);
+    }
+
+    function addTagMetadata(imageId: string, tag: string, rawGlobalTags: GlobalTags, rawTagDiff: TagDiffs) {
+        let globalSet = rawGlobalTags.get(tag);
+        if (!globalSet) {
+            globalSet = new Set();
+            rawGlobalTags.set(tag, globalSet);
+        }
+        globalSet.add(imageId);
+
+        if (rawTagDiff.size > 0) {
+            const diff = rawTagDiff.get(imageId);
+            if (diff) {
+                if (diff.tagger.has(tag))
+                    diff.tagger.delete(tag);
+                else
+                    diff.original.add(tag);
+            }
+        }
+    }
+
+    function removeTagMetadata(imageId: string, tag: string, rawGlobalTags: GlobalTags, rawTagDiff: TagDiffs) {
+        removeImageFromGlobalTags(imageId, tag, rawGlobalTags);
+
+        if (rawTagDiff.size > 0)
+            rawTagDiff.get(imageId)?.original.delete(tag);
+    }
+
+    function removeImageFromGlobalTags(imageId: string, tag: string, rawGlobalTags: GlobalTags) {
+        const globalSet = rawGlobalTags.get(tag);
+        if (globalSet) {
+            globalSet.delete(imageId);
+
+            if (globalSet.size === 0)
+                rawGlobalTags.delete(tag);
+        }
+    }
+
+    function moveImageInGlobalTags(oldId: string, newId: string, tags: Iterable<string>, rawGlobalTags: GlobalTags) {
+        for (const tag of tags) {
+            const globalSet = rawGlobalTags.get(tag);
+            if (!globalSet)
+                continue;
+
+            globalSet.delete(oldId);
+            globalSet.add(newId);
+        }
+    }
+
     function undoDatasetAction() {
         const change = datasetUndoStack.value.pop();
         if (!change) return;
@@ -289,7 +365,10 @@ export const useDatasetStore = defineStore("dataset", () => {
                 removeTagsFromImages(change.images, change.tags!, /* createHistory = */ false);
                 break;
             case "remove_tag":
-                addTagsToImages(change.images, change.tags!, -1, /* createHistory = */ false);
+                if (change.tagPositions && change.tagPositions.size > 0)
+                    restoreTagsWithPositions(change.tagPositions);
+                else
+                    addTagsToImages(change.images, change.tags!, -1, /* createHistory = */ false);
                 break;
             case "replace_tag":
                 if (change.newTag && change.originalTag)
@@ -348,15 +427,8 @@ export const useDatasetStore = defineStore("dataset", () => {
 
             changed = true;
 
-            for (const tag of imageData.tags) {
-                const globalSet = rawGlobalTags.get(tag);
-                if (globalSet) {
-                    globalSet.delete(imageId);
-
-                    if (globalSet.size === 0)
-                        rawGlobalTags.delete(tag);
-                }
-            }
+            for (const tag of imageData.tags)
+                removeImageFromGlobalTags(imageId, tag, rawGlobalTags);
 
             rawDataset.delete(imageId);
             rawTagDiff.delete(imageId);
@@ -390,13 +462,7 @@ export const useDatasetStore = defineStore("dataset", () => {
             const newKey = newPath;
             const tagsCopy = new Set(existing.tags);
 
-            for (const tag of tagsCopy) {
-                const globalSet = rawGlobalTags.get(tag);
-                if (globalSet) {
-                    globalSet.delete(oldKey);
-                    globalSet.add(newKey);
-                }
-            }
+            moveImageInGlobalTags(oldKey, newKey, tagsCopy, rawGlobalTags);
 
             const filePath = `${toFileUrl(newPath)}?v=${typeof mtime === "number" ? mtime : Date.now()}`;
             rawDataset.delete(oldKey);
