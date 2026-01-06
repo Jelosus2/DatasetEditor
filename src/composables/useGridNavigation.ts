@@ -33,7 +33,7 @@ export function useGridNavigation(
             return false;
 
         const tag = element.tagName.toLowerCase();
-        if (tag === "input" || tag === "select")
+        if (tag === "input" || tag === "select" || tag === "textarea")
             return true;
         if (element.isContentEditable)
             return true;
@@ -70,9 +70,25 @@ export function useGridNavigation(
         setSingleSelection(id);
     }
 
+    function selectAllVisible() {
+        const visibleKeys = getVisibleKeys();
+        if (visibleKeys.length === 0)
+            return;
+
+        selectedImages.value = new Set(visibleKeys);
+        lastSelectedIndex.value = Math.min(lastSelectedIndex.value, visibleKeys.length - 1);
+    }
+
     function handleKeyDown(event: KeyboardEvent) {
         if (shouldIgnoreArrowKeys())
             return;
+
+        const isSelectAll = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a";
+        if (isSelectAll) {
+            event.preventDefault();
+            selectAllVisible();
+            return;
+        }
 
         const isArrow = event.key === "ArrowLeft" || event.key === "ArrowRight" || event.key === "ArrowUp" || event.key === "ArrowDown";
         if (!isArrow)

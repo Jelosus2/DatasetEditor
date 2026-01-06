@@ -41,7 +41,6 @@ const {
     selectedImages,
     lastSelectedIndex,
     toggleSelection,
-    selectAllImages,
     clearSelection
 } = useImageSelection(imageKeys, computed(() => filteredImages.value), isFiltering);
 
@@ -162,8 +161,6 @@ onActivated(() => {
 onDeactivated(() => {
     window.removeEventListener("open-image", handleOpenImage as EventListener);
 });
-
-defineExpose({ selectAllImages });
 </script>
 
 <template>

@@ -298,7 +298,7 @@ function clearImports() {
                                     v-model="tagInput"
                                     :disabled="!selectedGroup"
                                     :id="'group-completion-list'"
-                                    :placeholder="'Type to add a global tag...'"
+                                    :placeholder="'Type to add tags to the current group...'"
                                     :multiple="true"
                                     @on-complete="addTag"
                                 />

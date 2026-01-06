@@ -26,7 +26,6 @@ import { ref, onMounted } from 'vue';
 
 
 const arePreviewsEnabled = ref(false);
-const datasetTab = ref<InstanceType<typeof DatasetTab> | null>(null);
 const activeTab = ref<ActiveTab>("dataset");
 
 const { message: alertMessage, type: alertType, timestamp: alertTimestamp, showAlert } = useAlert();
@@ -49,8 +48,7 @@ useKeyboardShortcuts(
     { key: 'z', ctrl: true, handler: () => appController.undoAction(), preventDefault: true },
     { key: 'y', ctrl: true, handler: () => appController.redoAction(), preventDefault: true },
     { key: 's', ctrl: true, handler: () => appController.saveChanges(), preventDefault: true },
-    { key: 'r', ctrl: true, handler: () => appController.reloadDataset(), preventDefault: true },
-    { key: 'a', ctrl: true, handler: () => datasetTab.value?.selectAllImages() }
+    { key: 'r', ctrl: true, handler: () => appController.reloadDataset(), preventDefault: true }
   ],
   { isEnabled: () => !appStatus.active.value }
 );
@@ -96,7 +94,7 @@ onMounted(async () => {
     <div class="tabs-border tabs min-h-0 flex-1 overflow-hidden text-base">
       <input type="radio" name="editor_tabs" class="tab" aria-label="Dataset" value="dataset" v-model="activeTab" />
       <KeepAlive>
-        <DatasetTab ref="datasetTab" v-if="activeTab === 'dataset'" :are-previews-enabled="arePreviewsEnabled" />
+        <DatasetTab v-if="activeTab === 'dataset'" :are-previews-enabled="arePreviewsEnabled" />
       </KeepAlive>
 
       <input type="radio" name="editor_tabs" class="tab" aria-label="Tag Groups" value="tag-groups" v-model="activeTab" />

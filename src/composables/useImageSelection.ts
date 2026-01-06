@@ -42,14 +42,6 @@ export function useImageSelection(imageKeys: Ref<string[]>, filteredImages: Ref<
         selectedImages.value = newSelection;
     }
 
-    function selectAllImages() {
-        const targetSet = isFiltering.value && filteredImages.value.size > 0
-            ? toRaw(filteredImages.value)
-            : toRaw(imageKeys.value);
-
-        selectedImages.value = new Set(targetSet);
-    }
-
     function clearSelection() {
         const rawImageKeys = toRaw(imageKeys.value);
 
@@ -67,7 +59,6 @@ export function useImageSelection(imageKeys: Ref<string[]>, filteredImages: Ref<
         selectedImages,
         lastSelectedIndex,
         toggleSelection,
-        selectAllImages,
         clearSelection
     }
 }
