@@ -52,7 +52,7 @@ const selectedImageId = computed(() => {
     return iterator.done ? null : iterator.value;
 });
 
-const hasSingleSelection = computed(() => selectedImageId.value !== null);
+const hasSingleSelection = computed(() => props.selectedImages.size === 1);
 
 const filterTagsSet = computed(() => new Set(
     props.filterInput.split(",").map((tag) => tag.trim().toLowerCase()).filter(Boolean)
@@ -459,6 +459,7 @@ function onTagDrop() {
                                 @click="removeTag(tag)"
                             >
                                 <span
+                                    v-show="isDraggable"
                                     class="cursor-grab select-none opacity-70 pr-2"
                                     draggable="true"
                                     @mousedown.stop
