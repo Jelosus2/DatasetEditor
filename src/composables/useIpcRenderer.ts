@@ -1,14 +1,8 @@
 import type { IpcInvokeMap, IpcOnMap } from "../../shared/ipc-types";
+import type { IpcListener } from "@/types/ipc";
 
 import { useLogStore } from "@/stores/logStore";
 import { onMounted, onUnmounted, onActivated, onDeactivated } from "vue";
-
-export type IpcListener = {
-    [K in keyof IpcOnMap]: {
-        channel: K;
-        handler: (...args: IpcOnMap[K]["args"]) => void;
-    }
-}[keyof IpcOnMap];
 
 let logUnsubscribe: (() => void) | null = null;
 
@@ -23,7 +17,11 @@ export function useIpcRenderer(listeners: IpcListener[]) {
         subscribed = true;
 
         listeners.forEach((listener) => {
-            const unsubscribe = window.ipcRenderer.on(listener.channel, listener.handler);
+            const unsubscribe = window.ipcRenderer.on(
+                listener.channel,
+                listener.handler as (...args: IpcOnMap[keyof IpcOnMap]["args"]) => void
+            );
+
             if (typeof unsubscribe === "function")
                 unsubscribes.push(unsubscribe);
         });

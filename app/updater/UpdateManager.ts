@@ -13,40 +13,30 @@ export class UpdateManager {
     }
 
     registerListeners() {
-        autoUpdater.on('update-available', () => {
-            App.window.ipcSend('update_available');
+        autoUpdater.on("update-available", () => {
+            App.window.ipcSend("app:update_available");
         });
 
-        autoUpdater.on('download-progress', () => {
-            App.window.ipcSend('update_progress');
+        autoUpdater.on("download-progress", (progressInfo) => {
+            App.window.ipcSend("app:update_progress", progressInfo.percent);
         });
 
-        autoUpdater.on('update-downloaded', () => {
-            App.window.ipcSend('update_downloaded');
+        autoUpdater.on("update-downloaded", () => {
+            App.window.ipcSend("app:update_downloaded");
         });
 
-        autoUpdater.on('error', (error) => {
-            App.window.ipcSend('update_error');
+        autoUpdater.on("error", (error) => {
+            App.window.ipcSend("app:update_error");
             App.logger.error(`[Updater] Update error: ${Utilities.getErrorMessage(error)}`)
         });
     }
 
     async checkForUpdates() {
-        try {
-            await autoUpdater.checkForUpdates();
-        } catch (error) {
-            console.error(error);
-            App.logger.error(`[Updater] Error while checking for updates: ${Utilities.getErrorMessage(error)}`);
-        }
+        return await autoUpdater.checkForUpdates();
     }
 
     async downloadUpdate() {
-        try {
-            await autoUpdater.downloadUpdate();
-        } catch (error) {
-            console.error(error);
-            App.logger.error(`[Updater] Error while downloading the update: ${Utilities.getErrorMessage(error)}`);
-        }
+        await autoUpdater.downloadUpdate();
     }
 
     installUpdate() {

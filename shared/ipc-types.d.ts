@@ -84,6 +84,29 @@ export type IpcInvokeMap = {
         args: [];
         result: void;
     }
+    "update:check": {
+        args: [];
+        result: {
+            error: boolean;
+            isUpdateAvailable?: boolean;
+            message?: string;
+        };
+    }
+    "update:download": {
+        args: [];
+        result: {
+            error: boolean;
+            message?: string;
+        };
+    }
+    "update:install": {
+        args: [];
+        result: void;
+    }
+    "update:availability": {
+        args: [];
+        result: boolean;
+    }
 }
 
 export type IpcOnMap = {
@@ -92,5 +115,17 @@ export type IpcOnMap = {
     }
     "app:status": {
         args: [AppStatusPayload];
+    }
+    "app:update_available": {
+        args: [];
+    }
+    "app:update_progress": {
+        args: [progress: number];
+    }
+    "app:update_downloaded": {
+        args: [];
+    }
+    "app:update_error": {
+        args: [];
     }
 }

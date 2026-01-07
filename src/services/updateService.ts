@@ -1,26 +1,23 @@
 import { useIpcRenderer } from '@/composables/useIpcRenderer';
-import { useLogStore } from '@/stores/logStore';
 
 export class UpdateService {
-  private ipc = useIpcRenderer([]);
-  private logStore = useLogStore();
+    private ipc = useIpcRenderer([]);
 
-  async checkForUpdates(): Promise<null | { updateInfo: { version: string } }> {
-    this.logStore.addLog('info', 'Checking for updates');
-    return this.ipc.invoke('check_for_updates');
-  }
+    constructor() {}
 
-  async downloadUpdate() {
-    this.logStore.addLog('info', 'Downloading update');
-    return this.ipc.invoke('download_update');
-  }
+    async checkForUpdates() {
+        return this.ipc.invoke("update:check");
+    }
 
-  installUpdate() {
-    this.logStore.addLog('info', 'Installing update');
-    this.ipc.invoke('install_update');
-  }
+    async downloadUpdate() {
+        return this.ipc.invoke('update:download');
+    }
 
-  async areUpdatesAvailable() {
-    return this.ipc.invoke<boolean>('are_updates_available');
-  }
+    installUpdate() {
+        this.ipc.invoke('update:install');
+    }
+
+    async canUpdate() {
+        return this.ipc.invoke('update:availability');
+    }
 }
