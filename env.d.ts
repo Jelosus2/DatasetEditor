@@ -15,6 +15,24 @@ interface ipcElectronAPI {
 }
 
 declare global {
+    interface KeyboardLayoutMap {
+        get(key: string): string | undefined;
+        has(key: string): boolean;
+        entries(): IterableIterator<[string, string]>;
+        keys(): IterableIterator<string>;
+        values(): IterableIterator<string>;
+        forEach(callback: (value: string, key: string, map: KeyboardLayoutMap) => void): void;
+        readonly size: number;
+    }
+
+    interface Keyboard {
+        getLayoutMap(): Promise<KeyboardLayoutMap>;
+    }
+
+    interface Navigator {
+        readonly keyboard: Keyboard;
+    }
+
     interface Window {
         ipcRenderer: ipcElectronAPI;
         openWikiLink: typeof openWikiLink;

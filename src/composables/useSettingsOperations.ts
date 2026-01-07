@@ -46,6 +46,8 @@ export function useSettingsOperations() {
                 key,
                 String(raw).split(",").map((value) => value.trim()).filter(Boolean)
             )
+        else if (definition.type === "shortcut")
+            settingsStore.setSetting(key, String(raw));
         else
             settingsStore.setSetting(key, raw as Settings[keyof Settings]);
     }
@@ -55,11 +57,24 @@ export function useSettingsOperations() {
             await settingsStore.importTagsFromCsv();
     }
 
+    function formatShortcut(event: KeyboardEvent) {
+        if (event.key === "Backspace")
+            return "";
+
+        return settingsStore.formatShortcutEvent(event);
+    }
+
+    function matchesShortcut(combo: string, event: KeyboardEvent) {
+        return settingsStore.matchesShortcut(combo, event);
+    }
+
     return {
         search,
         sections,
         getValue,
         setValue,
-        runAction
+        runAction,
+        formatShortcut,
+        matchesShortcut
     }
 }

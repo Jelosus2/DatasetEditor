@@ -6,7 +6,7 @@ import { useIpcRenderer } from "@/composables/useIpcRenderer";
 import { UpdateService } from "@/services/updateService";
 import { useAlert } from "@/composables/useAlert";
 import { APP_VERSION } from "@/version";
-import { onMounted, ref, computed, markRaw } from "vue";
+import { onMounted, ref, computed } from "vue";
 
 import UpdateCheckIcon from "@/assets/icons/update-check.svg";
 import UpdateDownloadIcon from "@/assets/icons/update-download.svg";
@@ -37,7 +37,7 @@ const updateInfo = computed(() => updateInfoMap[updateState.value]);
 
 const updateService = new UpdateService();
 
-const navigationSections = markRaw(useNavigationSections(emit, arePreviewsEnabled));
+const navigationSections = computed(() => useNavigationSections(emit, arePreviewsEnabled));
 const { showAlert } = useAlert();
 
 async function handleUpdateAction() {

@@ -6,6 +6,16 @@ import { computed, reactive, ref, toRaw } from "vue";
 import isEqual from "lodash/isEqual";
 import { defineStore } from "pinia";
 
+const MOD_ORDER = ["Ctrl", "Shift", "Alt"];
+const MOD_ALIASES: Record<string, string> = {
+    ctrl: "Ctrl",
+    control: "Ctrl",
+    shift: "Shift",
+    alt: "Alt"
+}
+
+let layoutMap: KeyboardLayoutMap | null = null;
+
 export const useSettingsStore = defineStore("settings", () => {
     const settings = reactive<Settings>({
         showTagCount: false,
@@ -19,7 +29,17 @@ export const useSettingsStore = defineStore("settings", () => {
         recursiveDatasetLoad: false,
         autoCheckUpdates: true,
         sortImagesAlphabetically: false,
-        enableHardwareAcceleration: true
+        enableHardwareAcceleration: true,
+        shortcutLoadDataset: "Ctrl+O",
+        shortcutReloadDataset: "Ctrl+R",
+        shortcutSave: "Ctrl+S",
+        shortcutUndo: "Ctrl+Z",
+        shortcutRedo: "Ctrl+Y",
+        shortcutSelectAllImages: "Ctrl+A",
+        shortcutNavigationLeft: "ArrowLeft",
+        shortcutNavigationRight: "ArrowRight",
+        shortcutNavigationUp: "ArrowUp",
+        shortcutNavigationDown: "ArrowDown"
     });
 
     const settingsUndoStack = ref<SettingsChangeRecord[]>([]);
@@ -28,6 +48,7 @@ export const useSettingsStore = defineStore("settings", () => {
     const lastSaved = ref<Settings | null>(null);
     const showRestartPrompt = ref(false);
     const isApplying = ref(false);
+    const shortcutConflicts = ref<Set<keyof Settings>>(new Set());
 
     const hasChanges = computed(() => {
         if (!lastSaved.value)
@@ -53,13 +74,142 @@ export const useSettingsStore = defineStore("settings", () => {
         return false;
     });
 
+    const shortcutKeys = Object.keys(settings).filter((key) => key.startsWith("shortcut")) as Array<keyof Settings>;
+
     const settingsService = new SettingsService();
+
+    function canonicalKey(part: string) {
+        if (!part)
+            return "";
+        if (part === " ")
+            return "Space";
+        if (part === "+" || part.toLowerCase() === "plus")
+            return "Plus";
+
+        const lower = part.toLowerCase();
+        if (lower.startsWith("arrow")) {
+            const direction = lower.slice(5);
+            return `Arrow${direction.charAt(0).toUpperCase()}${direction.slice(1)}`;
+        }
+
+        if (lower === "escape")
+            return "Escape";
+
+        return part.length === 1 ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1);
+    }
+
+    function normalizeShortcut(raw: string) {
+        const parts = raw.split("+").map((part) => part.trim()).filter(Boolean);
+        if (parts.length === 0)
+            return "";
+
+        const mods = new Set<string>();
+        let key = "";
+
+        for (const part of parts) {
+            const lower = part.toLowerCase();
+            const mod = MOD_ALIASES[lower];
+
+            if (mod) {
+                mods.add(mod);
+                continue;
+            }
+
+            key = canonicalKey(part);
+        }
+
+        const orderedMods = MOD_ORDER.filter((mod) => mods.has(mod));
+        return key ? [...orderedMods, key].join("+") : orderedMods.join("+");
+    }
+
+    async function ensureLayoutMap() {
+        if (!layoutMap)
+            layoutMap = await navigator.keyboard.getLayoutMap();
+    }
+
+    function getKeyLabel(event: KeyboardEvent) {
+        if (layoutMap) {
+            const mapped = layoutMap.get(event.code);
+            if (mapped)
+                return mapped;
+        }
+
+        if (event.code.startsWith("Key"))
+            return event.code.slice(3).toUpperCase();
+        if (event.code.startsWith("Digit"))
+            return event.code.slice(5);
+        if (event.code === "Space")
+            return "Space";
+
+        return event.key;
+    }
+
+    function formatShortcutEvent(event: KeyboardEvent) {
+        if (event.getModifierState?.("AltGraph"))
+            return;
+
+        const parts: string[] = [];
+        if (event.ctrlKey)
+            parts.push("Ctrl");
+        if (event.shiftKey)
+            parts.push("Shift");
+        if (event.altKey)
+            parts.push("Alt");
+
+        let key = event.key;
+
+        if (key === "Control" || key === "Shift" || key === "Alt" || key === "Meta")
+            return "";
+
+        key = getKeyLabel(event);
+
+        if (key === "+" || event.code === "NumpadAdd")
+            key = "Plus";
+
+        parts.push(key);
+        return normalizeShortcut(parts.join("+"));
+    }
+
+    function matchesShortcut(combo: string, event: KeyboardEvent) {
+        if (!combo)
+            return false;
+
+        return normalizeShortcut(combo) === formatShortcutEvent(event);
+    }
+
+    function trySetShortcut(key: keyof Settings, combo: string) {
+        const normalized = normalizeShortcut(combo);
+        if (!normalized)
+            return { ok: false, conflictKey: null };
+
+        for (const otherKey of shortcutKeys) {
+            if (otherKey === key)
+                continue;
+
+            if (normalizeShortcut(String(settings[otherKey])) === normalized) {
+                const next = new Set(shortcutConflicts.value);
+
+                next.add(key);
+                next.add(otherKey);
+
+                shortcutConflicts.value = next;
+
+                return { ok: false, conflictKey: otherKey };
+            }
+        }
+
+        setSetting(key, combo as Settings[keyof Settings]);
+        return { ok: true, conflictKey: null };
+    }
 
     function normalizeValue<K extends keyof Settings>(key: K, value: Settings[K]) {
         if (key === "tagsIgnored") {
             const unique = [...new Set(value as string[])];
             return unique as Settings[K];
         }
+
+        if (key.startsWith("shortcut"))
+            return normalizeShortcut(String(value)) as Settings[K];
 
         return value;
     }
@@ -176,6 +326,9 @@ export const useSettingsStore = defineStore("settings", () => {
     }
 
     async function saveSettings() {
+        if (shortcutConflicts.value.size > 0)
+            return;
+
         const needsRestart = restartRequired.value;
 
         const result = await settingsService.updateSettings(buildSettings());
@@ -233,6 +386,12 @@ export const useSettingsStore = defineStore("settings", () => {
         hasChanges,
         restartRequired,
         showRestartPrompt,
+        shortcutConflicts,
+        ensureLayoutMap,
+        normalizeShortcut,
+        formatShortcutEvent,
+        matchesShortcut,
+        trySetShortcut,
         getSetting,
         setSetting,
         undoSettingsAction,

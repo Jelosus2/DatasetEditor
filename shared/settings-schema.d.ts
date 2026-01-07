@@ -1,4 +1,4 @@
-export type SettingType = "boolean" | "string[]" | "number" | "select" | "action";
+export type SettingType = "boolean" | "string[]" | "number" | "select" | "action" | "shortcut";
 export type SettingInputType = "textarea";
 
 export interface SettingDefinition<K extends string = string> {
@@ -28,6 +28,16 @@ export type Settings = {
     autoCheckUpdates: boolean;
     sortImagesAlphabetically: boolean;
     enableHardwareAcceleration: boolean;
+    shortcutLoadDataset: string;
+    shortcutReloadDataset: string;
+    shortcutSave: string;
+    shortcutUndo: string;
+    shortcutRedo: string;
+    shortcutSelectAllImages: string;
+    shortcutNavigationLeft: string;
+    shortcutNavigationRight: string;
+    shortcutNavigationUp: string;
+    shortcutNavigationDown: string;
 };
 
 export type SettingsDefinition = SettingDefinition<keyof Settings>;

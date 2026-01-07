@@ -111,4 +111,84 @@ export class AppSettings {
         defaultValue: true
     })
     enableHardwareAcceleration = true;
+
+    @Setting({
+        section: "Shortcuts",
+        label: "Load Dataset",
+        type: "shortcut",
+        defaultValue: "Ctrl+O"
+    })
+    shortcutLoadDataset = "Ctrl+O";
+
+    @Setting({
+        section: "Shortcuts",
+        label: "Reload Dataset",
+        type: "shortcut",
+        defaultValue: "Ctrl+R"
+    })
+    shortcutReloadDataset = "Ctrl+R";
+
+    @Setting({
+        section: "Shortcuts",
+        label: "Save",
+        type: "shortcut",
+        defaultValue: "Ctrl+S"
+    })
+    shortcutSave = "Ctrl+S";
+
+    @Setting({
+        section: "Shortcuts",
+        label: "Undo",
+        type: "shortcut",
+        defaultValue: "Ctrl+Z"
+    })
+    shortcutUndo = "Ctrl+Z";
+
+    @Setting({
+        section: "Shortcuts",
+        label: "Redo",
+        type: "shortcut",
+        defaultValue: "Ctrl+Y"
+    })
+    shortcutRedo = "Ctrl+Y";
+
+    @Setting({
+        section: "Shortcuts",
+        label: "Select All Images",
+        type: "shortcut",
+        defaultValue: "Ctrl+A"
+    })
+    shortcutSelectAllImages = "Ctrl+A";
+
+    @Setting({
+        section: "Shortcuts",
+        label: "Navigation Left",
+        type: "shortcut",
+        defaultValue: "ArrowLeft"
+    })
+    shortcutNavigationLeft = "ArrowLeft";
+
+    @Setting({
+        section: "Shortcuts",
+        label: "Navigation Right",
+        type: "shortcut",
+        defaultValue: "ArrowRight"
+    })
+    shortcutNavigationRight = "ArrowRight";
+
+    @Setting({
+        section: "Shortcuts",
+        label: "Navigation Up",
+        type: "shortcut",
+        defaultValue: "ArrowUp"
+    })
+    shortcutNavigationUp = "ArrowUp";
+
+    @Setting({
+        section: "Shortcuts",
+        label: "Navigation Down",
+        type: "shortcut",
+        defaultValue: "ArrowDown"
+    })
+    shortcutNavigationDown = "ArrowDown";
 }

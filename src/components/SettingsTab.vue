@@ -5,6 +5,7 @@ import type { SettingsDefinition } from "../../shared/settings-schema";
 
 import { useSettingsOperations } from "@/composables/useSettingsOperations";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useAlert } from "@/composables/useAlert";
 import { reactive, ref, watchEffect } from "vue";
 
 const activeSection = ref("");
@@ -12,7 +13,8 @@ const activeSection = ref("");
 const stringInputs = reactive<Record<string, string>>({});
 
 const settingsStore = useSettingsStore();
-const { search, sections, getValue, setValue, runAction } = useSettingsOperations();
+const { search, sections, getValue, setValue, runAction, formatShortcut } = useSettingsOperations();
+const { showAlert } = useAlert();
 
 watchEffect(() => {
     if (!activeSection.value && sections.value.length > 0)
@@ -35,6 +37,18 @@ function scrollToSection(section: string) {
 
 function commitStringList(definition: SettingsDefinition) {
     setValue(definition, stringInputs[definition.key] ?? "");
+}
+
+function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
+    const combo = formatShortcut(event);
+    if (!combo)
+        return;
+
+    const result = settingsStore.trySetShortcut(field.key, combo);
+    if (!result.ok) {
+        const conflictLabel = settingsStore.schema.find((def) => def.key === result.conflictKey)?.label ?? "another shortcut";
+        showAlert("error", `Shortcut already used by "${conflictLabel}"`);
+    }
 }
 </script>
 
@@ -63,7 +77,7 @@ function commitStringList(definition: SettingsDefinition) {
                     <div class="mt-auto pt-4 border-t border-base-content/30">
                         <button
                             class="btn btn-accent btn-outline w-full"
-                            :disabled="!settingsStore.hasChanges"
+                            :disabled="!settingsStore.hasChanges || settingsStore.shortcutConflicts.size > 0"
                             @click="settingsStore.saveSettings()"
                         >
                             Save
@@ -135,6 +149,18 @@ function commitStringList(definition: SettingsDefinition) {
                                         <button class="btn btn-outline" @click="runAction(field)">
                                             {{ field.label }}
                                         </button>
+                                    </div>
+
+                                    <!-- shortcut -->
+                                    <div v-else-if="field.type === 'shortcut'" class="w-64">
+                                        <input
+                                            readonly
+                                            class="input w-full outline-none!"
+                                            :class="{ 'border border-error': settingsStore.shortcutConflicts.has(field.key) }"
+                                            :value="getValue(field)"
+                                            @keydown.stop.prevent="recordShortcut(field, $event)"
+                                        />
+                                        <div class="text-sm text-base-content/60 mt-1">Press keys to set, Backspace to clear</div>
                                     </div>
                                 </div>
 

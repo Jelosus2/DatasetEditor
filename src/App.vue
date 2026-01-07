@@ -24,7 +24,6 @@ import { useAlert } from "@/composables/useAlert";
 import { AppController } from "@/controllers/AppController";
 import { ref, onMounted } from "vue";
 
-
 const arePreviewsEnabled = ref(false);
 const activeTab = ref<ActiveTab>("dataset");
 
@@ -36,21 +35,21 @@ const tagGroupsStore = useTagGroupsStore();
 const settingsStore = useSettingsStore();
 
 const appController = new AppController({
-  datasetStore,
-  tagGroupsStore,
-  settingsStore,
-  showAlert
+    datasetStore,
+    tagGroupsStore,
+    settingsStore,
+    showAlert
 });
 
 useKeyboardShortcuts(
-  [
-    { key: "o", ctrl: true, handler: () => appController.loadDataset(), preventDefault: true },
-    { key: "z", ctrl: true, handler: () => appController.undoAction(), preventDefault: true },
-    { key: "y", ctrl: true, handler: () => appController.redoAction(), preventDefault: true },
-    { key: "s", ctrl: true, handler: () => appController.saveChanges(), preventDefault: true },
-    { key: "r", ctrl: true, handler: () => appController.reloadDataset(), preventDefault: true }
-  ],
-  { isEnabled: () => !appStatus.active.value }
+    () => [
+        { combo: settingsStore.getSetting("shortcutLoadDataset"), handler: () => appController.loadDataset(), preventDefault: true },
+        { combo: settingsStore.getSetting("shortcutReloadDataset"), handler: () => appController.reloadDataset(), preventDefault: true },
+        { combo: settingsStore.getSetting("shortcutUndo"), handler: () => appController.undoAction(), preventDefault: true },
+        { combo: settingsStore.getSetting("shortcutRedo"), handler: () => appController.redoAction(), preventDefault: true },
+        { combo: settingsStore.getSetting("shortcutSave"), handler: () => appController.saveChanges(), preventDefault: true }
+    ],
+    { isEnabled: () => !appStatus.active.value }
 );
 
 const { send } = useIpcRenderer([
@@ -75,7 +74,8 @@ const { send } = useIpcRenderer([
 ]);
 
 onMounted(async () => {
-  await appController.initialize();
+    await settingsStore.ensureLayoutMap();
+    await appController.initialize();
 });
 </script>
 

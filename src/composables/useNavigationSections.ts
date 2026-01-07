@@ -1,31 +1,37 @@
 import type { MenuSection, NavigationEmit } from "@/types/navigation-bar";
 import type { Ref } from "vue";
 
+import { useSettingsStore } from "@/stores/settingsStore";
+
 export function useNavigationSections(emit: NavigationEmit, arePreviewsEnabled: Ref<boolean>): MenuSection[] {
+    const settingsStore = useSettingsStore();
+
+    const shortcutParts = (value: string) => value ? value.split("+") : undefined;
+
     return [
         {
             id: "file",
             label: "File",
-            menuWidthClass: "w-56",
+            menuWidthClass: "min-w-56 w-max max-w-md",
             items: [
-                { kind: "action", label: "Load Dataset", shortcut: ["Ctrl", "O"], action: () => emit("load_dataset") },
-                { kind: "action", label: "Reload Dataset", shortcut: ["Ctrl", "R"], action: () => emit("reload_dataset") },
-                { kind: "action", label: "Save", shortcut: ["Ctrl", "S"], action: () => emit("save") }
+                { kind: "action", label: "Load Dataset", shortcut: shortcutParts(settingsStore.getSetting("shortcutLoadDataset")), action: () => emit("load_dataset") },
+                { kind: "action", label: "Reload Dataset", shortcut: shortcutParts(settingsStore.getSetting("shortcutReloadDataset")), action: () => emit("reload_dataset") },
+                { kind: "action", label: "Save", shortcut: shortcutParts(settingsStore.getSetting("shortcutSave")), action: () => emit("save") }
             ]
         },
         {
             id: "edit",
             label: "Edit",
-            menuWidthClass: "w-52",
+            menuWidthClass: "min-w-45 w-max max-w-md",
             items: [
-                { kind: "action", label: "Undo", shortcut: ["Ctrl", "Z"], action: () => emit("undo") },
-                { kind: "action", label: "Redo", shortcut: ["Ctrl", "Y"], action: () => emit("redo") }
+                { kind: "action", label: "Undo", shortcut: shortcutParts(settingsStore.getSetting("shortcutUndo")), action: () => emit("undo") },
+                { kind: "action", label: "Redo", shortcut: shortcutParts(settingsStore.getSetting("shortcutRedo")), action: () => emit("redo") }
             ]
         },
         {
             id: "view",
             label: "View",
-            menuWidthClass: "w-52",
+            menuWidthClass: "min-w-52 w-max max-w-md",
             items: [
                 { kind: "toggle", label: "Image Previews", model: arePreviewsEnabled }
             ]
@@ -33,7 +39,7 @@ export function useNavigationSections(emit: NavigationEmit, arePreviewsEnabled: 
         {
             id: "tools",
             label: "Tools",
-            menuWidthClass: "w-75",
+            menuWidthClass: "min-w-75 w-max max-w-lg",
             items: [
                 { kind: "modal", label: "Autotag Images", targetId: "autotagger_modal" },
                 { kind: "modal", label: "Add background color to selected images", targetId: "background_color_modal" },

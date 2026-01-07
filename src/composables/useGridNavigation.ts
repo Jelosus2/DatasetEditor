@@ -1,6 +1,7 @@
 import type { ArrowDirection } from "@/types/composables";
 import type { Ref } from "vue";
 
+import { useSettingsStore } from "@/stores/settingsStore";
 import { onActivated, onDeactivated, watch } from "vue";
 
 export function useGridNavigation(
@@ -11,6 +12,8 @@ export function useGridNavigation(
     isFiltering: Ref<boolean>,
     columns: Ref<number>
 ) {
+    const settingsStore = useSettingsStore();
+
     function getVisibleKeys() {
         if (!isFiltering.value)
             return imageKeys.value;
@@ -83,26 +86,38 @@ export function useGridNavigation(
         if (shouldIgnoreArrowKeys())
             return;
 
-        const isSelectAll = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a";
-        if (isSelectAll) {
+        const selectAllCombo = settingsStore.getSetting("shortcutSelectAllImages");
+        const leftCombo = settingsStore.getSetting("shortcutNavigationLeft");
+        const rightCombo = settingsStore.getSetting("shortcutNavigationRight");
+        const upCombo = settingsStore.getSetting("shortcutNavigationUp");
+        const downCombo = settingsStore.getSetting("shortcutNavigationDown");
+
+        if (settingsStore.matchesShortcut(selectAllCombo, event)) {
             event.preventDefault();
             selectAllVisible();
             return;
         }
 
-        const isArrow = event.key === "ArrowLeft" || event.key === "ArrowRight" || event.key === "ArrowUp" || event.key === "ArrowDown";
-        if (!isArrow)
-            return;
-
-        event.preventDefault();
-        if (event.key === "ArrowLeft")
+        if (settingsStore.matchesShortcut(leftCombo, event)) {
+            event.preventDefault();
             navigateSelection("left");
-        else if (event.key === "ArrowRight")
+            return;
+        }
+        if (settingsStore.matchesShortcut(rightCombo, event)) {
+            event.preventDefault();
             navigateSelection("right");
-        else if (event.key === "ArrowUp")
+            return;
+        }
+        if (settingsStore.matchesShortcut(upCombo, event)) {
+            event.preventDefault();
             navigateSelection("up");
-        else
+            return;
+        }
+        if (settingsStore.matchesShortcut(downCombo, event)) {
+            event.preventDefault();
             navigateSelection("down");
+            return;
+        }
     }
 
     watch(isFiltering, (active) => {
