@@ -1,6 +1,11 @@
 import { Setting } from "../decorators/settings.js";
+import { App } from "../App.js";
 
 export class AppSettings {
+    constructor() {
+        this.huggingFaceCacheDirectory = App.paths.defaultHuggingFacePath;
+    }
+
     @Setting({
         section: "Appearance",
         label: "Show Tag Count",
@@ -69,7 +74,15 @@ export class AppSettings {
         inputType: "textarea",
         defaultValue: []
     })
-    tagsIgnored: string[] = []
+    tagsIgnored: string[] = [];
+
+    @Setting({
+        section: "Autotagger",
+        label: "HuggingFace cache",
+        type: "directory",
+        defaultValue: ""
+    })
+    huggingFaceCacheDirectory = "";
 
     @Setting({
         section: "Autotagger",

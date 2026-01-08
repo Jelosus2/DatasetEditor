@@ -25,6 +25,7 @@ export class PathsBuilder {
     readonly preloadFilePath: string;
     readonly indexFilePath: string;
     readonly uninstallerPath: string;
+    readonly defaultHuggingFacePath: string;
 
     constructor(basePath: string) {
         const __dirname = this.__dirname(import.meta.url);
@@ -45,7 +46,7 @@ export class PathsBuilder {
         this.preloadFilePath = path.join(__dirname, "..", "preload.js");
         this.indexFilePath = path.join(this.distPath, "index.html");
         this.uninstallerPath = path.join(path.dirname(app.getPath("exe")), "Uninstall Dataset Editor.exe");
-
+        this.defaultHuggingFacePath = this.getHuggingFaceCachePath();
     }
 
     async readTagsCsv(csvPath: string, batchSize: number, onBatchComplete: (batch: TagBatch[], progress: number, error?: unknown) => void) {
@@ -107,5 +108,21 @@ export class PathsBuilder {
 
     __dirname(fileURL: string): string {
         return path.dirname(url.fileURLToPath(fileURL));
+    }
+
+    getHuggingFaceCachePath() {
+        if (process.env.HF_HUB_CACHE)
+            return process.env.HF_HUB_CACHE;
+        if (process.env.HF_HOME)
+            return path.join(process.env.HF_HOME, "hub");
+
+        const homeDirectory = app.getPath("home");
+        app.getPath("home")
+        const xdgCache = process.env.XDG_CACHE_HOME || path.join(homeDirectory, ".cache");
+
+        if (process.platform === "win32")
+            return path.join(homeDirectory, ".cache", "huggingface", "hub")
+        else
+            return path.join(xdgCache, "huggingface", "hub")
     }
 }

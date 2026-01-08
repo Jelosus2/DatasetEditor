@@ -40,7 +40,8 @@ export const useSettingsStore = defineStore("settings", () => {
         shortcutNavigationRight: "ArrowRight",
         shortcutNavigationUp: "ArrowUp",
         shortcutNavigationDown: "ArrowDown",
-        shortcutToggleTagEditMode: "Ctrl+E"
+        shortcutToggleTagEditMode: "Ctrl+E",
+        huggingFaceCacheDirectory: ""
     });
 
     const settingsUndoStack = ref<SettingsChangeRecord[]>([]);

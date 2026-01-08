@@ -1,4 +1,4 @@
-export type SettingType = "boolean" | "string[]" | "number" | "select" | "action" | "shortcut";
+export type SettingType = "boolean" | "string[]" | "number" | "select" | "action" | "shortcut" | "directory";
 export type SettingInputType = "textarea";
 
 export interface SettingDefinition<K extends string = string> {
@@ -39,6 +39,7 @@ export type Settings = {
     shortcutNavigationUp: string;
     shortcutNavigationDown: string;
     shortcutToggleTagEditMode: string;
+    huggingFaceCacheDirectory: string;
 };
 
 export type SettingsDefinition = SettingDefinition<keyof Settings>;
