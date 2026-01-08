@@ -52,3 +52,37 @@
         font-size: 125%;
     }
 }
+
+:root {
+    --scrollbar-size: 10px;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(120, 120, 120, 0.35);
+    --scrollbar-thumb-hover: rgba(0, 170, 255, 0.7); /* accent hover */
+}
+
+[data-theme="dark"] {
+    --scrollbar-thumb: rgba(180, 180, 180, 0.25);
+    --scrollbar-thumb-hover: rgba(0, 190, 255, 0.8);
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar { 
+    width: var(--scrollbar-size); 
+    height: var(--scrollbar-size); 
+}
+
+*::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb); border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
