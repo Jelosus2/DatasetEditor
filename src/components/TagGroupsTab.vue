@@ -39,21 +39,20 @@ const selectedGroupTags = computed(() => {
 });
 
 const filteredTagGroups = computed(() => {
-    const query = tagGroupSearch.value.trim().toLowerCase();
-    if (!query)
+    const parts = parseFilterInput(tagGroupSearch.value);
+    if (parts.length === 0)
         return tagGroupsList.value;
 
-    return tagGroupsList.value.filter(([name]) => name.toLowerCase().includes(query));
+    return tagGroupsList.value.filter(([name]) => filterMatchesAny(name, parts));
 });
 
 const filteredImportedGroups = computed(() => {
-    const query = importGroupSearch.value.trim().toLowerCase();
-    if (!query)
+    const parts = parseFilterInput(importGroupSearch.value)
+    if (parts.length === 0)
         return importedGroupsList.value;
 
-    return importedGroupsList.value.filter(([name]) => name.toLowerCase().includes(query));
+    return importedGroupsList.value.filter(([name]) => filterMatchesAny(name, parts));
 });
-
 
 function createGroup() {
     if (!groupNameInput.value)
@@ -147,6 +146,18 @@ function clearImports() {
     importExpandedGroups.value = new Set();
     importGroupSearch.value = "";
 }
+
+function parseFilterInput(input: string) {
+    return input
+        .split(",")
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean);
+}
+
+function filterMatchesAny(name: string, parts: string[]) {
+    const lower = name.toLowerCase();
+    return parts.some((part) => lower.includes(part));
+}
 </script>
 
 <template>
@@ -158,7 +169,7 @@ function clearImports() {
                         class="input w-full outline-none!"
                         v-model="tagGroupSearch"
                         :disabled="tagGroupsStore.tagGroups.size === 0"
-                        placeholder="Search groups..."
+                        placeholder="Search groups... (comma separated)"
                     />
                     <button
                         class="btn btn-outline"
@@ -348,7 +359,7 @@ function clearImports() {
                             <input
                                 class="input w-full outline-none!"
                                 v-model="importGroupSearch"
-                                placeholder="Search imported groups..."
+                                placeholder="Search imported groups... (comma separated)"
                                 :disabled="importedGroups.size === 0"
                             />
                             <button

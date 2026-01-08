@@ -80,11 +80,17 @@ const tagGroupsList = computed(() => {
 });
 
 const filteredTagGroups = computed(() => {
-    const query = tagGroupFilterInput.value.trim().toLowerCase();
-    if (!query)
+    const parts = tagGroupFilterInput.value
+        .split(",")
+        .map((part) => part.trim().toLowerCase())
+        .filter(Boolean);
+    if (parts.length === 0)
         return tagGroupsList.value;
 
-    return tagGroupsList.value.filter(([name]) => name.toLowerCase().includes(query));
+    return tagGroupsList.value.filter(([name]) => {
+        const lower = name.toLowerCase();
+        return parts.some((part) => lower.includes(part));
+    });
 });
 
 const displayedTagsList = computed(() => {
@@ -602,7 +608,7 @@ function toggleEditMode() {
                         class="input w-full outline-none!"
                         v-model="tagGroupFilterInput"
                         :disabled="tagGroupsStore.tagGroups.size === 0"
-                        placeholder="Search groups..."
+                        placeholder="Search groups... (comma separated)"
                     />
                     <button
                         class="btn btn-outline"
