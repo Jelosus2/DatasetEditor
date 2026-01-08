@@ -1,11 +1,12 @@
-import type { ShortcutConfig, ShortcutOptions } from '@/types/shortcut';
+import type { ShortcutConfig, ShortcutOptions } from "@/types/shortcut";
 
-import { useSettingsStore } from '@/stores/settingsStore';
-import { onMounted, onUnmounted } from 'vue';
+import { useSettingsStore } from "@/stores/settingsStore";
+import { onMounted, onUnmounted, onActivated, onDeactivated } from "vue";
 
 export function useKeyboardShortcuts(shortcuts: ShortcutConfig[] | (() => ShortcutConfig[]), options: ShortcutOptions = {}) {
     const settingsStore = useSettingsStore();
     const isEnabled = options.isEnabled ?? (() => true);
+    let subscribed = false;
 
     const handleKeydown = async (event: KeyboardEvent) => {
         if (!isEnabled()) return;
@@ -28,11 +29,24 @@ export function useKeyboardShortcuts(shortcuts: ShortcutConfig[] | (() => Shortc
         }
     }
 
-    onMounted(() => {
-        document.addEventListener('keydown', handleKeydown);
-    });
+    function subscribe() {
+        if (subscribed)
+            return;
 
-    onUnmounted(() => {
-        document.removeEventListener('keydown', handleKeydown);
-    });
+        document.addEventListener("keydown", handleKeydown);
+        subscribed = true;
+    }
+
+    function unsubscribe() {
+        if (!subscribed)
+            return;
+
+        document.removeEventListener("keydown", handleKeydown);
+        subscribed = false;
+    }
+
+    onMounted(subscribe);
+    onActivated(subscribe);
+    onDeactivated(unsubscribe);
+    onUnmounted(unsubscribe);
 }

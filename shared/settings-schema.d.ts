@@ -38,6 +38,7 @@ export type Settings = {
     shortcutNavigationRight: string;
     shortcutNavigationUp: string;
     shortcutNavigationDown: string;
+    shortcutToggleTagEditMode: string;
 };
 
 export type SettingsDefinition = SettingDefinition<keyof Settings>;

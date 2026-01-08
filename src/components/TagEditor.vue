@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import AutocompletionComponent from "@/components/AutocompletionComponent.vue";
 
-import { useDatasetStore } from "@/stores/datasetStore";
+import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts";
+import { useTagOperations } from "@/composables/useTagOperations";
 import { useTagGroupsStore } from "@/stores/tagGroupsStore";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { useTagOperations } from "@/composables/useTagOperations";
+import { useAppStatus } from "@/composables/useAppStatus";
+import { useDatasetStore } from "@/stores/datasetStore";
 import { ref, shallowRef, computed, toRaw } from "vue";
 
 import CopyIcon from "@/assets/icons/copy.svg";
@@ -113,15 +115,24 @@ const groupsWithMatches = computed(() => {
 
 const isDraggable = computed(() => editMode.value === "individual" && hasSingleSelection.value);
 
-const datasetStore = useDatasetStore();
-const tagGroupsStore = useTagGroupsStore();
-const settingsStore = useSettingsStore();
-const tagOperations = useTagOperations();
-
 const tagEditorMainWidth = computed(() => 70 - tagGroupWidth.value);
 const showTopSection = computed(() =>
     editMode.value === "mass" ? true : settingsStore.showDiffSection
 );
+
+const datasetStore = useDatasetStore();
+const tagGroupsStore = useTagGroupsStore();
+const settingsStore = useSettingsStore();
+
+const tagOperations = useTagOperations();
+const appStatus = useAppStatus();
+
+useKeyboardShortcuts(
+    () => [
+        { combo: settingsStore.getSetting("shortcutToggleTagEditMode"), handler: () => toggleEditMode(), preventDefault: true }
+    ],
+    { isEnabled: () => !appStatus.active.value }
+)
 
 function escapeRegExp(str: string) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -328,6 +339,10 @@ function onTagDrop() {
     draggingTag.value = null;
     dropIndex.value = null;
 }
+
+function toggleEditMode() {
+    editMode.value = editMode.value === "individual" ? "mass" : "individual";
+}
 </script>
 
 <template>
@@ -341,7 +356,7 @@ function onTagDrop() {
                     type="checkbox"
                     class="toggle toggle-primary"
                     :checked="editMode === 'mass'"
-                    @change="editMode = editMode === 'individual' ? 'mass' : 'individual'"
+                    @change="toggleEditMode"
                 />
                 <span class="text-sm font-bold" :class="editMode === 'mass' ? 'text-primary' : 'text-base-content/50'">Mass Edit</span>
             </div>

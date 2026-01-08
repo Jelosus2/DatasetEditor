@@ -3,6 +3,7 @@ import type { ArrowDirection } from "@/types/composables";
 import type { Ref } from "vue";
 
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useAppStatus } from "@/composables/useAppStatus";
 import { onActivated, onDeactivated, watch } from "vue";
 
 export function useGridNavigation(
@@ -14,6 +15,7 @@ export function useGridNavigation(
     columns: Ref<number>
 ) {
     const settingsStore = useSettingsStore();
+    const appStatus = useAppStatus();
 
     function getVisibleKeys() {
         if (!isFiltering.value)
@@ -84,7 +86,7 @@ export function useGridNavigation(
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-        if (shouldIgnoreArrowKeys())
+        if (appStatus.active.value || shouldIgnoreArrowKeys())
             return;
 
         const isSafeMatch = (key: keyof Settings, event: KeyboardEvent) => {

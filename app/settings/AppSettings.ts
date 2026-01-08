@@ -191,4 +191,12 @@ export class AppSettings {
         defaultValue: "ArrowDown"
     })
     shortcutNavigationDown = "ArrowDown";
+
+    @Setting({
+        section: "Shortcuts",
+        label: "Toggle Tag Edit Mode",
+        type: "shortcut",
+        defaultValue: "Ctrl+E"
+    })
+    shortcutToggleTagEditMode = "Ctrl+E";
 }
