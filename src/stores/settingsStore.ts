@@ -177,28 +177,40 @@ export const useSettingsStore = defineStore("settings", () => {
         return normalizeShortcut(combo) === formatShortcutEvent(event);
     }
 
+    function revalidateShortcuts() {
+        const newConflicts = new Set<keyof Settings>();
+        const shortcutMap = new Map<string, keyof Settings>();
+
+        for (const sKey of shortcutKeys) {
+            const value = normalizeShortcut(String(settings[sKey]));
+            if (!value) continue;
+
+            if (shortcutMap.has(value)) {
+                newConflicts.add(sKey);
+                newConflicts.add(shortcutMap.get(value)!);
+            } else {
+                shortcutMap.set(value, sKey);
+            }
+        }
+
+        shortcutConflicts.value = newConflicts;
+        return newConflicts;
+    }
+
     function trySetShortcut(key: keyof Settings, combo: string) {
         const normalized = normalizeShortcut(combo);
         if (!normalized)
             return { ok: false, conflictKey: null };
 
-        for (const otherKey of shortcutKeys) {
-            if (otherKey === key)
-                continue;
+        setSetting(key, combo);
 
-            if (normalizeShortcut(String(settings[otherKey])) === normalized) {
-                const next = new Set(shortcutConflicts.value);
+        const newConflicts = revalidateShortcuts();
 
-                next.add(key);
-                next.add(otherKey);
-
-                shortcutConflicts.value = next;
-
-                return { ok: false, conflictKey: otherKey };
-            }
+        if (newConflicts.has(key)) {
+            const conflictKey = shortcutKeys.find(k => k !== key && normalizeShortcut(String(settings[k])) === normalized);
+            return { ok: false, conflictKey: conflictKey || null };
         }
 
-        setSetting(key, combo as Settings[keyof Settings]);
         return { ok: true, conflictKey: null };
     }
 
@@ -295,6 +307,8 @@ export const useSettingsStore = defineStore("settings", () => {
         isApplying.value = true;
         setSetting(change.key, change.previous);
         isApplying.value = false;
+
+        revalidateShortcuts();
     }
 
     function redoSettingsAction() {
@@ -307,6 +321,8 @@ export const useSettingsStore = defineStore("settings", () => {
         isApplying.value = true;
         setSetting(change.key, change.value);
         isApplying.value = false;
+
+        revalidateShortcuts();
     }
 
     function resetSettingsStatus() {
@@ -320,13 +336,16 @@ export const useSettingsStore = defineStore("settings", () => {
 
     async function loadSettings() {
         const loaded = await settingsService.loadSettings();
+
         applySettings(loaded);
         resetSettingsStatus();
+        revalidateShortcuts();
+
         lastSaved.value = buildSettings();
     }
 
     async function saveSettings() {
-        if (shortcutConflicts.value.size > 0)
+        if (!hasChanges.value || shortcutConflicts.value.size > 0)
             return;
 
         const needsRestart = restartRequired.value;
@@ -386,6 +405,7 @@ export const useSettingsStore = defineStore("settings", () => {
         hasChanges,
         restartRequired,
         showRestartPrompt,
+        shortcutKeys,
         shortcutConflicts,
         ensureLayoutMap,
         normalizeShortcut,

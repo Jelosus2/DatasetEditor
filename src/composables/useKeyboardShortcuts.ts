@@ -14,6 +14,10 @@ export function useKeyboardShortcuts(shortcuts: ShortcutConfig[] | (() => Shortc
         const list = typeof shortcuts === "function" ? shortcuts() : shortcuts;
 
         for (const shortcut of list) {
+            const settingKey = settingsStore.shortcutKeys.find(key => settingsStore.getSetting(key) === shortcut.combo);
+            if (settingKey && settingsStore.shortcutConflicts.has(settingKey))
+                continue;
+
             if (settingsStore.matchesShortcut(shortcut.combo, event)) {
                 if (shortcut.preventDefault)
                     event.preventDefault();

@@ -40,6 +40,11 @@ function commitStringList(definition: SettingsDefinition) {
 }
 
 function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
+    if (event.key === "Escape") {
+        (event.target as HTMLInputElement).blur();
+        return;
+    }
+
     const combo = formatShortcut(event);
     if (!combo)
         return;
@@ -160,7 +165,7 @@ function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
                                             :value="getValue(field)"
                                             @keydown.stop.prevent="recordShortcut(field, $event)"
                                         />
-                                        <div class="text-sm text-base-content/60 mt-1">Press keys to set, Backspace to clear</div>
+                                        <div class="text-sm text-base-content/60 mt-1">Press keys to set (Escape to cancel)</div>
                                     </div>
                                 </div>
 

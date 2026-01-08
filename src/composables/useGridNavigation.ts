@@ -1,3 +1,4 @@
+import type { Settings } from "../../shared/settings-schema";
 import type { ArrowDirection } from "@/types/composables";
 import type { Ref } from "vue";
 
@@ -86,34 +87,35 @@ export function useGridNavigation(
         if (shouldIgnoreArrowKeys())
             return;
 
-        const selectAllCombo = settingsStore.getSetting("shortcutSelectAllImages");
-        const leftCombo = settingsStore.getSetting("shortcutNavigationLeft");
-        const rightCombo = settingsStore.getSetting("shortcutNavigationRight");
-        const upCombo = settingsStore.getSetting("shortcutNavigationUp");
-        const downCombo = settingsStore.getSetting("shortcutNavigationDown");
+        const isSafeMatch = (key: keyof Settings, event: KeyboardEvent) => {
+            if (settingsStore.shortcutConflicts.has(key))
+                return false;
 
-        if (settingsStore.matchesShortcut(selectAllCombo, event)) {
+            return settingsStore.matchesShortcut(settingsStore.getSetting(key) as string, event);
+        };
+
+        if (isSafeMatch("shortcutSelectAllImages", event)) {
             event.preventDefault();
             selectAllVisible();
             return;
         }
 
-        if (settingsStore.matchesShortcut(leftCombo, event)) {
+        if (isSafeMatch("shortcutNavigationLeft", event)) {
             event.preventDefault();
             navigateSelection("left");
             return;
         }
-        if (settingsStore.matchesShortcut(rightCombo, event)) {
+        if (isSafeMatch("shortcutNavigationRight", event)) {
             event.preventDefault();
             navigateSelection("right");
             return;
         }
-        if (settingsStore.matchesShortcut(upCombo, event)) {
+        if (isSafeMatch("shortcutNavigationUp", event)) {
             event.preventDefault();
             navigateSelection("up");
             return;
         }
-        if (settingsStore.matchesShortcut(downCombo, event)) {
+        if (isSafeMatch("shortcutNavigationDown", event)) {
             event.preventDefault();
             navigateSelection("down");
             return;

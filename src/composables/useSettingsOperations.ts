@@ -12,9 +12,19 @@ export function useSettingsOperations() {
         if (!query)
             return settingsStore.schema;
 
-        return settingsStore.schema.filter((item) =>
-            [item.label, item.description, item.section].some((value) => value?.toLowerCase().includes(query))
-        );
+        return settingsStore.schema.filter((item) => {
+            const matchesMetadata = [item.label, item.description, item.section]
+                .some((value) => value?.toLowerCase().includes(query));
+            if (matchesMetadata)
+                return true;
+
+            if (item.type === "shortcut") {
+                const currentValue = String(settingsStore.getSetting(item.key)).toLowerCase();
+                return currentValue.includes(query);
+            }
+
+            return false;
+        });
     });
 
     const sections = computed(() => {
@@ -58,9 +68,6 @@ export function useSettingsOperations() {
     }
 
     function formatShortcut(event: KeyboardEvent) {
-        if (event.key === "Backspace")
-            return "";
-
         return settingsStore.formatShortcutEvent(event);
     }
 

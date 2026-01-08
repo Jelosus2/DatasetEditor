@@ -69,7 +69,15 @@ export class AppController {
       } else if (activeTab === 'Tag Groups') {
         await this.deps.tagGroupsStore.saveTagGroups();
       } else if (activeTab === 'Settings') {
-        // TODO: Make that it shows alert when trying to save through shortcut but there's no actual changes.
+        if (!this.deps.settingsStore.hasChanges) {
+          this.deps.showAlert("warning", "There's no changes in settings to save");
+          return;
+        }
+        if (this.deps.settingsStore.shortcutConflicts.size > 0) {
+          this.deps.showAlert("error", "Resolve the shortcut conflicts first");
+          return;
+        }
+
         await this.deps.settingsStore.saveSettings();
       }
     } catch (error) {
