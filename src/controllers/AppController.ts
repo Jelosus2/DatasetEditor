@@ -78,6 +78,11 @@ export class AppController {
           return;
         }
 
+        if (this.deps.settingsStore.directoryErrorsCount > 0) {
+          this.deps.showAlert("error", "Set valid directory paths first");
+          return;
+        }
+
         await this.deps.settingsStore.saveSettings();
       }
     } catch (error) {

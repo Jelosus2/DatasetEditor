@@ -6,25 +6,46 @@ import type { SettingsDefinition } from "../../shared/settings-schema";
 import { useSettingsOperations } from "@/composables/useSettingsOperations";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useAlert } from "@/composables/useAlert";
-import { reactive, ref, watchEffect } from "vue";
+import { reactive, ref, watchEffect, watch, onMounted } from "vue";
 
 const activeSection = ref("");
 
 const stringInputs = reactive<Record<string, string>>({});
 
 const settingsStore = useSettingsStore();
-const { search, sections, getValue, setValue, runAction, formatShortcut } = useSettingsOperations();
+const settingsOperations = useSettingsOperations();
 const { showAlert } = useAlert();
 
 watchEffect(() => {
-    if (!activeSection.value && sections.value.length > 0)
-        activeSection.value = sections.value[0][0];
+    if (!activeSection.value && settingsOperations.sections.value.length > 0)
+        activeSection.value = settingsOperations.sections.value[0][0];
 });
 
 watchEffect(() => {
     const current = settingsStore.getSetting("tagsIgnored");
     stringInputs["tagsIgnored"] = current.join(", ");
 });
+
+watchEffect(() => {
+    const errorCount = Object.values(settingsOperations.directoryErrors).filter(Boolean).length;
+    settingsStore.directoryErrorsCount = errorCount;
+});
+
+watch(() => settingsStore.buildSettings(true), async (newSettings) => {
+    for (const definition of settingsStore.schema) {
+        if (definition.type !== "directory")
+            continue;
+
+        const storeValue = String(newSettings[definition.key] ?? "");
+        const localValue = settingsOperations.directoryInputs[definition.key];
+
+        if (settingsStore.isApplying || (storeValue !== localValue && localValue !== undefined)) {
+            settingsOperations.directoryInputs[definition.key] = storeValue;
+
+            await settingsOperations.validateDirectory(definition);
+        }
+    }
+}, { deep: true });
 
 function slugify(value: string) {
     return value.toLowerCase().replace(/\s+/g, "-");
@@ -36,7 +57,7 @@ function scrollToSection(section: string) {
 }
 
 function commitStringList(definition: SettingsDefinition) {
-    setValue(definition, stringInputs[definition.key] ?? "");
+    settingsOperations.setValue(definition, stringInputs[definition.key] ?? "");
 }
 
 function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
@@ -45,7 +66,7 @@ function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
         return;
     }
 
-    const combo = formatShortcut(event);
+    const combo = settingsOperations.formatShortcut(event);
     if (!combo)
         return;
 
@@ -55,6 +76,13 @@ function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
         showAlert("error", `Shortcut already used by "${conflictLabel}"`);
     }
 }
+
+onMounted(() => {
+    settingsStore.schema.forEach((definition) => {
+        if (definition.type === "directory" && settingsOperations.directoryInputs[definition.key] === undefined)
+            settingsOperations.directoryInputs[definition.key] = String(settingsStore.getSetting(definition.key) ?? "");
+    });
+});
 </script>
 
 <template>
@@ -66,13 +94,13 @@ function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
                         <input
                             class="input w-full outline-none!"
                             placeholder="Search settings..."
-                            v-model="search"
+                            v-model="settingsOperations.search.value"
                         />
                         <div class="text-sm font-semibold uppercase text-base-content/60">
                             Sections
                         </div>
                         <ul class="menu rounded-box">
-                            <li v-for="[section] in sections" :key="section">
+                            <li v-for="[section] in settingsOperations.sections.value" :key="section">
                                 <a :class="{ active: activeSection === section }" @click="scrollToSection(section)">
                                     {{ section }}
                                 </a>
@@ -82,7 +110,7 @@ function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
                     <div class="mt-auto pt-4 border-t border-base-content/30">
                         <button
                             class="btn btn-accent btn-outline w-full"
-                            :disabled="!settingsStore.hasChanges || settingsStore.shortcutConflicts.size > 0"
+                            :disabled="!settingsStore.hasChanges || settingsStore.shortcutConflicts.size > 0 || settingsStore.directoryErrorsCount > 0"
                             @click="settingsStore.saveSettings()"
                         >
                             Save
@@ -91,7 +119,7 @@ function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
                 </aside>
                 <div class="flex-1 overflow-auto p-6 pb-24">
                     <section
-                        v-for="[section, fields] in sections"
+                        v-for="[section, fields] in settingsOperations.sections.value"
                         :key="section"
                         :id="slugify(section)"
                         class="mb-10 space-y-4"
@@ -121,8 +149,8 @@ function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
                                         <input
                                             type="checkbox"
                                             class="toggle"
-                                            :checked="getValue(field) as boolean"
-                                            @change="setValue(field, ($event.target as HTMLInputElement).checked)"
+                                            :checked="settingsOperations.getValue(field) as boolean"
+                                            @change="settingsOperations.setValue(field, ($event.target as HTMLInputElement).checked)"
                                         />
                                     </label>
 
@@ -130,8 +158,8 @@ function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
                                     <div v-else-if="field.type === 'select'" class="w-64">
                                         <select
                                             class="select w-full outline-none!"
-                                            :value="getValue(field)"
-                                            @change="setValue(field, ($event.target as HTMLSelectElement).value)"
+                                            :value="settingsOperations.getValue(field)"
+                                            @change="settingsOperations.setValue(field, ($event.target as HTMLSelectElement).value)"
                                         >
                                             <option v-for="option in field.options" :key="option.value" :value="option.value">
                                                 {{ option.label }}
@@ -144,14 +172,14 @@ function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
                                         <input
                                             type="number"
                                             class="input w-full outline-none!"
-                                            :value="getValue(field)"
-                                            @input="setValue(field, ($event.target as HTMLInputElement).value)"
+                                            :value="settingsOperations.getValue(field)"
+                                            @input="settingsOperations.setValue(field, ($event.target as HTMLInputElement).value)"
                                         />
                                     </div>
 
                                     <!-- action -->
                                     <div v-else-if="field.type === 'action'">
-                                        <button class="btn btn-outline" @click="runAction(field)">
+                                        <button class="btn btn-outline" @click="settingsOperations.runAction(field)">
                                             {{ field.label }}
                                         </button>
                                     </div>
@@ -162,10 +190,27 @@ function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
                                             readonly
                                             class="input w-full outline-none!"
                                             :class="{ 'border border-error': settingsStore.shortcutConflicts.has(field.key) }"
-                                            :value="getValue(field)"
+                                            :value="settingsOperations.getValue(field)"
                                             @keydown.stop.prevent="recordShortcut(field, $event)"
                                         />
                                         <div class="text-sm text-base-content/60 mt-1">Press keys to set (Escape to cancel)</div>
+                                    </div>
+
+                                    <!-- directory -->
+                                    <div v-else-if="field.type === 'directory'" class="w-110">
+                                        <div class="flex items-center gap-2">
+                                            <input
+                                                class="input w-full outline-none!"
+                                                placeholder="Type a path..."
+                                                :class="{ 'input-error': settingsOperations.directoryErrors[field.key] }"
+                                                v-model="settingsOperations.directoryInputs[field.key]"
+                                                @blur="settingsOperations.validateDirectory(field)"
+                                            />
+                                            <button class="btn btn-outline" @click="settingsOperations.pickDirectory(field)">Browse</button>
+                                        </div>
+                                        <div v-if="settingsOperations.directoryErrors[field.key]" class="text-error text-sm mt-1">
+                                            {{ settingsOperations.directoryErrors[field.key] }}
+                                        </div>
                                     </div>
                                 </div>
 

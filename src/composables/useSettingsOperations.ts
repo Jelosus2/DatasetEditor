@@ -1,11 +1,16 @@
 import type { SettingsDefinition, Settings } from "../../shared/settings-schema";
 
 import { useSettingsStore } from "@/stores/settingsStore";
-import { computed, ref } from "vue";
+import { useAlert } from "@/composables/useAlert";
+import { computed, ref, reactive } from "vue";
 
 export function useSettingsOperations() {
     const settingsStore = useSettingsStore();
     const search = ref("");
+    const alerts = useAlert();
+
+    const directoryInputs = reactive<Record<string, string>>({});
+    const directoryErrors = reactive<Record<string, string>>({});
 
     const filteredSchema = computed(() => {
         const query = search.value.trim().toLowerCase();
@@ -18,7 +23,7 @@ export function useSettingsOperations() {
             if (matchesMetadata)
                 return true;
 
-            if (item.type === "shortcut") {
+            if (item.type === "shortcut" || item.type === "directory") {
                 const currentValue = String(settingsStore.getSetting(item.key)).toLowerCase();
                 return currentValue.includes(query);
             }
@@ -75,13 +80,50 @@ export function useSettingsOperations() {
         return settingsStore.matchesShortcut(combo, event);
     }
 
+    async function pickDirectory(definition: SettingsDefinition) {
+        const result = await settingsStore.pickDirectory();
+
+        if (result.canceled) {
+            alerts.showAlert("info", "Directory pick was canceled");
+            return;
+        }
+
+        directoryInputs[definition.key] = result.path!;
+        await validateDirectory(definition);
+    }
+
+    async function validateDirectory(definition: SettingsDefinition) {
+        const path = directoryInputs[definition.key]?.trim() ?? "";
+        const currentStoreValue = settingsStore.getSetting(definition.key);
+
+        if (path !== currentStoreValue)
+            setValue(definition, path);
+
+        if (!path) {
+            directoryErrors[definition.key] = "Path is required";
+            return;
+        }
+
+        const result = await settingsStore.validateDirectory(path);
+        if (!result.ok) {
+            directoryErrors[definition.key] = result.message!;
+            return;
+        }
+
+        directoryErrors[definition.key] = "";
+    }
+
     return {
         search,
         sections,
+        directoryInputs,
+        directoryErrors,
         getValue,
         setValue,
         runAction,
         formatShortcut,
-        matchesShortcut
+        matchesShortcut,
+        pickDirectory,
+        validateDirectory
     }
 }

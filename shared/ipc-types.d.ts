@@ -76,6 +76,20 @@ export type IpcInvokeMap = {
             message?: string;
         }
     }
+    "settings:pick_directory": {
+        args: [];
+        result: {
+            canceled?: boolean;
+            path?: string;
+        }
+    }
+    "settings:validate_directory": {
+        args: [path: string];
+        result: {
+            ok: boolean;
+            message?: string;
+        }
+    }
     "utilities:open_url": {
         args: [url: string];
         result: void;

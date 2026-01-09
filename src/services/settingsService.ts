@@ -53,4 +53,12 @@ export class SettingsService {
     async restartApp() {
         return this.ipc.invoke("utilities:restart_app");
     }
+
+    async pickDirectory() {
+        return this.ipc.invoke("settings:pick_directory");
+    }
+
+    async validateDirectory(path: string) {
+        return this.ipc.invoke("settings:validate_directory", path);
+    }
 }

@@ -4,6 +4,7 @@ import type { IpcMainInvokeEvent } from "electron";
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
 import { Utilities } from "../utils/Utilities.js";
 import { App } from "../App.js";
+import path from "node:path";
 import fs from "fs-extra";
 
 @IpcClass()
@@ -57,25 +58,40 @@ export class SettingsController {
 
         const path = result.filePaths[0];
         if (!path)
-            return { error: false, canceled: true };
+            return { canceled: true };
 
-        return { error: false, path };
+        return { path };
     }
 
     @IpcHandle("settings:validate_directory")
-    async validateDirectory(_event: IpcMainInvokeEvent, path: string, checkExists: boolean) {
+    async validateDirectory(_event: IpcMainInvokeEvent, directoryPath: string) {
         try {
-            if (checkExists) {
-                const exists = await fs.pathExists(path);
-                if (!exists)
-                    return { ok: false, message: "Path does not exist" };
-            }
+            if (directoryPath === App.paths.defaultHuggingFacePath)
+                return { ok: true };
 
-            await fs.access(path, fs.constants.R_OK | fs.constants.W_OK);
+            await fs.readdir(directoryPath);
+
+            const tmpFile = path.join(directoryPath, `.permission_test_${Date.now()}`);
+            await fs.writeFile(tmpFile, "");
+            await fs.remove(tmpFile);
+
             return { ok: true };
         } catch (error) {
+            if (Utilities.isNodeError(error)) {
+                if (error.code === "ENOENT")
+                    return { ok: false, message: "Directory path does not exist" };
+                else if (error.code === "ENOTDIR")
+                    return { ok: false, message: "Path doesn't point to a directory" };
+                else if (["EPERM", "EACCES"].includes(error.code ?? "") && error.syscall === "scandir")
+                    return { ok: false, message: "No read permissions for this directory" };
+                else if (["EPERM", "EACCES"].includes(error.code ?? ""))
+                    return { ok: false, message: "No write permissions for this directory" };
+            }
+
             console.error(error);
-            return { ok: false, message: "No read/write permissions for this folder" }
+            App.logger.error(`[Settings Manager] Unknown error checking directory permissions: ${Utilities.getErrorMessage(error)}`);
+
+            return { ok: false, message: "Unkown error, check the logs for more information" }
         }
     }
 }

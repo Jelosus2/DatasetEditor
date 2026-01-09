@@ -51,6 +51,7 @@ export const useSettingsStore = defineStore("settings", () => {
     const showRestartPrompt = ref(false);
     const isApplying = ref(false);
     const shortcutConflicts = ref<Set<keyof Settings>>(new Set());
+    const directoryErrorsCount = ref(0);
 
     const hasChanges = computed(() => {
         if (!lastSaved.value)
@@ -390,6 +391,14 @@ export const useSettingsStore = defineStore("settings", () => {
         await settingsService.importTagsFromCsv();
     }
 
+    async function pickDirectory() {
+        return settingsService.pickDirectory();
+    }
+
+    async function validateDirectory(path: string) {
+        return settingsService.validateDirectory(path);
+    }
+
     return {
         showTagCount,
         showDiffSection,
@@ -409,6 +418,8 @@ export const useSettingsStore = defineStore("settings", () => {
         showRestartPrompt,
         shortcutKeys,
         shortcutConflicts,
+        directoryErrorsCount,
+        isApplying,
         ensureLayoutMap,
         normalizeShortcut,
         formatShortcutEvent,
@@ -418,6 +429,7 @@ export const useSettingsStore = defineStore("settings", () => {
         setSetting,
         undoSettingsAction,
         redoSettingsAction,
+        buildSettings,
         loadSchema,
         loadSettings,
         saveSettings,
@@ -425,6 +437,8 @@ export const useSettingsStore = defineStore("settings", () => {
         restartApp,
         areSettingsSaved,
         loadTheme,
-        importTagsFromCsv
+        importTagsFromCsv,
+        pickDirectory,
+        validateDirectory
     }
 });

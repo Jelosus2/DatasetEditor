@@ -34,6 +34,10 @@ export class Utilities {
         return String(error);
     }
 
+    static isNodeError(error: unknown): error is NodeJS.ErrnoException {
+        return error instanceof Error && "code" in error;
+    }
+
     static removeRedundantTags(tags: string[], removeUnderscores: boolean) {
         const separator = removeUnderscores ? " " : "_";
         const toRemove = new Set<string>();
