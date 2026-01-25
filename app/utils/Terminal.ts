@@ -1,11 +1,16 @@
+import { Utilities } from "./Utilities.js";
 import { App } from "../App.js";
 import pty from "@homebridge/node-pty-prebuilt-multiarch";
 
 export class Terminal {
     ptyProcess: pty.IPty | null;
+    columns: number;
+    rows: number;
 
     constructor () {
         this.ptyProcess = null;
+        this.columns = 0;
+        this.rows = 0;
     }
 
     runPythonTask(scriptPath: string, args: string[] = [], channel: string): Promise<number> {
@@ -13,10 +18,10 @@ export class Terminal {
             try {
                 this.kill();
 
-                this.ptyProcess = pty.spawn("python.exe", ["-u", scriptPath, ...args], {
+                this.ptyProcess = pty.spawn(App.paths.pythonExecutablePath, ["-u", scriptPath, ...args], {
                     name: "xterm-color",
-                    cols: 80,
-                    rows: 30,
+                    cols: this.columns,
+                    rows: this.rows,
                     cwd: App.paths.pythonPath,
                     env: process.env
                 });
@@ -26,7 +31,7 @@ export class Terminal {
                 });
 
                 this.ptyProcess.onExit(({ exitCode }) => {
-                    App.window.ipcSend(channel, `\r\n\x1b[33mProcess exited with code ${exitCode}\x1b[0m`);
+                    App.window.ipcSend(channel, `\r\n\x1b[33mProcess exited with code ${exitCode} (${Utilities.exitCodeToMessage(exitCode)})\x1b[0m`);
                     this.kill();
                     resolve(exitCode);
                 });
@@ -37,6 +42,9 @@ export class Terminal {
     }
 
     resizeTerminal(columms: number, rows: number) {
+        this.columns = columms;
+        this.rows = rows;
+
         this.ptyProcess?.resize(columms, rows);
     }
 

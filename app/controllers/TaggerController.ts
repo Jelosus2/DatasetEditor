@@ -14,21 +14,38 @@ export class TaggerController {
         this.port = null;
     }
 
+    @IpcHandle("tagger:install")
+    async installDependencies() {
+        try {
+            App.logger.info("[Tagger Manager] Installing dependencies...");
+            const exitCode = await App.tagger.runInstallProcess();
+
+            if (exitCode === -1073741510)
+                return { stopped: true };
+
+            if (exitCode !== 0)
+                throw new Error(`Dependency installation failed with exit code ${exitCode}`);
+
+            App.logger.info("[Tagger Manager] Dependencies installed successfully");
+            return { error: false, message: "Dependencies installed successfully" };
+        } catch (error) {
+            console.error(error);
+            App.logger.error(`[Tagger Manager] Error while installing dependencies: ${Utilities.getErrorMessage(error)}`);
+            return { error: true, message: "Failed to install dependencies, check the logs for more information" };
+        }
+    }
+
     @IpcHandle("tagger:start")
     async startTagger() {
         try {
             const { taggerPort } = await App.settings.loadSettings();
 
-            App.logger.info("[Tagger Manager] Installing dependencies...");
-            const exitCode = await App.tagger.runInstallProcess();
-
-            if (exitCode !== 0)
-                throw new Error(`Dependency installation failed with exit code ${exitCode}`);
-
-            App.logger.info("[Tagger Maanager] Starting server...");
+            App.logger.info("[Tagger Manager] Starting server...");
             App.tagger.runTaggerProcess(taggerPort);
 
             this.port = taggerPort;
+
+            App.logger.info("[Tagger Manager] Server started successfully");
             return { error: false }
         } catch (error) {
             console.error(error);
@@ -41,14 +58,15 @@ export class TaggerController {
     @IpcHandle("tagger:stop")
     stopTagger() {
         try {
+            App.logger.info("[Tagger Manager] Stopping process...");
             App.tagger.cleanup();
-            App.logger.info("[Tagger Manager] Tagger server stopped successfully");
+            App.logger.info("[Tagger Manager] Process stopped successfully");
 
-            return { error: false, message: "Tagger server stopped successfully" }
+            return { error: false, message: "Process stopped successfully" }
         } catch (error) {
             console.error(error);
-            App.logger.error(`[Tagger Manager] Failed to stop tagger server: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to stop the tagger server, check the logs for more information" }
+            App.logger.error(`[Tagger Manager] Failed to stop process: ${Utilities.getErrorMessage(error)}`);
+            return { error: true, message: "Failed to stop the process, check the logs for more information" }
         }
     }
 
@@ -102,5 +120,10 @@ export class TaggerController {
             App.logger.error(`[Tagger Manager] Failed to stop the tagging process: ${Utilities.getErrorMessage(error)}`);
             return { error: true, message: "Failed to stop the tagging process, check the logs for more information" }
         }
+    }
+
+    @IpcHandle("tagger:resize_terminal")
+    resizeTerminal(_event: IpcMainInvokeEvent, columms: number, rows: number) {
+        App.tagger.resizeTerminal(columms, rows);
     }
 }

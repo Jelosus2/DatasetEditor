@@ -38,6 +38,13 @@ export class Utilities {
         return error instanceof Error && "code" in error;
     }
 
+    static exitCodeToMessage(exitCode: number) {
+        return {
+            "0": "Success",
+            "-1073741510": "Process stopped by user"
+        }[exitCode.toString()] || "Unknown";
+    }
+
     static removeRedundantTags(tags: string[], removeUnderscores: boolean) {
         const separator = removeUnderscores ? " " : "_";
         const toRemove = new Set<string>();

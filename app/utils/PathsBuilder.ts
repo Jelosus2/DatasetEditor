@@ -14,6 +14,7 @@ export class PathsBuilder {
     readonly tagAutocompletionsPath: string;
     readonly taggerPath: string;
     readonly pythonPath: string;
+    readonly pythonExecutablePath: string;
     readonly databasePath: string;
     readonly settingsPath: string;
     readonly tagAutocompletionFilePath: string;
@@ -35,6 +36,7 @@ export class PathsBuilder {
         this.tagAutocompletionsPath = path.join(this.dataPath, "TagAutocompletions");
         this.taggerPath = path.join(basePath, "tagger");
         this.pythonPath = path.join(this.taggerPath, "embedded_python");
+        this.pythonExecutablePath = path.join(this.pythonPath, "python.exe");
         this.databasePath = path.join(this.tagAutocompletionsPath, "tags.db");
         this.settingsPath = path.join(this.dataPath, "settings.json");
         this.tagAutocompletionFilePath = path.join(this.tagAutocompletionsPath, "danbooru.csv");

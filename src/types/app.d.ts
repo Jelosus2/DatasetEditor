@@ -1,1 +1,1 @@
-export type ActiveTab = "dataset" | "tag-groups" | "settings" | "logs";
+export type ActiveTab = "dataset" | "tag-groups" | "settings" | "logs" | "auto-tagger";

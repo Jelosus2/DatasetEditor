@@ -1,15 +1,20 @@
-from PIL import Image, ImageFile
 from pathlib import Path
-import onnxruntime as ort
-import pandas as pd
-import numpy as np
-import huggingface_hub
-import websockets
 import asyncio
-import torch
 import json
 import sys
 import gc
+
+try:
+    from PIL import Image, ImageFile
+    import onnxruntime as ort
+    import pandas as pd
+    import numpy as np
+    import huggingface_hub
+    import websockets
+    import torch
+except Exception:
+    print("Dependencies are not installed, please install them before running the server")
+    sys.exit(1)
 
 async def tag_images(websocket: websockets.ServerConnection, images: list[str], tagger_models: list[str], general_threshold: float, character_threshold: float, remove_underscores: bool, tags_ignored: list[str]):
     for tagger_model in tagger_models:
@@ -50,9 +55,7 @@ async def tag_images(websocket: websockets.ServerConnection, images: list[str], 
     print("Tagging finished")
     await websocket.send(json.dumps({ "type": "done" }))
 
-def download_model(model: str) -> tuple[str, str]:
-    model_repo = f"SmilingWolf/{model}"
-    print("Downloading model if necessary...")
+def download_model(model_repo: str) -> tuple[str, str]:
     try:
         csv_path = huggingface_hub.hf_hub_download(model_repo, "selected_tags.csv")
         model_path = huggingface_hub.hf_hub_download(model_repo, "model.onnx")
@@ -152,8 +155,8 @@ async def handler(websocket: websockets.ServerConnection):
         print("Client disconnected")
 
 async def main(port: int):
-    print(f"Tagger service running on port {port}")
     async with websockets.serve(handler, "localhost", port, max_size=None):
+        print(f"Tagger service running on port {port}")
         await asyncio.Future()
 
 if __name__ == "__main__":

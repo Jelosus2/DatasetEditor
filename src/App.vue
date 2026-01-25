@@ -3,7 +3,7 @@ import NavigationBar from "@/components/NavigationBar.vue";
 import DatasetTab from "@/components/DatasetTab.vue";
 import TagGroupsTab from "@/components/TagGroupsTab.vue";
 import AlertComponent from "@/components/AlertComponent.vue";
-import AutotaggerModalComponent from "@/components/AutotaggerModalComponent.vue";
+import AutotaggerTab from "@/components/AutotaggerTab.vue";
 import SettingsTab from "@/components/SettingsTab.vue";
 import RestartRequiredModal from "@/components/RestartRequiredModal.vue";
 import LogsTab from "@/components/LogsTab.vue";
@@ -106,6 +106,11 @@ onMounted(async () => {
                 <SettingsTab v-if="activeTab === 'settings'" />
             </KeepAlive>
 
+            <input type="radio" name="editor_tabs" class="tab" aria-label="Auto Tagger" value="auto-tagger" v-model="activeTab" />
+            <KeepAlive>
+                <AutotaggerTab v-if="activeTab === 'auto-tagger'"/>
+            </KeepAlive>
+
             <input type="radio" name="editor_tabs" class="tab" aria-label="Logs" value="logs" v-model="activeTab" />
             <KeepAlive>
                 <LogsTab v-if="activeTab === 'logs'" />
@@ -114,7 +119,6 @@ onMounted(async () => {
     </div>
     <AppStatusOverlay />
     <RestartRequiredModal />
-    <AutotaggerModalComponent @trigger_alert="showAlert" />
     <WikiSearchModalComponent />
     <DuplicateFinderModalComponent @trigger_alert="showAlert" />
     <RenameFilesModalComponent @trigger_alert="showAlert" />

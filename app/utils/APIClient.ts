@@ -18,7 +18,7 @@ export class APIClient {
             const timeout = setTimeout(() => {
                 websocket.close()
                 reject(new Error("Timeout waiting for tagger device info"));
-            }, 30000);
+            }, 10000);
 
             websocket.onopen = () => {
                 websocket.send(JSON.stringify({ command: "device" }));

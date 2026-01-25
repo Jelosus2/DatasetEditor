@@ -121,6 +121,40 @@ export type IpcInvokeMap = {
         args: [];
         result: boolean;
     }
+    "tagger:install": {
+        args: [];
+        result: {
+            error: boolean;
+            message?: string;
+            stopped?: boolean;
+        }
+    }
+    "tagger:start": {
+        args: [];
+        result: {
+            error: boolean;
+            message?: string;
+        }
+    }
+    "tagger:stop": {
+        args: [];
+        result: {
+            error: boolean;
+            message: string;
+        }
+    }
+    "tagger:resize_terminal": {
+        args: [columns: number, rows: number];
+        result: void;
+    }
+    "tagger:get_device": {
+        args: [];
+        result: {
+            error: boolean;
+            message?: string;
+            device?: string;
+        }
+    }
 }
 
 export type IpcOnMap = {
@@ -140,6 +174,12 @@ export type IpcOnMap = {
         args: [];
     }
     "app:update_error": {
+        args: [];
+    }
+    "tagger:output": {
+        args: [line: string];
+    },
+    "tagger:service_stopped": {
         args: [];
     }
 }

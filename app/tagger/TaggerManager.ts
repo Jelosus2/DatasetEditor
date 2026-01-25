@@ -10,22 +10,23 @@ export class TaggerManager {
     }
 
     async runInstallProcess() {
-        if (!this.process?.hasEnded())
+        if (this.process && !this.process.hasEnded())
             throw new Error("A process is still running");
 
-        const args = ["pip", "install", "--no-warn-script-location", "--disable-pip-version-check", "-r", "requirements.txt"]
-        return this.process.runPythonTask("-m", args, "tagger:out");
+        const args = ["pip", "install", "--no-warn-script-location", "--disable-pip-version-check", "-r", "../requirements.txt"]
+        return this.process.runPythonTask("-m", args, "tagger:output");
     }
 
     runTaggerProcess(port: number) {
-        if (!this.process?.hasEnded())
+        if (this.process && !this.process.hasEnded())
             throw new Error("A process is still running");
 
         this.process.runPythonTask(App.paths.taggerScriptPath, [port.toString()], "tagger:output")
             .then((exitCode) => {
-                if (exitCode !== 0) {
+                if (![0, -1073741510].includes(exitCode)) {
                     App.logger.error(`[Tagger Manager] Tagger server stopped with code ${exitCode}`)
                 }
+                App.window.ipcSend("tagger:service_stopped")
             })
             .catch((error) => {
                 console.error(error);
@@ -35,5 +36,9 @@ export class TaggerManager {
 
     cleanup() {
         this.process.kill();
+    }
+
+    resizeTerminal(columms: number, rows: number) {
+        this.process.resizeTerminal(columms, rows);
     }
 }

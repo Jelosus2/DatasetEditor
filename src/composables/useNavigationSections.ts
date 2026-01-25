@@ -41,7 +41,6 @@ export function useNavigationSections(emit: NavigationEmit, arePreviewsEnabled: 
             label: "Tools",
             menuWidthClass: "min-w-75 w-max max-w-lg",
             items: [
-                { kind: "modal", label: "Autotag Images", targetId: "autotagger_modal" },
                 { kind: "modal", label: "Add background color to selected images", targetId: "background_color_modal" },
                 { kind: "modal", label: "Search Danbooru Wiki", targetId: "danbooru_wiki_modal" },
                 { kind: "modal", label: "Crop image", targetId: "crop_image_modal" },
