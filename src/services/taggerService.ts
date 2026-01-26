@@ -70,4 +70,10 @@ export class TaggerService {
 
         return result.device!;
     }
+
+    async downloadModel(modelRepo: string) {
+        const result = await this.ipc.invoke("tagger:download_model", modelRepo);
+
+        this.alert.showAlert(result.error ? "error" : "success", result.message!);
+    }
 }

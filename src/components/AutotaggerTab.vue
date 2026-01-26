@@ -71,8 +71,8 @@ async function stopProcess() {
     await taggerService.stopProcess();
 }
 
-function downloadModel(model: string) {
-    // TODO: Add logic
+async function downloadModel(model: string) {
+    await taggerService.downloadModel(model);
 }
 </script>
 

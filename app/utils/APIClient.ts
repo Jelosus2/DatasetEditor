@@ -41,6 +41,29 @@ export class APIClient {
         });
     }
 
+    static runDownloadModelWS(port: number, modelRepo: string, cacheDirectory: string) {
+        return new Promise<void>((resolve, reject) => {
+            const websocket = new WebSocket(`ws://localhost:${port}`);
+
+            websocket.onopen = () => {
+                websocket.send(JSON.stringify({ command: "download_model", model: modelRepo, cache_dir: cacheDirectory }));
+            }
+
+            websocket.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                if (message.type === "download_done") {
+                    websocket.close();
+                    resolve();
+                }
+            }
+
+            websocket.onerror = (error) => {
+                websocket.close();
+                reject(error);
+            }
+        });
+    }
+
     static runTaggingWS(port: number, payload: TaggerWSPayload): Promise<Map<string, string[]>> {
         return new Promise((resolve, reject) => {
             const accumulator = new Map<string, Set<string>>();

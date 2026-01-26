@@ -155,6 +155,13 @@ export type IpcInvokeMap = {
             device?: string;
         }
     }
+    "tagger:download_model": {
+        args: [modelRepo: string];
+        result: {
+            error: boolean;
+            message?: string;
+        }
+    }
 }
 
 export type IpcOnMap = {

@@ -5,6 +5,7 @@ import sys
 import gc
 
 try:
+    from model_manager import download_model
     from PIL import Image, ImageFile
     import onnxruntime as ort
     import pandas as pd
@@ -12,8 +13,8 @@ try:
     import huggingface_hub
     import websockets
     import torch
-except Exception:
-    print("Dependencies are not installed, please install them before running the server")
+except Exception as e:
+    print(f"Dependencies are not installed, please install them before running the server. Error: {e}")
     sys.exit(1)
 
 async def tag_images(websocket: websockets.ServerConnection, images: list[str], tagger_models: list[str], general_threshold: float, character_threshold: float, remove_underscores: bool, tags_ignored: list[str]):
@@ -55,7 +56,7 @@ async def tag_images(websocket: websockets.ServerConnection, images: list[str], 
     print("Tagging finished")
     await websocket.send(json.dumps({ "type": "done" }))
 
-def download_model(model_repo: str) -> tuple[str, str]:
+def download_model_legacy(model_repo: str) -> tuple[str, str]:
     try:
         csv_path = huggingface_hub.hf_hub_download(model_repo, "selected_tags.csv")
         model_path = huggingface_hub.hf_hub_download(model_repo, "model.onnx")
@@ -139,7 +140,6 @@ async def process_image_stream(websocket: websockets.ServerConnection, data):
     await tag_images(websocket, images, tagger_models, general_threshold, character_threshold, remove_underscores, tags_ignored)
 
 async def handler(websocket: websockets.ServerConnection):
-    print("Client connected")
     try:
         async for message in websocket:
             data = json.loads(message)
@@ -150,9 +150,16 @@ async def handler(websocket: websockets.ServerConnection):
             elif command == "device":
                 device = "GPU" if torch.cuda.is_available() else "CPU"
                 await websocket.send(json.dumps({ "type": "info", "device": device }))
+            elif command == "download_model":
+                model = data.get("model")
+                cache_dir = data.get("cache_dir")
+                await asyncio.to_thread(download_model, model, cache_dir)
+                await websocket.send(json.dumps({ "type": "download_done", "model": model }))
             
     except websockets.exceptions.ConnectionClosed:
         print("Client disconnected")
+    except Exception as e:
+        print(e)
 
 async def main(port: int):
     async with websockets.serve(handler, "localhost", port, max_size=None):

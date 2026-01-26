@@ -126,4 +126,23 @@ export class TaggerController {
     resizeTerminal(_event: IpcMainInvokeEvent, columms: number, rows: number) {
         App.tagger.resizeTerminal(columms, rows);
     }
+
+    @IpcHandle("tagger:download_model")
+    async downloadModel(_event: IpcMainInvokeEvent, modelRepo: string) {
+        try {
+            const settings = await App.settings.loadSettings();
+            this.port ??= settings.taggerPort;
+
+            App.logger.info(`[Tagger Manager] Attempting to download ${modelRepo}...`);
+            await APIClient.runDownloadModelWS(this.port, modelRepo, settings.huggingFaceCacheDirectory);
+            App.logger.info(`[Tagger Manager] Downloaded ${modelRepo} successfully`);
+
+            return { error: false, message: "Model downloaded successfully" }
+        } catch (error) {
+            console.error(error);
+            App.logger.error(`[Tagger Manager] Failed to download ${modelRepo}: ${Utilities.getErrorMessage(error)}`);
+            this.port = null;
+            return { error: true, message: "Failed to download the model, check the logs for more information" }
+        }
+    }
 }
