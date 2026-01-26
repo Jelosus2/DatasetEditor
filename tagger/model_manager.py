@@ -1,4 +1,3 @@
-from __future__ import annotations
 from tqdm.auto import tqdm
 from huggingface_hub import hf_hub_download
 
