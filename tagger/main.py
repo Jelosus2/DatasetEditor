@@ -5,7 +5,7 @@ import sys
 import gc
 
 try:
-    from model_manager import download_model
+    from model_manager import download_model, get_models_status, delete_model
     from PIL import Image, ImageFile
     import onnxruntime as ort
     import pandas as pd
@@ -149,12 +149,19 @@ async def handler(websocket: websockets.ServerConnection):
                 await process_image_stream(websocket, data)
             elif command == "device":
                 device = "GPU" if torch.cuda.is_available() else "CPU"
-                await websocket.send(json.dumps({ "type": "info", "device": device }))
+                await websocket.send(json.dumps({ "device": device }))
             elif command == "download_model":
                 model = data.get("model")
-                cache_dir = data.get("cache_dir")
-                await asyncio.to_thread(download_model, model, cache_dir)
-                await websocket.send(json.dumps({ "type": "download_done", "model": model }))
+                await asyncio.to_thread(download_model, model)
+                await websocket.send(json.dumps({ "type": "download_done" }))
+            elif command == "models_status":
+                models = data.get("models")
+                status = get_models_status(models)
+                await websocket.send(json.dumps({ "status": status }))
+            elif command == "delete_model":
+                model = data.get("model")
+                await asyncio.to_thread(delete_model, model)
+                await websocket.send(json.dumps({ "type": "deletion_done" }))
             
     except websockets.exceptions.ConnectionClosed:
         print("Client disconnected")

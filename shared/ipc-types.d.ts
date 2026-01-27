@@ -1,6 +1,7 @@
 import type { SettingsDefinition, Settings } from "./settings-schema";
 import type { Dataset, GlobalTags } from "./dataset";
 import type { AppStatusPayload } from "./app-status";
+import type { TaggerModelsStatus } from "./tagger";
 import type { TagGroups } from "./tag-groups";
 import type { LogType } from "./log";
 
@@ -159,7 +160,22 @@ export type IpcInvokeMap = {
         args: [modelRepo: string];
         result: {
             error: boolean;
+            message: string;
+        }
+    }
+    "tagger:models_status": {
+        args: [modelRepos: string[]];
+        result: {
+            error: boolean;
             message?: string;
+            status?: TaggerModelsStatus;
+        }
+    }
+    "tagger:delete_model": {
+        args: [modelRepo: string];
+        result: {
+            error: boolean;
+            message: string;
         }
     }
 }

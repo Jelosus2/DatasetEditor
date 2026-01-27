@@ -74,6 +74,25 @@ export class TaggerService {
     async downloadModel(modelRepo: string) {
         const result = await this.ipc.invoke("tagger:download_model", modelRepo);
 
-        this.alert.showAlert(result.error ? "error" : "success", result.message!);
+        this.alert.showAlert(result.error ? "error" : "success", result.message);
+    }
+
+    async getModelsStatus(modelRepos: string[]) {
+        const result = await this.ipc.invoke("tagger:models_status", modelRepos);
+
+        if (result.error) {
+            this.alert.showAlert("error", result.message!);
+            return {};
+        }
+
+        return result.status!;
+    }
+
+    async deleteModel(modelRepo: string) {
+        const result = await this.ipc.invoke("tagger:delete_model", modelRepo);
+
+        this.alert.showAlert(result.error ? "error" : "success", result.message);
+
+        return result.error;
     }
 }

@@ -6,3 +6,15 @@ export type TaggerWSPayload = {
     models: string[];
     tags_ignored: string[];
 }
+
+export type DeviceWSResponse = {
+    device: string;
+}
+
+export type ModelsStatusWSResponse = {
+    status: Record<string, boolean>;
+}
+
+export type DeleteModelWSResponse = {
+    deleted: boolean;
+}

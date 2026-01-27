@@ -1,4 +1,4 @@
-import type { TaggerWSPayload } from "../types/tagger.js";
+import type { TaggerWSPayload, DeviceWSResponse, ModelsStatusWSResponse, DeleteModelWSResponse } from "../types/tagger.js";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
@@ -38,12 +38,14 @@ export class TaggerController {
     @IpcHandle("tagger:start")
     async startTagger() {
         try {
-            const { taggerPort } = await App.settings.loadSettings();
+            const settings = await App.settings.loadSettings();
+
+            process.env["HF_HUB_CACHE"] = settings.huggingFaceCacheDirectory;
 
             App.logger.info("[Tagger Manager] Starting server...");
-            App.tagger.runTaggerProcess(taggerPort);
+            App.tagger.runTaggerProcess(settings.taggerPort);
 
-            this.port = taggerPort;
+            this.port = settings.taggerPort;
 
             App.logger.info("[Tagger Manager] Server started successfully");
             return { error: false }
@@ -73,10 +75,12 @@ export class TaggerController {
     @IpcHandle("tagger:get_device")
     async getDevice() {
         try {
-            this.port ??= (await App.settings.loadSettings())?.taggerPort;
-            const device = await APIClient.getTaggerDeviceWS(this.port);
+            this.port ??= (await App.settings.loadSettings()).taggerPort;
+            const response = await APIClient.sendCommandWS<DeviceWSResponse>(this.port, {
+                command: "device"
+            }, 10000);
 
-            return { error: false, device }
+            return { error: false, device: response.device }
         } catch (error) {
             console.error(error);
             App.logger.error(`[Tagger Manager] Failed to get the tagger device: ${Utilities.getErrorMessage(error)}`);
@@ -88,7 +92,7 @@ export class TaggerController {
     @IpcHandle("tagger:tag_images")
     async tagImages(_event: IpcMainInvokeEvent, payload: TaggerWSPayload, removeRedundantTags: boolean) {
         try {
-            this.port ??= (await App.settings.loadSettings())?.taggerPort;
+            this.port ??= (await App.settings.loadSettings()).taggerPort;
             const results = await APIClient.runTaggingWS(this.port, payload);
 
             if (removeRedundantTags) {
@@ -134,7 +138,10 @@ export class TaggerController {
             this.port ??= settings.taggerPort;
 
             App.logger.info(`[Tagger Manager] Attempting to download ${modelRepo}...`);
-            await APIClient.runDownloadModelWS(this.port, modelRepo, settings.huggingFaceCacheDirectory);
+            await APIClient.sendCommandWS(this.port, {
+                command: "download_model",
+                model: modelRepo
+            });
             App.logger.info(`[Tagger Manager] Downloaded ${modelRepo} successfully`);
 
             return { error: false, message: "Model downloaded successfully" }
@@ -143,6 +150,45 @@ export class TaggerController {
             App.logger.error(`[Tagger Manager] Failed to download ${modelRepo}: ${Utilities.getErrorMessage(error)}`);
             this.port = null;
             return { error: true, message: "Failed to download the model, check the logs for more information" }
+        }
+    }
+
+    @IpcHandle("tagger:models_status")
+    async getModelsStatus(_event: IpcMainInvokeEvent, modelRepos: string[]) {
+        try {
+            this.port ??= (await App.settings.loadSettings()).taggerPort;
+            const response = await APIClient.sendCommandWS<ModelsStatusWSResponse>(this.port, {
+                command: "models_status",
+                models: modelRepos
+            });
+
+            return { error: false, status: response.status }
+        } catch (error) {
+            console.error(error);
+            App.logger.error(`[Tagger Manager] Failed to check the status of the models: ${Utilities.getErrorMessage(error)}`);
+            this.port = null;
+            return { error: true, message: "Failed to get the status of the models, check the logs for more information" }
+        }
+    }
+
+    @IpcHandle("tagger:delete_model")
+    async deleteModel(_event: IpcMainInvokeEvent, modelRepo: string) {
+        try {
+            this.port ??= (await App.settings.loadSettings()).taggerPort;
+
+            App.logger.info(`[Tagger Manager] Attempting to delete ${modelRepo}...`);
+            await APIClient.sendCommandWS<DeleteModelWSResponse>(this.port, {
+                command: "delete_model",
+                model: modelRepo
+            });
+            App.logger.info(`[Tagger Manager] Deleted ${modelRepo} successfully`);
+
+            return { error: false, message: "Model deleted successfully" }
+        } catch (error) {
+            console.error(error);
+            App.logger.error(`[Tagger Manager] Failed to delete ${modelRepo}: ${Utilities.getErrorMessage(error)}`);
+            this.port = null;
+            return { error: true, message: "Failed to delete the model, check the logs for more information" }
         }
     }
 }

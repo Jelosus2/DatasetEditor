@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import AutotaggerConsole from "@/components/AutotaggerConsole.vue";
 
+import type { TaggerModelsStatus } from "../../shared/tagger";
+
 import { TaggerService } from "@/services/taggerService";
 import { ref } from "vue";
 
 import DownloadIcon from "@/assets/icons/update-download.svg";
+import DeleteIcon from "@/assets/icons/trash-bin.svg";
 
 const selectedModels = ref<Set<string>>(new Set());
 const consoleRef = ref<InstanceType<typeof AutotaggerConsole> | null>(null);
@@ -12,6 +15,7 @@ const isInstalling = ref(false);
 const isServiceStarting = ref(false);
 const isServiceRunning = ref(false);
 const device = ref("Unknown");
+const modelsStatus = ref<TaggerModelsStatus>({});
 
 const models = [
     "SmilingWolf/wd-eva02-large-tagger-v3",
@@ -36,11 +40,15 @@ taggerService.onServiceStarted = async () => {
         return;
 
     device.value = await taggerService.getDevice();
+    modelsStatus.value = await taggerService.getModelsStatus(models);
+
     isServiceRunning.value = true;
     isServiceStarting.value = false;
 }
 taggerService.onServiceStopped = () => {
     device.value = "Unknown";
+    modelsStatus.value = {};
+
     isServiceRunning.value = false;
     isServiceStarting.value = false;
 }
@@ -73,6 +81,16 @@ async function stopProcess() {
 
 async function downloadModel(model: string) {
     await taggerService.downloadModel(model);
+
+    modelsStatus.value[model] = true;
+}
+
+async function deleteModel(model: string) {
+    const error = await taggerService.deleteModel(model);
+    if (error)
+        return;
+
+    modelsStatus.value[model] = false;
 }
 </script>
 
@@ -94,8 +112,20 @@ async function downloadModel(model: string) {
                         @click="toggleModel(model)"
                     >
                         <span class="truncate text-sm font-medium">{{ model }}</span>
-                        <button class="btn btn-xs btn-accent btn-outline" :disabled="!isServiceRunning" @click.stop="downloadModel(model)">
+                        <button
+                            v-if="!modelsStatus[model]"
+                            class="btn btn-xs btn-accent btn-outline"
+                            :disabled="!isServiceRunning"
+                            @click.stop="downloadModel(model)"
+                        >
                             <DownloadIcon class="h-5 w-5" />
+                        </button>
+                        <button
+                            v-else
+                            class="btn btn-xs btn-error btn-outline"
+                            @click.stop="deleteModel(model)"
+                        >
+                            <DeleteIcon class="h-5 w-5" />
                         </button>
                     </div>
                 </div>
