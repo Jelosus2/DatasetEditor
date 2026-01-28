@@ -139,6 +139,10 @@ async def process_image_stream(websocket: websockets.ServerConnection, data):
 
     await tag_images(websocket, images, tagger_models, general_threshold, character_threshold, remove_underscores, tags_ignored)
 
+async def handle_model_download(model: str, websocket: websockets.ServerConnection):
+    await asyncio.to_thread(download_model, model)
+    await websocket.send(json.dumps({ "type": "download_done" }))
+
 async def handler(websocket: websockets.ServerConnection):
     try:
         async for message in websocket:
@@ -152,8 +156,7 @@ async def handler(websocket: websockets.ServerConnection):
                 await websocket.send(json.dumps({ "device": device }))
             elif command == "download_model":
                 model = data.get("model")
-                await asyncio.to_thread(download_model, model)
-                await websocket.send(json.dumps({ "type": "download_done" }))
+                asyncio.create_task(handle_model_download(model, websocket))
             elif command == "models_status":
                 models = data.get("models")
                 status = get_models_status(models)

@@ -16,6 +16,8 @@ const isServiceStarting = ref(false);
 const isServiceRunning = ref(false);
 const device = ref("Unknown");
 const modelsStatus = ref<TaggerModelsStatus>({});
+const modelsDownloading = ref<Set<string>>(new Set());
+const modelsDeleting = ref<Set<string>>(new Set());
 
 const models = [
     "SmilingWolf/wd-eva02-large-tagger-v3",
@@ -80,13 +82,18 @@ async function stopProcess() {
 }
 
 async function downloadModel(model: string) {
+    modelsDownloading.value.add(model);
     await taggerService.downloadModel(model);
+    modelsDownloading.value.delete(model);
 
     modelsStatus.value[model] = true;
 }
 
 async function deleteModel(model: string) {
+    modelsDeleting.value.add(model);
     const error = await taggerService.deleteModel(model);
+    modelsDeleting.value.delete(model);
+
     if (error)
         return;
 
@@ -115,7 +122,7 @@ async function deleteModel(model: string) {
                         <button
                             v-if="!modelsStatus[model]"
                             class="btn btn-xs btn-accent btn-outline"
-                            :disabled="!isServiceRunning"
+                            :disabled="!isServiceRunning || modelsDownloading.has(model)"
                             @click.stop="downloadModel(model)"
                         >
                             <DownloadIcon class="h-5 w-5" />
@@ -123,6 +130,7 @@ async function deleteModel(model: string) {
                         <button
                             v-else
                             class="btn btn-xs btn-error btn-outline"
+                            :disabled="modelsDeleting.has(model)"
                             @click.stop="deleteModel(model)"
                         >
                             <DeleteIcon class="h-5 w-5" />
