@@ -26,6 +26,21 @@ def is_model_downloaded(model_repo: str) -> bool:
 def get_models_status(models: list[str]) -> dict[str, bool]:
     return { model: is_model_downloaded(model) for model in models }
 
+def get_cache_size_bytes() -> int:
+    cache_info = scan_cache_dir()
+    return cache_info.size_on_disk
+
+def get_info_payload(models: list[str]) -> dict:
+    return {
+        "status": get_models_status(models),
+        "cache_size_bytes": get_cache_size_bytes()
+    }
+
+def get_model_action_payload() -> dict:
+    return {
+        "cache_size_bytes": get_cache_size_bytes()
+    }
+
 def delete_model(model_repo: str) -> bool:
     print(f"Deleting {model_repo}... Do no stop the process, the cache could get corrupted")
 

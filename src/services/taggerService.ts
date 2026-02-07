@@ -75,6 +75,11 @@ export class TaggerService {
         const result = await this.ipc.invoke("tagger:download_model", modelRepo);
 
         this.alert.showAlert(result.error ? "error" : "success", result.message);
+
+        return {
+            error: result.error,
+            cacheSizeBytes: result.cacheSizeBytes
+        };
     }
 
     async getModelsStatus(modelRepos: string[]) {
@@ -82,10 +87,13 @@ export class TaggerService {
 
         if (result.error) {
             this.alert.showAlert("error", result.message!);
-            return {};
+            return { status: {}, cacheSizeBytes: 0 };
         }
 
-        return result.status!;
+        return {
+            status: result.status!,
+            cacheSizeBytes: result.cacheSizeBytes!
+        };
     }
 
     async deleteModel(modelRepo: string) {
@@ -93,6 +101,9 @@ export class TaggerService {
 
         this.alert.showAlert(result.error ? "error" : "success", result.message);
 
-        return result.error;
+        return {
+            error: result.error,
+            cacheSizeBytes: result.cacheSizeBytes
+        };
     }
 }

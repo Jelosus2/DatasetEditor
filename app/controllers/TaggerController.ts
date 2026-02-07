@@ -1,4 +1,4 @@
-import type { TaggerWSPayload, DeviceWSResponse, ModelsStatusWSResponse, DeleteModelWSResponse } from "../types/tagger.js";
+import type { TaggerWSPayload, DeviceWSResponse, ModelsStatusWSResponse, DeleteModelWSResponse, ModelActionWSResponse } from "../types/tagger.js";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
@@ -138,13 +138,13 @@ export class TaggerController {
             this.port ??= settings.taggerPort;
 
             App.logger.info(`[Tagger Manager] Attempting to download ${modelRepo}...`);
-            await APIClient.sendCommandWS(this.port, {
+            const response = await APIClient.sendCommandWS<ModelActionWSResponse>(this.port, {
                 command: "download_model",
                 model: modelRepo
             });
             App.logger.info(`[Tagger Manager] Downloaded ${modelRepo} successfully`);
 
-            return { error: false, message: "Model downloaded successfully" }
+            return { error: false, message: "Model downloaded successfully", cacheSizeBytes: response.cache_size_bytes }
         } catch (error) {
             console.error(error);
             App.logger.error(`[Tagger Manager] Failed to download ${modelRepo}: ${Utilities.getErrorMessage(error)}`);
@@ -162,7 +162,7 @@ export class TaggerController {
                 models: modelRepos
             });
 
-            return { error: false, status: response.status }
+            return { error: false, status: response.status, cacheSizeBytes: response.cache_size_bytes }
         } catch (error) {
             console.error(error);
             App.logger.error(`[Tagger Manager] Failed to check the status of the models: ${Utilities.getErrorMessage(error)}`);
@@ -177,13 +177,13 @@ export class TaggerController {
             this.port ??= (await App.settings.loadSettings()).taggerPort;
 
             App.logger.info(`[Tagger Manager] Attempting to delete ${modelRepo}...`);
-            await APIClient.sendCommandWS<DeleteModelWSResponse>(this.port, {
+            const response = await APIClient.sendCommandWS<DeleteModelWSResponse>(this.port, {
                 command: "delete_model",
                 model: modelRepo
             });
             App.logger.info(`[Tagger Manager] Deleted ${modelRepo} successfully`);
 
-            return { error: false, message: "Model deleted successfully" }
+            return { error: false, message: "Model deleted successfully", cacheSizeBytes: response.cache_size_bytes }
         } catch (error) {
             console.error(error);
             App.logger.error(`[Tagger Manager] Failed to delete ${modelRepo}: ${Utilities.getErrorMessage(error)}`);

@@ -105,9 +105,13 @@ export class APIClient {
             websocket.onmessage = (event) => {
                 if (_timeout != null)
                     clearTimeout(_timeout);
-
                 websocket.close();
-                resolve(JSON.parse(event.data));
+
+                const data = JSON.parse(event.data)
+                if (data.error)
+                    reject(`${data.error}: ${data.details || "No details"}`)
+
+                resolve(data);
             }
 
             websocket.onerror = (error) => {

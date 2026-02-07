@@ -161,6 +161,7 @@ export type IpcInvokeMap = {
         result: {
             error: boolean;
             message: string;
+            cacheSizeBytes?: number;
         }
     }
     "tagger:models_status": {
@@ -169,6 +170,7 @@ export type IpcInvokeMap = {
             error: boolean;
             message?: string;
             status?: TaggerModelsStatus;
+            cacheSizeBytes?: number;
         }
     }
     "tagger:delete_model": {
@@ -176,6 +178,7 @@ export type IpcInvokeMap = {
         result: {
             error: boolean;
             message: string;
+            cacheSizeBytes?: number;
         }
     }
 }

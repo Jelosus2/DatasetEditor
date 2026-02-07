@@ -13,8 +13,13 @@ export type DeviceWSResponse = {
 
 export type ModelsStatusWSResponse = {
     status: Record<string, boolean>;
+    cache_size_bytes: number;
 }
 
 export type DeleteModelWSResponse = {
-    deleted: boolean;
+    cache_size_bytes: number;
+}
+
+export type ModelActionWSResponse = {
+    cache_size_bytes: number;
 }

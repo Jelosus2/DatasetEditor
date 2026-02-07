@@ -5,7 +5,7 @@ import sys
 import gc
 
 try:
-    from model_manager import download_model, get_models_status, delete_model
+    from model_manager import download_model, get_info_payload, delete_model, get_model_action_payload
     from PIL import Image, ImageFile
     import onnxruntime as ort
     import pandas as pd
@@ -140,36 +140,69 @@ async def process_image_stream(websocket: websockets.ServerConnection, data):
     await tag_images(websocket, images, tagger_models, general_threshold, character_threshold, remove_underscores, tags_ignored)
 
 async def handle_model_download(model: str, websocket: websockets.ServerConnection):
-    await asyncio.to_thread(download_model, model)
-    await websocket.send(json.dumps({ "type": "download_done" }))
+    try:
+        await asyncio.to_thread(download_model, model)
+        payload = get_model_action_payload()
+        await safe_send(websocket, payload)
+    except Exception as e:
+        print(f"Failed to download model: {e}")
+        await safe_send(websocket, error_payload("Failed to download model", str(e)))
+
+async def safe_send(websocket: websockets.ServerConnection, payload: dict):
+    try:
+        await websocket.send(json.dumps(payload))
+    except Exception as e:
+        print(f"Failed to send ws message: {e}")
+
+def error_payload(message: str, details: str | None = None) -> dict:
+    payload = { "error": message }
+    
+    if details:
+        payload["details"] = details
+
+    return payload
 
 async def handler(websocket: websockets.ServerConnection):
     try:
         async for message in websocket:
-            data = json.loads(message)
-            command = data.get("command")
+            try:
+                data = json.loads(message)
+            except json.JSONDecodeError as e:
+                await safe_send(websocket, error_payload("Invalid JSON", str(e)))
+                continue
 
-            if command == "tag":
-                await process_image_stream(websocket, data)
-            elif command == "device":
-                device = "GPU" if torch.cuda.is_available() else "CPU"
-                await websocket.send(json.dumps({ "device": device }))
-            elif command == "download_model":
-                model = data.get("model")
-                asyncio.create_task(handle_model_download(model, websocket))
-            elif command == "models_status":
-                models = data.get("models")
-                status = get_models_status(models)
-                await websocket.send(json.dumps({ "status": status }))
-            elif command == "delete_model":
-                model = data.get("model")
-                await asyncio.to_thread(delete_model, model)
-                await websocket.send(json.dumps({ "type": "deletion_done" }))
+            command = data.get("command")
+            if not command:
+                await safe_send(websocket, error_payload("Missing 'command'"))
+                continue
+            
+            try:
+                if command == "tag":
+                    await process_image_stream(websocket, data)
+                elif command == "device":
+                    device = "GPU" if torch.cuda.is_available() else "CPU"
+                    await safe_send(websocket, { "device": device })
+                elif command == "download_model":
+                    model = data.get("model")
+                    asyncio.create_task(handle_model_download(model, websocket))
+                elif command == "models_status":
+                    models = data.get("models")
+                    payload = get_info_payload(models)
+                    await safe_send(websocket, payload)
+                elif command == "delete_model":
+                    model = data.get("model")
+                    await asyncio.to_thread(delete_model, model)
+                    payload = get_model_action_payload()
+                    await safe_send(websocket, payload)
+                else:
+                    await safe_send(websocket, error_payload(f"Unknown command: {command}"))
+                
+            except Exception as e:
+                print(f"Command failed ({command})")
+                await safe_send(websocket, error_payload("Command failed", str(e)))
             
     except websockets.exceptions.ConnectionClosed:
         print("Client disconnected")
-    except Exception as e:
-        print(e)
 
 async def main(port: int):
     async with websockets.serve(handler, "localhost", port, max_size=None):
