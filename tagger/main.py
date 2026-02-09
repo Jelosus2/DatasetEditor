@@ -139,9 +139,9 @@ async def process_image_stream(websocket: websockets.ServerConnection, data):
 
     await tag_images(websocket, images, tagger_models, general_threshold, character_threshold, remove_underscores, tags_ignored)
 
-async def handle_model_download(model: str, websocket: websockets.ServerConnection):
+async def handle_model_download(model: str, model_file: str, tags_file: str, websocket: websockets.ServerConnection):
     try:
-        await asyncio.to_thread(download_model, model)
+        await asyncio.to_thread(download_model, model, model_file, tags_file)
         payload = get_model_action_payload()
         await safe_send(websocket, payload)
     except Exception as e:
@@ -184,7 +184,9 @@ async def handler(websocket: websockets.ServerConnection):
                     await safe_send(websocket, { "device": device })
                 elif command == "download_model":
                     model = data.get("model")
-                    asyncio.create_task(handle_model_download(model, websocket))
+                    model_file = data.get("model_file")
+                    tags_file = data.get("tags_file")
+                    asyncio.create_task(handle_model_download(model, model_file, tags_file, websocket))
                 elif command == "models_status":
                     models = data.get("models")
                     payload = get_info_payload(models)

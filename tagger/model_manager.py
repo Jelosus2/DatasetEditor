@@ -6,25 +6,28 @@ class HFProgress(tqdm):
         kwargs.pop("name", None)
         super().__init__(*args, **kwargs)
 
-def download_model(model_repo: str):
+def download_model(model_repo: str, model_file: str, tags_file: str):
     print(f"Downloading {model_repo}...")
 
-    hf_hub_download(model_repo, "model.onnx", tqdm_class=HFProgress)
-    hf_hub_download(model_repo, "selected_tags.csv", tqdm_class=HFProgress)
+    hf_hub_download(model_repo, model_file, tqdm_class=HFProgress)
+    hf_hub_download(model_repo, tags_file, tqdm_class=HFProgress)
 
     print (f"Downloaded {model_repo} successfully")
 
-def is_model_downloaded(model_repo: str) -> bool:
+def is_model_downloaded(model_repo: str, properties: dict) -> bool:
+    model_file = properties.get("modelFile")
+    tags_file = properties.get("tagsFile")
+    
     try:
-        model = try_to_load_from_cache(model_repo, "model.onnx")
-        tags = try_to_load_from_cache(model_repo, "selected_tags.csv")
+        model = try_to_load_from_cache(model_repo, model_file)
+        tags = try_to_load_from_cache(model_repo, tags_file)
 
         return model != None and tags != None
     except Exception:
         return False
     
-def get_models_status(models: list[str]) -> dict[str, bool]:
-    return { model: is_model_downloaded(model) for model in models }
+def get_models_status(models: dict) -> dict[str, bool]:
+    return { model: is_model_downloaded(model, properties) for model, properties in models.items() }
 
 def get_cache_size_bytes() -> int:
     cache_info = scan_cache_dir()

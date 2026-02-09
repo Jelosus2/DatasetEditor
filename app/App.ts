@@ -1,5 +1,6 @@
 import type { Settings } from "../shared/settings-schema.js";
 
+import { TaggerModelManager } from "./tagger/TaggerModelManager.js";
 import { SettingsManager } from "./settings/SettingsManager.js";
 import { UpdateManager } from "./updater/UpdateManager.js";
 import { WindowManager } from "./window/WindowManager.js";
@@ -23,6 +24,7 @@ export class App {
     static updater: UpdateManager;
     static logger: Logger;
     static tagger: TaggerManager;
+    static taggerModels: TaggerModelManager;
 
     static async getBasePath() {
         let basePath = this.IS_DEVELOPMENT ? app.getAppPath() : app.getPath("userData");
@@ -45,6 +47,7 @@ export class App {
         this.settings = new SettingsManager();
         this.updater = new UpdateManager();
         this.tagger = new TaggerManager();
+        this.taggerModels = new TaggerModelManager();
         IpcRegistrar.registerAll();
     }
 
@@ -58,6 +61,7 @@ export class App {
             this.database = await TagDatabase.start();
             const isDarkThemeDefault = nativeTheme.shouldUseDarkColors;
             await this.settings.initializeWithDefaults(isDarkThemeDefault);
+            await this.taggerModels.initializeWithDefaults();
 
             const settings = await this.settings.loadSettings();
             if (!settings.enableHardwareAcceleration)

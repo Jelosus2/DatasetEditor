@@ -1,7 +1,7 @@
+import type { TaggerModelsStatus, TaggerModelConfiguration } from "./tagger";
 import type { SettingsDefinition, Settings } from "./settings-schema";
 import type { Dataset, GlobalTags } from "./dataset";
 import type { AppStatusPayload } from "./app-status";
-import type { TaggerModelsStatus } from "./tagger";
 import type { TagGroups } from "./tag-groups";
 import type { LogType } from "./log";
 
@@ -122,6 +122,10 @@ export type IpcInvokeMap = {
         args: [];
         result: boolean;
     }
+    "tagger:load_models_config": {
+        args: [];
+        result: TaggerModelConfiguration;
+    }
     "tagger:install": {
         args: [];
         result: {
@@ -157,7 +161,7 @@ export type IpcInvokeMap = {
         }
     }
     "tagger:download_model": {
-        args: [modelRepo: string];
+        args: [modelRepo: string, modelFile: string, tagsFile: string];
         result: {
             error: boolean;
             message: string;
@@ -165,7 +169,7 @@ export type IpcInvokeMap = {
         }
     }
     "tagger:models_status": {
-        args: [modelRepos: string[]];
+        args: [];
         result: {
             error: boolean;
             message?: string;

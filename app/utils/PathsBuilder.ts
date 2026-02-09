@@ -20,6 +20,7 @@ export class PathsBuilder {
     readonly tagAutocompletionFilePath: string;
     readonly tagGroupsFilePath: string;
     readonly taggerScriptPath: string;
+    readonly taggerModelsConfigPath: string;
     readonly distPath: string;
     readonly publicPath: string;
     readonly appIconPath: string;
@@ -42,6 +43,7 @@ export class PathsBuilder {
         this.tagAutocompletionFilePath = path.join(this.tagAutocompletionsPath, "danbooru.csv");
         this.tagGroupsFilePath = path.join(this.tagGroupsPath, "tag_groups.json");
         this.taggerScriptPath = path.join(this.taggerPath, "main.py");
+        this.taggerModelsConfigPath = path.join(this.dataPath, "models_config.json");
         this.distPath = path.join(__dirname, "..", "..", "dist");
         this.publicPath = path.join(__dirname, "..", "..", "public");
         this.appIconPath = !App.IS_DEVELOPMENT ? path.join(this.distPath, "doro.ico") : path.join(this.publicPath, "doro.ico");

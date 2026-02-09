@@ -1,3 +1,5 @@
+import type { TaggerModelConfigurationProperties } from "../../shared/tagger";
+
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
 import { useAlert } from "@/composables/useAlert";
 
@@ -32,6 +34,17 @@ export class TaggerService {
                 }
             }
         ]);
+    }
+
+    async getModelsConfiguration() {
+        const result = await this.ipc.invoke("tagger:load_models_config");
+
+        const configurationMap = new Map<string, TaggerModelConfigurationProperties>();
+        for (const [name, properties] of Object.entries(result)) {
+            configurationMap.set(name, properties);
+        }
+
+        return configurationMap;
     }
 
     async installDependencies() {
@@ -71,8 +84,8 @@ export class TaggerService {
         return result.device!;
     }
 
-    async downloadModel(modelRepo: string) {
-        const result = await this.ipc.invoke("tagger:download_model", modelRepo);
+    async downloadModel(modelRepo: string, modelFile: string, tagsFile: string) {
+        const result = await this.ipc.invoke("tagger:download_model", modelRepo, modelFile, tagsFile);
 
         this.alert.showAlert(result.error ? "error" : "success", result.message);
 
@@ -82,8 +95,8 @@ export class TaggerService {
         };
     }
 
-    async getModelsStatus(modelRepos: string[]) {
-        const result = await this.ipc.invoke("tagger:models_status", modelRepos);
+    async getModelsStatus() {
+        const result = await this.ipc.invoke("tagger:models_status");
 
         if (result.error) {
             this.alert.showAlert("error", result.message!);

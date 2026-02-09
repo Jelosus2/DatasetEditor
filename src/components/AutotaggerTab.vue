@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import AutotaggerConsole from "@/components/AutotaggerConsole.vue";
 
-import type { TaggerModelsStatus } from "../../shared/tagger";
+import type { TaggerModelsStatus, TaggerModelConfigurationProperties } from "../../shared/tagger";
 
 import { TaggerService } from "@/services/taggerService";
-import { ref } from "vue";
+import { useAlert } from "@/composables/useAlert";
+import { ref, computed, onMounted } from "vue";
 
 import DownloadIcon from "@/assets/icons/update-download.svg";
 import DeleteIcon from "@/assets/icons/trash-bin.svg";
@@ -15,26 +16,15 @@ const isInstalling = ref(false);
 const isServiceStarting = ref(false);
 const isServiceRunning = ref(false);
 const device = ref("Unknown");
+const models = ref<Map<string, TaggerModelConfigurationProperties>>(new Map());
 const modelsStatus = ref<TaggerModelsStatus>({});
 const cacheSizeBytes = ref(0);
 const modelsDownloading = ref<Set<string>>(new Set());
 const modelsDeleting = ref<Set<string>>(new Set());
 
-const models = [
-    "SmilingWolf/wd-eva02-large-tagger-v3",
-    "SmilingWolf/wd-vit-large-tagger-v3",
-    "SmilingWolf/wd-swinv2-tagger-v3",
-    "SmilingWolf/wd-vit-tagger-v3",
-    "SmilingWolf/wd-convnext-tagger-v3",
-    "SmilingWolf/wd-v1-4-swinv2-tagger-v2",
-    "SmilingWolf/wd-v1-4-moat-tagger-v2",
-    "SmilingWolf/wd-v1-4-convnext-tagger-v2",
-    "SmilingWolf/wd-v1-4-vit-tagger-v2",
-    "SmilingWolf/wd-v1-4-convnextv2-tagger-v2",
-    "SmilingWolf/wd-v1-4-convnext-tagger",
-    "SmilingWolf/wd-v1-4-vit-tagger"
-];
+const modelNames = computed(() => Array.from(models.value.keys()));
 
+const { showAlert } = useAlert();
 const taggerService = new TaggerService();
 
 taggerService.onData = (line) => consoleRef.value?.write(line);
@@ -42,7 +32,7 @@ taggerService.onServiceStarted = async () => {
     if (isServiceRunning.value)
         return;
 
-    const result = await taggerService.getModelsStatus(models);
+    const result = await taggerService.getModelsStatus();
 
     device.value = await taggerService.getDevice();
     modelsStatus.value = result.status;
@@ -60,6 +50,13 @@ taggerService.onServiceStopped = () => {
 }
 
 function toggleModel(model: string) {
+    if (!isServiceRunning.value)
+        return;
+    if (!modelsStatus.value[model]) {
+        showAlert("warning", "Download the model before selecting it");
+        return;
+    }
+
     if (selectedModels.value.has(model))
         selectedModels.value.delete(model);
     else
@@ -102,7 +99,8 @@ async function stopProcess() {
 
 async function downloadModel(model: string) {
     modelsDownloading.value.add(model);
-    const result = await taggerService.downloadModel(model);
+    const properties = models.value.get(model)!;
+    const result = await taggerService.downloadModel(model, properties.modelFile, properties.tagsFile);
     modelsDownloading.value.delete(model);
 
     if (result.error)
@@ -123,6 +121,10 @@ async function deleteModel(model: string) {
     modelsStatus.value[model] = false;
     cacheSizeBytes.value = result.cacheSizeBytes!;
 }
+
+onMounted(async () => {
+    models.value = await taggerService.getModelsConfiguration();
+});
 </script>
 
 <template>
@@ -140,7 +142,7 @@ async function deleteModel(model: string) {
                 </div>
                 <div class="mt-3 flex-1 overflow-auto space-y-2 pr-1">
                     <div
-                        v-for="model in models"
+                        v-for="model in modelNames"
                         :key="model"
                         class="flex cursor-pointer items-center justify-between rounded-box border px-3 py-2 transition"
                         :class="selectedModels.has(model)

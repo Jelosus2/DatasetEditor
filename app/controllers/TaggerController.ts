@@ -14,6 +14,12 @@ export class TaggerController {
         this.port = null;
     }
 
+    @IpcHandle("tagger:load_models_config")
+    async loadModelsConfiguration() {
+        App.logger.info("[Tagger Model Manager] Models configuration loaded successfully");
+        return await App.taggerModels.loadConfiguration();
+    }
+
     @IpcHandle("tagger:install")
     async installDependencies() {
         try {
@@ -132,7 +138,7 @@ export class TaggerController {
     }
 
     @IpcHandle("tagger:download_model")
-    async downloadModel(_event: IpcMainInvokeEvent, modelRepo: string) {
+    async downloadModel(_event: IpcMainInvokeEvent, modelRepo: string, modelFile: string, tagsFile: string) {
         try {
             const settings = await App.settings.loadSettings();
             this.port ??= settings.taggerPort;
@@ -140,7 +146,9 @@ export class TaggerController {
             App.logger.info(`[Tagger Manager] Attempting to download ${modelRepo}...`);
             const response = await APIClient.sendCommandWS<ModelActionWSResponse>(this.port, {
                 command: "download_model",
-                model: modelRepo
+                model: modelRepo,
+                model_file: modelFile,
+                tags_file: tagsFile
             });
             App.logger.info(`[Tagger Manager] Downloaded ${modelRepo} successfully`);
 
@@ -154,12 +162,14 @@ export class TaggerController {
     }
 
     @IpcHandle("tagger:models_status")
-    async getModelsStatus(_event: IpcMainInvokeEvent, modelRepos: string[]) {
+    async getModelsStatus() {
         try {
             this.port ??= (await App.settings.loadSettings()).taggerPort;
+            const models = await App.taggerModels.loadConfiguration();
+
             const response = await APIClient.sendCommandWS<ModelsStatusWSResponse>(this.port, {
                 command: "models_status",
-                models: modelRepos
+                models
             });
 
             return { error: false, status: response.status, cacheSizeBytes: response.cache_size_bytes }
