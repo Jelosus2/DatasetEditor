@@ -21,7 +21,6 @@ const modelsStatus = ref<TaggerModelsStatus>({});
 const cacheSizeBytes = ref(0);
 const modelsDownloading = ref<Set<string>>(new Set());
 const modelsDeleting = ref<Set<string>>(new Set());
-
 const isAddModelModalOpen = ref(false);
 const addModelRepositoryId = ref("");
 const addModelOnnxFile = ref("");
@@ -29,6 +28,44 @@ const addModelCsvTagsFile = ref("");
 const addModelTriedSave = ref(false);
 
 const modelNames = computed(() => Array.from(models.value.keys()));
+
+const repositoryIdError = computed(() => {
+    const value = addModelRepositoryId.value.trim();
+    if (!value)
+        return "Repository Id is required";
+
+    const regex = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
+    if (!regex.test(value))
+        return "Expected format: Username/RepoName";
+
+    return "";
+});
+
+const onnxFileError = computed(() => {
+    const value = addModelOnnxFile.value.trim();
+
+    if (!value)
+        return "ONNX model file is required";
+    if (!value.toLowerCase().endsWith(".onnx"))
+        return "File must end in .onnx";
+
+    return "";
+});
+
+const csvTagsFileError = computed(() => {
+    const value = addModelCsvTagsFile.value.trim();
+
+    if (!value)
+        return "CSV tags file is required";
+    if (!value.toLowerCase().endsWith(".csv"))
+        return "File must end in .csv";
+
+    return "";
+});
+
+const isAddModelFormValid = computed(() =>
+    !repositoryIdError.value && !onnxFileError.value && !csvTagsFileError.value
+);
 
 const { showAlert } = useAlert();
 const taggerService = new TaggerService();
@@ -96,49 +133,21 @@ function closeAddModelModal() {
     isAddModelModalOpen.value = false;
 }
 
-const repositoryIdError = computed(() => {
-    const value = addModelRepositoryId.value.trim();
-    if (!value)
-        return "Repository Id is required";
-
-    const regex = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
-    if (!regex.test(value))
-        return "Expected format: Username/RepoName";
-
-    return "";
-});
-
-const onnxFileError = computed(() => {
-    const value = addModelOnnxFile.value.trim();
-
-    if (!value)
-        return "ONNX model file is required";
-    if (!value.toLowerCase().endsWith(".onnx"))
-        return "File must end in .onnx";
-
-    return "";
-});
-
-const csvTagsFileError = computed(() => {
-    const value = addModelCsvTagsFile.value.trim();
-
-    if (!value)
-        return "CSV tags file is required";
-    if (!value.toLowerCase().endsWith(".csv"))
-        return "File must end in .csv";
-
-    return "";
-});
-
-const isAddModelFormValid = computed(() =>
-    !repositoryIdError.value && !onnxFileError.value && !csvTagsFileError.value
-);
-
 async function saveAddModelModal() {
     addModelTriedSave.value = true;
     if (!isAddModelFormValid.value)
         return;
 
+    models.value.set(addModelRepositoryId.value, {
+        generalThreshold: 0.25,
+        characterThreshold: 0.35,
+        modelFile: addModelOnnxFile.value,
+        tagsFile: addModelCsvTagsFile.value
+    });
+
+    const result = await taggerService.updateModelsConfiguration(models.value);
+    if (result.error)
+        models.value.delete(addModelRepositoryId.value);
 
     closeAddModelModal();
 }

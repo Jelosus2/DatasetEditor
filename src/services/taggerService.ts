@@ -2,6 +2,7 @@ import type { TaggerModelConfiguration, TaggerModelConfigurationProperties } fro
 
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
 import { useAlert } from "@/composables/useAlert";
+import { toRaw } from "vue";
 
 export class TaggerService {
     private ipc;
@@ -36,26 +37,39 @@ export class TaggerService {
         ]);
     }
 
-    async getModelsConfiguration() {
-        const result = await this.ipc.invoke("tagger:load_models_config");
+    private getRawConfiguration(configurationMap: Map<string, TaggerModelConfigurationProperties>) {
+        const rawMap = toRaw(configurationMap);
+        const object = {} as TaggerModelConfiguration;
 
+        for (const [name, properties] of rawMap.entries()) {
+            const rawProperties = toRaw(properties);
+            object[name] = rawProperties;
+        }
+
+        return object;
+    }
+
+    private rawConfigurationToMap(configuration: TaggerModelConfiguration) {
         const configurationMap = new Map<string, TaggerModelConfigurationProperties>();
-        for (const [name, properties] of Object.entries(result)) {
+        for (const [name, properties] of Object.entries(configuration)) {
             configurationMap.set(name, properties);
         }
 
         return configurationMap;
     }
 
-    async updateModelsConfiguration(configuration: TaggerModelConfiguration) {
+    async getModelsConfiguration() {
+        const result = await this.ipc.invoke("tagger:load_models_config");
+        return this.rawConfigurationToMap(result);
+    }
+
+    async updateModelsConfiguration(configurationMap: Map<string, TaggerModelConfigurationProperties>) {
+        const configuration = this.getRawConfiguration(configurationMap);
         const result = await this.ipc.invoke("tagger:update_models_config", configuration);
 
-        if (result.error) {
-            this.alert.showAlert("error", result.message!);
-            return { error: true, configuration: null };
-        }
+        this.alert.showAlert(result.error ? "error" : "success", result.message);
 
-        return { error: false, configuration: result.configuration }
+        return { error: result.error };
     }
 
     async installDependencies() {

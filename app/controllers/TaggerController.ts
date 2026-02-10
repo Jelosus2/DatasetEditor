@@ -24,14 +24,14 @@ export class TaggerController {
     @IpcHandle("tagger:update_models_config")
     async updateModelsConfiguration(_event: IpcMainInvokeEvent, config: TaggerModelConfiguration) {
         try {
-            const configuration = await App.taggerModels.updateConfiguration(config);
+            await App.taggerModels.updateConfiguration(config);
 
             App.logger.info("[Tagger Model Manager] Model configuration updated successfully");
-            return { error: false, configuration }
+            return { error: false, message: "Model configuration updated successfully" };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Tagger Model Manager] Failed to update configuration: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to update model configuration, check the logs for more information" }
+            return { error: true, message: "Failed to update model configuration, check the logs for more information" };
         }
     }
 
