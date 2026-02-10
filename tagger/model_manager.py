@@ -1,5 +1,7 @@
 from tqdm.auto import tqdm
 from huggingface_hub import hf_hub_download, scan_cache_dir, try_to_load_from_cache
+from pathlib import Path
+import os
 
 class HFProgress(tqdm):
     def __init__(self, *args, **kwargs):
@@ -15,8 +17,8 @@ def download_model(model_repo: str, model_file: str, tags_file: str):
     print (f"Downloaded {model_repo} successfully")
 
 def is_model_downloaded(model_repo: str, properties: dict) -> bool:
-    model_file = properties.get("modelFile")
-    tags_file = properties.get("tagsFile")
+    model_file = properties.get("modelFile", "")
+    tags_file = properties.get("tagsFile", "")
     
     try:
         model = try_to_load_from_cache(model_repo, model_file)
@@ -33,7 +35,10 @@ def get_cache_size_bytes() -> int:
     cache_info = scan_cache_dir()
     return cache_info.size_on_disk
 
-def get_info_payload(models: list[str]) -> dict:
+def get_info_payload(models: dict) -> dict:
+    cache_dir = os.environ.get("HF_HUB_CACHE", "")
+    Path(cache_dir).mkdir(parents=True, exist_ok=True)
+
     return {
         "status": get_models_status(models),
         "cache_size_bytes": get_cache_size_bytes()
@@ -44,7 +49,7 @@ def get_model_action_payload() -> dict:
         "cache_size_bytes": get_cache_size_bytes()
     }
 
-def delete_model(model_repo: str) -> bool:
+def delete_model(model_repo: str):
     print(f"Deleting {model_repo}... Do no stop the process, the cache could get corrupted")
 
     cache_info = scan_cache_dir()

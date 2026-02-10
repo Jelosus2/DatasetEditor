@@ -1,4 +1,4 @@
-import type { TaggerModelConfigurationProperties } from "../../shared/tagger";
+import type { TaggerModelConfiguration, TaggerModelConfigurationProperties } from "../../shared/tagger";
 
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
 import { useAlert } from "@/composables/useAlert";
@@ -45,6 +45,17 @@ export class TaggerService {
         }
 
         return configurationMap;
+    }
+
+    async updateModelsConfiguration(configuration: TaggerModelConfiguration) {
+        const result = await this.ipc.invoke("tagger:update_models_config", configuration);
+
+        if (result.error) {
+            this.alert.showAlert("error", result.message!);
+            return { error: true, configuration: null };
+        }
+
+        return { error: false, configuration: result.configuration }
     }
 
     async installDependencies() {

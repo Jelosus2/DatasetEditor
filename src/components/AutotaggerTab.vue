@@ -22,6 +22,12 @@ const cacheSizeBytes = ref(0);
 const modelsDownloading = ref<Set<string>>(new Set());
 const modelsDeleting = ref<Set<string>>(new Set());
 
+const isAddModelModalOpen = ref(false);
+const addModelRepositoryId = ref("");
+const addModelOnnxFile = ref("");
+const addModelCsvTagsFile = ref("");
+const addModelTriedSave = ref(false);
+
 const modelNames = computed(() => Array.from(models.value.keys()));
 
 const { showAlert } = useAlert();
@@ -76,6 +82,65 @@ function formatBytes(bytes: number) {
     }
 
     return `${bytes.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function openAddModelModal() {
+    addModelRepositoryId.value = "";
+    addModelOnnxFile.value = "";
+    addModelCsvTagsFile.value = "";
+    addModelTriedSave.value = false;
+    isAddModelModalOpen.value = true;
+}
+
+function closeAddModelModal() {
+    isAddModelModalOpen.value = false;
+}
+
+const repositoryIdError = computed(() => {
+    const value = addModelRepositoryId.value.trim();
+    if (!value)
+        return "Repository Id is required";
+
+    const regex = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
+    if (!regex.test(value))
+        return "Expected format: Username/RepoName";
+
+    return "";
+});
+
+const onnxFileError = computed(() => {
+    const value = addModelOnnxFile.value.trim();
+
+    if (!value)
+        return "ONNX model file is required";
+    if (!value.toLowerCase().endsWith(".onnx"))
+        return "File must end in .onnx";
+
+    return "";
+});
+
+const csvTagsFileError = computed(() => {
+    const value = addModelCsvTagsFile.value.trim();
+
+    if (!value)
+        return "CSV tags file is required";
+    if (!value.toLowerCase().endsWith(".csv"))
+        return "File must end in .csv";
+
+    return "";
+});
+
+const isAddModelFormValid = computed(() =>
+    !repositoryIdError.value && !onnxFileError.value && !csvTagsFileError.value
+);
+
+async function saveAddModelModal() {
+    addModelTriedSave.value = true;
+    if (!isAddModelFormValid.value)
+        return;
+
+
+    closeAddModelModal();
 }
 
 async function resizeTerminal(columns: number, rows: number) {
@@ -137,7 +202,17 @@ onMounted(async () => {
                         {{ formatBytes(cacheSizeBytes) }}
                     </div>
                 </div>
-                <div class="text-sm text-base-content/70">
+                <button class="btn btn-sm btn-success w-full gap-2" @click="openAddModelModal">
+                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path
+                            fill-rule="evenodd"
+                            d="M10 3a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H4a1 1 0 1 1 0-2h5V4a1 1 0 0 1 1-1z"
+                            clip-rule="evenodd"
+                        />
+                    </svg>
+                    <span>Add model</span>
+                </button>
+                <div class="mt-2 text-sm text-base-content/70">
                     Models will be downloaded to the HuggingFace cache directory set in Settings.
                 </div>
                 <div class="mt-3 flex-1 overflow-auto space-y-2 pr-1">
@@ -203,6 +278,62 @@ onMounted(async () => {
                     <span>Device: {{ device }}</span>
                 </div>
             </div>
+        </div>
+        <div class="modal z-50" :class="{ 'modal-open': isAddModelModalOpen }">
+            <div class="modal-box w-11/12 max-w-md">
+                <div class="flex items-center justify-between border-b-2 pb-2 dark:border-base-content/10">
+                    <div class="text-lg font-semibold">Add model</div>
+                    <button class="btn btn-ghost btn-sm" @click="closeAddModelModal">x</button>
+                </div>
+                <div class="mt-4 flex flex-col gap-3">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-sm opacity-80">Repository Id</label>
+                        <input
+                            v-model="addModelRepositoryId"
+                            type="text"
+                            class="input input-bordered w-full outline-none!"
+                            placeholder="Username/RepoName"
+                        />
+                        <div v-if="addModelTriedSave && repositoryIdError" class="text-sm text-error">
+                            {{ repositoryIdError }}
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-sm opacity-80">ONNX model file</label>
+                        <input
+                            v-model="addModelOnnxFile"
+                            type="text"
+                            class="input input-bordered w-full outline-none!"
+                            placeholder="model.onnx"
+                        />
+                        <div v-if="addModelTriedSave && onnxFileError" class="text-sm text-error">
+                            {{ onnxFileError }}
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-sm opacity-80">CSV tags file</label>
+                        <input
+                            v-model="addModelCsvTagsFile"
+                            type="text"
+                            class="input input-bordered w-full outline-none!"
+                            placeholder="selected_tags.csv"
+                        />
+                        <div v-if="addModelTriedSave && csvTagsFileError" class="text-sm text-error">
+                            {{ csvTagsFileError }}
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 pt-2">
+                        <button class="btn btn-sm btn-outline" @click="closeAddModelModal">Cancel</button>
+                        <button
+                            class="btn btn-sm btn-primary"
+                            @click="saveAddModelModal"
+                        >
+                            Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-backdrop" @click="closeAddModelModal"></div>
         </div>
     </div>
 </template>

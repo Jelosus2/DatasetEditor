@@ -126,6 +126,14 @@ export type IpcInvokeMap = {
         args: [];
         result: TaggerModelConfiguration;
     }
+    "tagger:update_models_config": {
+        args: [config: TaggerModelConfiguration];
+        result: {
+            error: boolean;
+            message?: string;
+            configuration?: TaggerModelConfiguration;
+        }
+    }
     "tagger:install": {
         args: [];
         result: {

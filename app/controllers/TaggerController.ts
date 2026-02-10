@@ -1,4 +1,5 @@
 import type { TaggerWSPayload, DeviceWSResponse, ModelsStatusWSResponse, DeleteModelWSResponse, ModelActionWSResponse } from "../types/tagger.js";
+import type { TaggerModelConfiguration } from "../../shared/tagger.js";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
@@ -18,6 +19,20 @@ export class TaggerController {
     async loadModelsConfiguration() {
         App.logger.info("[Tagger Model Manager] Models configuration loaded successfully");
         return await App.taggerModels.loadConfiguration();
+    }
+
+    @IpcHandle("tagger:update_models_config")
+    async updateModelsConfiguration(_event: IpcMainInvokeEvent, config: TaggerModelConfiguration) {
+        try {
+            const configuration = await App.taggerModels.updateConfiguration(config);
+
+            App.logger.info("[Tagger Model Manager] Model configuration updated successfully");
+            return { error: false, configuration }
+        } catch (error) {
+            console.error(error);
+            App.logger.error(`[Tagger Model Manager] Failed to update configuration: ${Utilities.getErrorMessage(error)}`);
+            return { error: true, message: "Failed to update model configuration, check the logs for more information" }
+        }
     }
 
     @IpcHandle("tagger:install")
@@ -47,6 +62,7 @@ export class TaggerController {
             const settings = await App.settings.loadSettings();
 
             process.env["HF_HUB_CACHE"] = settings.huggingFaceCacheDirectory;
+            process.env["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1";
 
             App.logger.info("[Tagger Manager] Starting server...");
             App.tagger.runTaggerProcess(settings.taggerPort);

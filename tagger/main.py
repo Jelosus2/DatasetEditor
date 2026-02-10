@@ -71,7 +71,7 @@ class LabelData:
         self.character: list[int] = character
 
 def load_model(tagger_model: str) -> tuple[ort.InferenceSession, LabelData, int]:
-    csv_path, model_path = download_model(tagger_model)
+    csv_path, model_path = download_model_legacy(tagger_model)
     try:
         csv_content = pd.read_csv(csv_path)
     except Exception as e:
