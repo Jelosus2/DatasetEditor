@@ -38,6 +38,9 @@ const repositoryIdError = computed(() => {
     if (!regex.test(value))
         return "Expected format: Username/RepoName";
 
+    if (modelNames.value.includes(value))
+        return "The repository already exists in the list";
+
     return "";
 });
 
@@ -87,6 +90,8 @@ taggerService.onServiceStarted = async () => {
 taggerService.onServiceStopped = () => {
     device.value = "Unknown";
     modelsStatus.value = {};
+    modelsDownloading.value = new Set();
+    modelsDeleting.value = new Set();
 
     isServiceRunning.value = false;
     isServiceStarting.value = false;
@@ -139,10 +144,11 @@ async function saveAddModelModal() {
         return;
 
     models.value.set(addModelRepositoryId.value, {
+        isCustomModel: true,
         generalThreshold: 0.25,
         characterThreshold: 0.35,
-        modelFile: addModelOnnxFile.value,
-        tagsFile: addModelCsvTagsFile.value
+        modelFile: lowerFileExtension(addModelOnnxFile.value),
+        tagsFile: lowerFileExtension(addModelCsvTagsFile.value)
     });
 
     const result = await taggerService.updateModelsConfiguration(models.value);
@@ -150,6 +156,11 @@ async function saveAddModelModal() {
         models.value.delete(addModelRepositoryId.value);
 
     closeAddModelModal();
+}
+
+function lowerFileExtension(filename: string) {
+    const index = filename.lastIndexOf(".");
+    return filename.slice(0, index) + filename.slice(index).toLowerCase();
 }
 
 async function resizeTerminal(columns: number, rows: number) {

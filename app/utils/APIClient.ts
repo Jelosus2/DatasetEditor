@@ -11,36 +11,6 @@ export class APIClient {
         return [data, response.ok, response.status];
     }
 
-    static getTaggerDeviceWS(port: number): Promise<string> {
-        return new Promise((resolve, reject) => {
-            const websocket = new WebSocket(`ws://localhost:${port}`);
-
-            const timeout = setTimeout(() => {
-                websocket.close()
-                reject(new Error("Timeout waiting for tagger device info"));
-            }, 10000);
-
-            websocket.onopen = () => {
-                websocket.send(JSON.stringify({ command: "device" }));
-            }
-
-            websocket.onmessage = (event) => {
-                const message = JSON.parse(event.data);
-                if (message.type === "info" && message.device) {
-                    clearTimeout(timeout);
-                    websocket.close();
-                    resolve(message.device);
-                }
-            }
-
-            websocket.onerror = (error) => {
-                clearTimeout(timeout);
-                websocket.close();
-                reject(error);
-            }
-        });
-    }
-
     static runTaggingWS(port: number, payload: TaggerWSPayload): Promise<Map<string, string[]>> {
         return new Promise((resolve, reject) => {
             const accumulator = new Map<string, Set<string>>();
@@ -95,8 +65,14 @@ export class APIClient {
     static sendCommandWS<T>(port: number, payload: unknown, timeout?: number): Promise<T> {
         return new Promise((resolve, reject) => {
             const websocket = new WebSocket(`ws://localhost:${port}`);
+
+            const closeConnectionSafely = () => {
+                if (websocket.readyState < WebSocket.CLOSING)
+                    websocket.close();
+            }
+
             const _timeout = timeout ? setTimeout(() => {
-                    websocket.close()
+                    closeConnectionSafely();
                     reject(new Error("The response timed out"))
                 }, timeout) : null;
 
@@ -105,7 +81,7 @@ export class APIClient {
             websocket.onmessage = (event) => {
                 if (_timeout != null)
                     clearTimeout(_timeout);
-                websocket.close();
+                closeConnectionSafely();
 
                 const data = JSON.parse(event.data)
                 if (data.error)
@@ -115,10 +91,13 @@ export class APIClient {
             }
 
             websocket.onerror = (error) => {
+                websocket.onerror = null;
+                websocket.onmessage = null;
+
                 if (_timeout != null)
                     clearTimeout(_timeout);
 
-                websocket.close();
+                closeConnectionSafely();
                 reject(error);
             }
         });

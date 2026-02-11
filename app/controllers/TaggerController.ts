@@ -39,13 +39,12 @@ export class TaggerController {
     async installDependencies() {
         try {
             App.logger.info("[Tagger Manager] Installing dependencies...");
-            const exitCode = await App.tagger.runInstallProcess();
+            const result = await App.tagger.runInstallProcess();
 
-            if (exitCode === -1073741510)
+            if (result.isManualKilling)
                 return { stopped: true };
-
-            if (exitCode !== 0)
-                throw new Error(`Dependency installation failed with exit code ${exitCode}`);
+            if (result.exitCode !== 0)
+                throw new Error(`Dependency installation failed with exit code ${result.exitCode}`);
 
             App.logger.info("[Tagger Manager] Dependencies installed successfully");
             return { error: false, message: "Dependencies installed successfully" };

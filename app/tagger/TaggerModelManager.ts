@@ -27,18 +27,27 @@ export class TaggerModelManager {
 
     private buildDefaults(overrides: Partial<TaggerModelConfiguration> = {}) {
         const defaultNames = this.getDefaultModelNames();
-        const defaults = {} as TaggerModelConfiguration;
+        const allNames = new Set([...defaultNames, ...Object.keys(overrides)]);
 
-        for (const name of defaultNames) {
-            defaults[name] = {
+        const configuration = {} as TaggerModelConfiguration;
+
+        for (const name of allNames) {
+            const baseDefault = {
+                isCustomModel: false,
                 generalThreshold: 0.25,
                 characterThreshold: 0.35,
                 modelFile: "model.onnx",
                 tagsFile: "selected_tags.csv"
-            }
+            };
+
+            configuration[name] = {
+                ...baseDefault,
+                ...(overrides[name] || {}),
+                isCustomModel: !defaultNames.includes(name)
+            };
         }
 
-        return { ...defaults, ...overrides } as TaggerModelConfiguration;
+        return configuration;
     }
 
     async updateConfiguration(configuration: TaggerModelConfiguration) {

@@ -22,8 +22,8 @@ export class TaggerManager {
             throw new Error("A process is still running");
 
         this.process.runPythonTask(App.paths.taggerScriptPath, [port.toString()], "tagger:output")
-            .then((exitCode) => {
-                if (![0, -1073741510].includes(exitCode)) {
+            .then(({ exitCode, isManualKilling }) => {
+                if (!isManualKilling || exitCode !== 0) {
                     App.logger.error(`[Tagger Manager] Tagger server stopped with code ${exitCode}`)
                 }
                 App.window.ipcSend("tagger:service_stopped")
@@ -39,6 +39,6 @@ export class TaggerManager {
     }
 
     resizeTerminal(columms: number, rows: number) {
-        this.process.resizeTerminal(columms, rows);
+        this.process?.resizeTerminal(columms, rows);
     }
 }

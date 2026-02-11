@@ -115,9 +115,9 @@ export class DatasetController {
                     await shell.trashItem(filePath);
 
                 const directory = path.dirname(filePath);
-                const fileName = path.basename(filePath);
+                const filename = path.basename(filePath);
 
-                const txtPath = path.join(directory, fileName.replace(/\.[^.]+$/, '.txt'));
+                const txtPath = path.join(directory, filename.replace(/\.[^.]+$/, '.txt'));
                 if (await fs.pathExists(txtPath))
                     await shell.trashItem(txtPath);
 
@@ -263,18 +263,18 @@ export class DatasetController {
                 return entry.isFile() && this.SUPPORTED_IMAGE_EXTENSIONS.includes(fileExtension);
             })
             .map((entry) => ({
-                fileName: entry.name,
+                filename: entry.name,
                 parentPath: entry.parentPath,
                 filePath: path.join(entry.parentPath, entry.name)
             }));
 
         if (sortOnLoad) {
             const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
-            files.sort((a, b) => collator.compare(a.fileName, b.fileName));
+            files.sort((a, b) => collator.compare(a.filename, b.filename));
         }
 
         for (const file of files) {
-            const tags = await this.loadImageTags(directoryPath, file.fileName);
+            const tags = await this.loadImageTags(directoryPath, file.filename);
 
             let mtimeMs: number;
             try { mtimeMs = (await fs.stat(file.filePath)).mtimeMs } catch { mtimeMs = Date.now() }
@@ -294,8 +294,8 @@ export class DatasetController {
         return { dataset, globalTags }
     }
 
-    async loadImageTags(directoryPath: string, fileName: string): Promise<Set<string>> {
-        const sanitizedName = fileName.replace(/\.[^.]+$/, '.txt');
+    async loadImageTags(directoryPath: string, filename: string): Promise<Set<string>> {
+        const sanitizedName = filename.replace(/\.[^.]+$/, '.txt');
         const txtPath = path.join(directoryPath, sanitizedName);
 
         if (!await fs.pathExists(txtPath))
@@ -311,7 +311,7 @@ export class DatasetController {
             );
         } catch (error) {
             console.error(error);
-            App.logger.error(`[Dataset Manager] Error reading the tags from ${fileName}: ${Utilities.getErrorMessage(error)}`)
+            App.logger.error(`[Dataset Manager] Error reading the tags from ${filename}: ${Utilities.getErrorMessage(error)}`)
             return new Set();
         }
     }
