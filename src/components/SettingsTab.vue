@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import AutocompletionComponent from "@/components/AutocompletionComponent.vue";
+import AlertModal from "@/components/AlertModal.vue";
 
 import type { SettingsDefinition } from "../../shared/settings-schema";
 
 import { useSettingsOperations } from "@/composables/useSettingsOperations";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useAlert } from "@/composables/useAlert";
-import { reactive, ref, watchEffect, watch, onMounted } from "vue";
+import { reactive, ref, computed, watchEffect, watch, onMounted } from "vue";
 
 const activeSection = ref("");
 
@@ -15,6 +16,8 @@ const stringInputs = reactive<Record<string, string>>({});
 const settingsStore = useSettingsStore();
 const settingsOperations = useSettingsOperations();
 const { showAlert } = useAlert();
+
+const isRestartModalOpen = computed(() => settingsStore.showRestartPrompt);
 
 watchEffect(() => {
     if (!activeSection.value && settingsOperations.sections.value.length > 0)
@@ -75,6 +78,14 @@ function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
         const conflictLabel = settingsStore.schema.find((def) => def.key === result.conflictKey)?.label ?? "another shortcut";
         showAlert("error", `Shortcut already used by "${conflictLabel}"`);
     }
+}
+
+function closeRestartModal() {
+    settingsStore.dismissRestartPrompt();
+}
+
+async function restart() {
+    await settingsStore.restartApp();
 }
 
 onMounted(() => {
@@ -234,4 +245,15 @@ onMounted(() => {
             </div>
         </div>
     </div>
+    <AlertModal
+        :open="isRestartModalOpen"
+        title="Restart required"
+        message="You changed a setting that requires a restart. Restart now or apply it next time you open the app."
+        confirm-text="Restart now"
+        cancel-text="Later"
+        confirm-class="btn btn-error btn-outline"
+        @cancel="closeRestartModal"
+        @confirm="restart"
+        @update:open="(value) => !value && closeRestartModal()"
+    />
 </template>

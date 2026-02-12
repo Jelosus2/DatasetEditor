@@ -5,7 +5,6 @@ import TagGroupsTab from "@/components/TagGroupsTab.vue";
 import AlertComponent from "@/components/AlertComponent.vue";
 import AutotaggerTab from "@/components/AutotaggerTab.vue";
 import SettingsTab from "@/components/SettingsTab.vue";
-import RestartRequiredModal from "@/components/RestartRequiredModal.vue";
 import LogsTab from "@/components/LogsTab.vue";
 import AppStatusOverlay from "@/components/AppStatusOverlay.vue";
 import WikiSearchModalComponent from "@/components/WikiSearchModalComponent.vue";
@@ -118,7 +117,6 @@ onMounted(async () => {
         </div>
     </div>
     <AppStatusOverlay />
-    <RestartRequiredModal />
     <WikiSearchModalComponent />
     <DuplicateFinderModalComponent @trigger_alert="showAlert" />
     <RenameFilesModalComponent @trigger_alert="showAlert" />

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AutotaggerConsole from "@/components/AutotaggerConsole.vue";
+import AlertModal from "@/components/AlertModal.vue";
 
 import type { TaggerModelsStatus, TaggerModelConfigurationProperties } from "../../shared/tagger";
 
@@ -9,6 +10,7 @@ import { ref, computed, onMounted } from "vue";
 
 import DownloadIcon from "@/assets/icons/update-download.svg";
 import DeleteIcon from "@/assets/icons/trash-bin.svg";
+import RemoveIcon from "@/assets/icons/x.svg";
 
 const selectedModels = ref<Set<string>>(new Set());
 const consoleRef = ref<InstanceType<typeof AutotaggerConsole> | null>(null);
@@ -26,6 +28,9 @@ const addModelRepositoryId = ref("");
 const addModelOnnxFile = ref("");
 const addModelCsvTagsFile = ref("");
 const addModelTriedSave = ref(false);
+const isRemoveModelModalOpen = ref(false);
+const isDeleteModelModalOpen = ref(false);
+const modelToBeRemoved = ref("");
 
 const modelNames = computed(() => Array.from(models.value.keys()));
 
@@ -143,7 +148,8 @@ async function saveAddModelModal() {
     if (!isAddModelFormValid.value)
         return;
 
-    models.value.set(addModelRepositoryId.value, {
+    const updatedMap = new Map(models.value);
+    updatedMap.set(addModelRepositoryId.value, {
         isCustomModel: true,
         generalThreshold: 0.25,
         characterThreshold: 0.35,
@@ -151,9 +157,9 @@ async function saveAddModelModal() {
         tagsFile: lowerFileExtension(addModelCsvTagsFile.value)
     });
 
-    const result = await taggerService.updateModelsConfiguration(models.value);
-    if (result.error)
-        models.value.delete(addModelRepositoryId.value);
+    const result = await taggerService.updateModelsConfiguration(updatedMap);
+    if (!result.error)
+        models.value = updatedMap;
 
     closeAddModelModal();
 }
@@ -161,6 +167,42 @@ async function saveAddModelModal() {
 function lowerFileExtension(filename: string) {
     const index = filename.lastIndexOf(".");
     return filename.slice(0, index) + filename.slice(index).toLowerCase();
+}
+
+function openRemoveModal(model: string) {
+    modelToBeRemoved.value = model;
+    isRemoveModelModalOpen.value = true;
+}
+
+function closeRemoveModal() {
+    isRemoveModelModalOpen.value = false;
+}
+
+async function removeModel() {
+    modelsDeleting.value.add(modelToBeRemoved.value);
+
+    const updatedMap = new Map(models.value);
+    updatedMap.delete(modelToBeRemoved.value);
+
+    const result = await taggerService.updateModelsConfiguration(updatedMap);
+    if (result.error)
+        return;
+
+    models.value = updatedMap;
+    modelsDeleting.value.delete(modelToBeRemoved.value);
+    selectedModels.value.delete(modelToBeRemoved.value);
+
+    closeRemoveModal();
+    openDeleteModel();
+}
+
+function openDeleteModel() {
+    isDeleteModelModalOpen.value = true;
+}
+
+function closeDeleteModel() {
+    modelToBeRemoved.value = "";
+    isDeleteModelModalOpen.value = false;
 }
 
 async function resizeTerminal(columns: number, rows: number) {
@@ -196,6 +238,9 @@ async function downloadModel(model: string) {
 }
 
 async function deleteModel(model: string) {
+    if (isDeleteModelModalOpen.value)
+        closeDeleteModel();
+
     modelsDeleting.value.add(model);
     const result = await taggerService.deleteModel(model);
     modelsDeleting.value.delete(model);
@@ -245,24 +290,37 @@ onMounted(async () => {
                             : 'border-base-content/20 hover:border-base-content/10'"
                         @click="toggleModel(model)"
                     >
-                        <span class="truncate text-sm font-medium">{{ model }}</span>
-                        <button
-                            v-if="!modelsStatus[model]"
-                            class="btn btn-xs btn-accent btn-outline"
-                            :disabled="!isServiceRunning || modelsDownloading.has(model)"
-                            @click.stop="downloadModel(model)"
-                        >
-                            <DownloadIcon v-if="!modelsDownloading.has(model)" class="h-5 w-5" />
-                            <span v-else class="loading loading-spinner loading-md"></span>
-                        </button>
-                        <button
-                            v-else
-                            class="btn btn-xs btn-error btn-outline"
-                            :disabled="modelsDeleting.has(model)"
-                            @click.stop="deleteModel(model)"
-                        >
-                            <DeleteIcon class="h-5 w-5" />
-                        </button>
+                        <span class="truncate text-sm font-medium" :title="model">{{ model }}</span>
+                        <div class="flex gap-2">
+                            <button
+                                v-if="!modelsStatus[model]"
+                                title="Download model"
+                                class="btn btn-xs btn-accent btn-outline"
+                                :disabled="!isServiceRunning || modelsDownloading.has(model)"
+                                @click.stop="downloadModel(model)"
+                            >
+                                <DownloadIcon v-if="!modelsDownloading.has(model)" class="h-5 w-5" />
+                                <span v-else class="loading loading-spinner loading-md"></span>
+                            </button>
+                            <button
+                                v-else
+                                title="Delete model"
+                                class="btn btn-xs btn-error btn-outline"
+                                :disabled="modelsDeleting.has(model)"
+                                @click.stop="deleteModel(model)"
+                            >
+                                <DeleteIcon class="h-5 w-5" />
+                            </button>
+                            <button
+                                v-if="models.get(model)?.isCustomModel"
+                                title="Delete model from the list"
+                                class="btn btn-xs btn-error btn-outline"
+                                :disabled="!isServiceRunning || modelsDownloading.has(model)"
+                                @click.stop="openRemoveModal(model)"
+                            >
+                                <RemoveIcon class="h-5 w-5" />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </aside>
@@ -356,4 +414,22 @@ onMounted(async () => {
             <div class="modal-backdrop" @click="closeAddModelModal"></div>
         </div>
     </div>
+    <AlertModal
+        :open="isRemoveModelModalOpen"
+        title="Model deletion"
+        :message="`Are you sure you want to remove '${modelToBeRemoved}' from the model list?`"
+        confirm-class="btn btn-error btn-outline"
+        @confirm="removeModel"
+        @cancel="closeRemoveModal"
+        @update:open="(value) => !value && closeRemoveModal()"
+    />
+    <AlertModal
+        :open="isDeleteModelModalOpen"
+        title="Model removal"
+        :message="`'${modelToBeRemoved}' was removed successfully. Do you want to delete the model from the cache folder? (If downloaded)`"
+        confirm-class="btn btn-error btn-outline"
+        @confirm="deleteModel(modelToBeRemoved)"
+        @cancel="closeDeleteModel"
+        @update:open="(value) => !value && closeDeleteModel()"
+    />
 </template>

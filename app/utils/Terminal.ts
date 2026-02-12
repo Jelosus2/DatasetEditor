@@ -17,8 +17,8 @@ export class Terminal {
     runPythonTask(scriptPath: string, args: string[] = [], channel: string): Promise<{ exitCode: number; isManualKilling: boolean; }> {
         return new Promise((resolve, reject) => {
             try {
-                this.isManualKilling = false;
                 this.kill();
+                this.isManualKilling = false;
 
                 this.ptyProcess = pty.spawn(App.paths.pythonExecutablePath, ["-u", scriptPath, ...args], {
                     name: "xterm-color",
