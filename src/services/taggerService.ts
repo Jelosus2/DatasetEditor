@@ -1,4 +1,5 @@
 import type { TaggerModelConfiguration, TaggerModelConfigurationProperties } from "../../shared/tagger";
+import type { AlertType } from "@/types/alert";
 
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
 import { useAlert } from "@/composables/useAlert";
@@ -137,7 +138,13 @@ export class TaggerService {
     async deleteModel(modelRepo: string) {
         const result = await this.ipc.invoke("tagger:delete_model", modelRepo);
 
-        this.alert.showAlert(result.error ? "error" : "success", result.message);
+        let alertType: AlertType = "success";
+        if (result.error)
+            alertType = "error";
+        else if (!result.success)
+            alertType = "warning";
+
+        this.alert.showAlert(alertType, result.message);
 
         return {
             error: result.error,

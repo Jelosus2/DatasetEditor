@@ -188,6 +188,7 @@ export type IpcInvokeMap = {
         args: [modelRepo: string];
         result: {
             error: boolean;
+            success?: boolean;
             message: string;
             cacheSizeBytes?: number;
         }

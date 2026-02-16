@@ -56,7 +56,8 @@ def delete_model(model_repo: str):
     repository = next((repo for repo in cache_info.repos if repo.repo_id == model_repo), None)
     if not repository:
         print("Model not found, skipped deletion")
-        return
+        return False
     
     cache_info.delete_revisions(*[revision.commit_hash for revision in repository.revisions]).execute()
     print(f"Deleted {model_repo} successfully")
+    return True

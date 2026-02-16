@@ -11,6 +11,8 @@ import { ref, computed, onMounted } from "vue";
 import DownloadIcon from "@/assets/icons/update-download.svg";
 import DeleteIcon from "@/assets/icons/trash-bin.svg";
 import RemoveIcon from "@/assets/icons/x.svg";
+import EditIcon from "@/assets/icons/edit.svg";
+import AddIcon from "@/assets/icons/plus.svg";
 
 const selectedModels = ref<Set<string>>(new Set());
 const consoleRef = ref<InstanceType<typeof AutotaggerConsole> | null>(null);
@@ -25,9 +27,14 @@ const modelsDownloading = ref<Set<string>>(new Set());
 const modelsDeleting = ref<Set<string>>(new Set());
 const isAddModelModalOpen = ref(false);
 const addModelRepositoryId = ref("");
-const addModelOnnxFile = ref("");
-const addModelCsvTagsFile = ref("");
+const modelOnnxFile = ref("");
+const modelCsvTagsFile = ref("");
 const addModelTriedSave = ref(false);
+const isEditModelModalOpen = ref(false);
+const editModel = ref("");
+const editGeneralThreshold = ref(0.25);
+const editCharacterThreshold = ref(0.35);
+const editModelTriedSave = ref(false);
 const isRemoveModelModalOpen = ref(false);
 const isDeleteModelModalOpen = ref(false);
 const modelToBeRemoved = ref("");
@@ -50,7 +57,7 @@ const repositoryIdError = computed(() => {
 });
 
 const onnxFileError = computed(() => {
-    const value = addModelOnnxFile.value.trim();
+    const value = modelOnnxFile.value.trim();
 
     if (!value)
         return "ONNX model file is required";
@@ -61,7 +68,7 @@ const onnxFileError = computed(() => {
 });
 
 const csvTagsFileError = computed(() => {
-    const value = addModelCsvTagsFile.value.trim();
+    const value = modelCsvTagsFile.value.trim();
 
     if (!value)
         return "CSV tags file is required";
@@ -73,6 +80,15 @@ const csvTagsFileError = computed(() => {
 
 const isAddModelFormValid = computed(() =>
     !repositoryIdError.value && !onnxFileError.value && !csvTagsFileError.value
+);
+
+const isEditModelCustom = computed(() => {
+    const model = editModel.value;
+    return !!model && !!models.value.get(model)?.isCustomModel
+});
+
+const isEditModelFormValid = computed(() =>
+    !onnxFileError.value && !csvTagsFileError.value
 );
 
 const { showAlert } = useAlert();
@@ -133,8 +149,8 @@ function formatBytes(bytes: number) {
 
 function openAddModelModal() {
     addModelRepositoryId.value = "";
-    addModelOnnxFile.value = "";
-    addModelCsvTagsFile.value = "";
+    modelOnnxFile.value = "";
+    modelCsvTagsFile.value = "";
     addModelTriedSave.value = false;
     isAddModelModalOpen.value = true;
 }
@@ -153,8 +169,8 @@ async function saveAddModelModal() {
         isCustomModel: true,
         generalThreshold: 0.25,
         characterThreshold: 0.35,
-        modelFile: lowerFileExtension(addModelOnnxFile.value),
-        tagsFile: lowerFileExtension(addModelCsvTagsFile.value)
+        modelFile: lowerFileExtension(modelOnnxFile.value),
+        tagsFile: lowerFileExtension(modelCsvTagsFile.value)
     });
 
     const result = await taggerService.updateModelsConfiguration(updatedMap);
@@ -169,12 +185,64 @@ function lowerFileExtension(filename: string) {
     return filename.slice(0, index) + filename.slice(index).toLowerCase();
 }
 
-function openRemoveModal(model: string) {
+function normalizeThreshold(value: number) {
+    const clamped = Math.min(1, Math.max(0.05, value));
+    return Math.round(clamped * 20) / 20;
+}
+
+function openEditModelModal(model: string) {
+    const properties = models.value.get(model)!;
+
+    editModel.value = model;
+    modelOnnxFile.value = properties.modelFile;
+    modelCsvTagsFile.value = properties.tagsFile;
+    editGeneralThreshold.value = normalizeThreshold(properties.generalThreshold);
+    editCharacterThreshold.value = normalizeThreshold(properties.characterThreshold);
+
+    editModelTriedSave.value = false;
+    isEditModelModalOpen.value = true;
+}
+
+function closeEditModelModal() {
+    isEditModelModalOpen.value = false;
+}
+
+async function saveEditModelModal() {
+    editModelTriedSave.value = true;
+    if (!isEditModelFormValid.value)
+        return;
+
+    const model = editModel.value;
+    const previous = models.value.get(model)!;
+
+    const updatedMap = new Map(models.value);
+    updatedMap.set(model, {
+        ...previous,
+        generalThreshold: normalizeThreshold(editGeneralThreshold.value),
+        characterThreshold: normalizeThreshold(editCharacterThreshold.value),
+        modelFile: lowerFileExtension(modelOnnxFile.value),
+        tagsFile: lowerFileExtension(modelCsvTagsFile.value)
+    });
+
+    const result = await taggerService.updateModelsConfiguration(updatedMap);
+    if (!result.error)
+        models.value = updatedMap;
+
+    closeEditModelModal();
+}
+
+function removeModelFromList() {
+    const model = editModel.value;
+    closeEditModelModal();
+    openRemoveModelModal(model);
+}
+
+function openRemoveModelModal(model: string) {
     modelToBeRemoved.value = model;
     isRemoveModelModalOpen.value = true;
 }
 
-function closeRemoveModal() {
+function closeRemoveModelModal() {
     isRemoveModelModalOpen.value = false;
 }
 
@@ -192,15 +260,21 @@ async function removeModel() {
     modelsDeleting.value.delete(modelToBeRemoved.value);
     selectedModels.value.delete(modelToBeRemoved.value);
 
-    closeRemoveModal();
-    openDeleteModel();
+    closeRemoveModelModal();
+
+    if (modelsStatus.value[modelToBeRemoved.value])
+        openDeleteModelModal();
+    else
+        modelToBeRemoved.value = "";
+
+    delete modelsStatus.value[modelToBeRemoved.value];
 }
 
-function openDeleteModel() {
+function openDeleteModelModal() {
     isDeleteModelModalOpen.value = true;
 }
 
-function closeDeleteModel() {
+function closeDeleteModelModal() {
     modelToBeRemoved.value = "";
     isDeleteModelModalOpen.value = false;
 }
@@ -239,7 +313,7 @@ async function downloadModel(model: string) {
 
 async function deleteModel(model: string) {
     if (isDeleteModelModalOpen.value)
-        closeDeleteModel();
+        closeDeleteModelModal();
 
     modelsDeleting.value.add(model);
     const result = await taggerService.deleteModel(model);
@@ -268,13 +342,7 @@ onMounted(async () => {
                     </div>
                 </div>
                 <button class="btn btn-sm btn-success w-full gap-2" @click="openAddModelModal">
-                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path
-                            fill-rule="evenodd"
-                            d="M10 3a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H4a1 1 0 1 1 0-2h5V4a1 1 0 0 1 1-1z"
-                            clip-rule="evenodd"
-                        />
-                    </svg>
+                    <AddIcon class="w-5 h-5" />
                     <span>Add model</span>
                 </button>
                 <div class="mt-2 text-sm text-base-content/70">
@@ -312,13 +380,12 @@ onMounted(async () => {
                                 <DeleteIcon class="h-5 w-5" />
                             </button>
                             <button
-                                v-if="models.get(model)?.isCustomModel"
-                                title="Delete model from the list"
-                                class="btn btn-xs btn-error btn-outline"
-                                :disabled="!isServiceRunning || modelsDownloading.has(model)"
-                                @click.stop="openRemoveModal(model)"
+                                title="Edit options"
+                                class="btn btn-xs btn-info btn-outline"
+                                :disabled="!isServiceRunning"
+                                @click.stop="openEditModelModal(model)"
                             >
-                                <RemoveIcon class="h-5 w-5" />
+                                <EditIcon class="h-5 w-5" />
                             </button>
                         </div>
                     </div>
@@ -361,15 +428,17 @@ onMounted(async () => {
             <div class="modal-box w-11/12 max-w-md">
                 <div class="flex items-center justify-between border-b-2 pb-2 dark:border-base-content/10">
                     <div class="text-lg font-semibold">Add model</div>
-                    <button class="btn btn-ghost btn-sm" @click="closeAddModelModal">x</button>
+                    <button class="btn btn-ghost btn-sm" @click="closeAddModelModal">
+                        <RemoveIcon class="h-5 w-5" />
+                    </button>
                 </div>
-                <div class="mt-4 flex flex-col gap-3">
+                <div class="mt-4 flex flex-col gap-3" @keyup.enter="saveAddModelModal">
                     <div class="flex flex-col gap-1">
-                        <label class="text-sm opacity-80">Repository Id</label>
+                        <label class="opacity-80">Repository Id</label>
                         <input
                             v-model="addModelRepositoryId"
                             type="text"
-                            class="input input-bordered w-full outline-none!"
+                            class="input border border-base-content/30 w-full outline-none!"
                             placeholder="Username/RepoName"
                         />
                         <div v-if="addModelTriedSave && repositoryIdError" class="text-sm text-error">
@@ -377,11 +446,11 @@ onMounted(async () => {
                         </div>
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label class="text-sm opacity-80">ONNX model file</label>
+                        <label class="opacity-80">ONNX model file</label>
                         <input
-                            v-model="addModelOnnxFile"
+                            v-model="modelOnnxFile"
                             type="text"
-                            class="input input-bordered w-full outline-none!"
+                            class="input border border-base-content/30 w-full outline-none!"
                             placeholder="model.onnx"
                         />
                         <div v-if="addModelTriedSave && onnxFileError" class="text-sm text-error">
@@ -389,11 +458,11 @@ onMounted(async () => {
                         </div>
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label class="text-sm opacity-80">CSV tags file</label>
+                        <label class="opacity-80">CSV tags file</label>
                         <input
-                            v-model="addModelCsvTagsFile"
+                            v-model="modelCsvTagsFile"
                             type="text"
-                            class="input input-bordered w-full outline-none!"
+                            class="input border border-base-content/30 w-full outline-none!"
                             placeholder="selected_tags.csv"
                         />
                         <div v-if="addModelTriedSave && csvTagsFileError" class="text-sm text-error">
@@ -401,9 +470,10 @@ onMounted(async () => {
                         </div>
                     </div>
                     <div class="flex items-center justify-end gap-2 pt-2">
-                        <button class="btn btn-sm btn-outline" @click="closeAddModelModal">Cancel</button>
+                        <button class="btn btn-outline" @click="closeAddModelModal">Cancel</button>
                         <button
-                            class="btn btn-sm btn-primary"
+                            class="btn btn-primary"
+                            :disabled="addModelTriedSave && !isAddModelFormValid"
                             @click="saveAddModelModal"
                         >
                             Save
@@ -413,6 +483,101 @@ onMounted(async () => {
             </div>
             <div class="modal-backdrop" @click="closeAddModelModal"></div>
         </div>
+        <div class="modal z-50" :class="{ 'modal-open': isEditModelModalOpen }">
+            <div class="modal-box w-11/12 max-w-md">
+                <div class="flex items-center justify-between border-b-2 pb-2 dark:border-base-content/10">
+                    <div class="text-lg font-semibold">Edit model options</div>
+                    <button class="btn btn-ghost btn-sm" @click="closeEditModelModal">X</button>
+                </div>
+                <div class="mt-4 flex flex-col gap-4" @keyup.enter="saveEditModelModal">
+                <div class="text-base-content/60">
+                    {{ editModel }}
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="opacity-80">ONNX model file</label>
+                    <input
+                        v-model="modelOnnxFile"
+                        type="text"
+                        class="input border border-base-content/30 w-full outline-none!"
+                        placeholder="model.onnx"
+                        :title="!isEditModelCustom ? 'You cannot edit the model file of a default model' : ''"
+                        :disabled="!isEditModelCustom"
+                    />
+                    <div v-if="editModelTriedSave && onnxFileError" class="text-sm text-error">
+                        {{ onnxFileError }}
+                    </div>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="opacity-80">CSV tags file</label>
+                    <input
+                        v-model="modelCsvTagsFile"
+                        type="text"
+                        class="input border border-base-content/30 w-full outline-none!"
+                        placeholder="selected_tags.csv"
+                        :title="!isEditModelCustom ? 'You cannot edit the tags file of a default model' : ''"
+                        :disabled="!isEditModelCustom"
+                    />
+                    <div v-if="editModelTriedSave && csvTagsFileError" class="text-sm text-error">
+                        {{ csvTagsFileError }}
+                    </div>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="opacity-80">General threshold:</span>
+                        <span class="font-semibold tabular-nums">{{ editGeneralThreshold.toFixed(2) }}</span>
+                    </div>
+                    <input
+                        v-model.number="editGeneralThreshold"
+                        type="range"
+                        min="0.05"
+                        max="1"
+                        step="0.05"
+                        class="range w-full [--range-fill:0] [--range-thumb:var(--color-base-100)] range-sm"
+                    />
+                    <div class="flex justify-between text-sm opacity-60">
+                        <span>0.05</span><span>1.00</span>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="opacity-80">Character threshold:</span>
+                        <span class="font-semibold tabular-nums">{{ editCharacterThreshold.toFixed(2) }}</span>
+                    </div>
+                    <input
+                        v-model.number="editCharacterThreshold"
+                        type="range"
+                        min="0.05"
+                        max="1"
+                        step="0.05"
+                        class="range w-full [--range-fill:0] [--range-thumb:var(--color-base-100)] range-sm"
+                    />
+                    <div class="flex justify-between text-sm opacity-60">
+                        <span>0.05</span><span>1.00</span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between pt-2">
+                    <button
+                        class="btn btn-error btn-outline gap-2"
+                        :disabled="!isEditModelCustom"
+                        @click="removeModelFromList"
+                    >
+                        Remove
+                    </button>
+                    <div class="ml-auto flex gap-2">
+                        <button class="btn btn-outline" @click="closeEditModelModal">Cancel</button>
+                        <button
+                            class="btn btn-primary"
+                            :disabled="editModelTriedSave && !isEditModelFormValid"
+                            @click="saveEditModelModal"
+                        >
+                            Save
+                        </button>
+                    </div>
+                </div>
+                </div>
+            </div>
+            <div class="modal-backdrop" @click="closeEditModelModal"></div>
+        </div>
     </div>
     <AlertModal
         :open="isRemoveModelModalOpen"
@@ -420,16 +585,16 @@ onMounted(async () => {
         :message="`Are you sure you want to remove '${modelToBeRemoved}' from the model list?`"
         confirm-class="btn btn-error btn-outline"
         @confirm="removeModel"
-        @cancel="closeRemoveModal"
-        @update:open="(value) => !value && closeRemoveModal()"
+        @cancel="closeRemoveModelModal"
+        @update:open="(value) => !value && closeRemoveModelModal()"
     />
     <AlertModal
         :open="isDeleteModelModalOpen"
         title="Model removal"
-        :message="`'${modelToBeRemoved}' was removed successfully. Do you want to delete the model from the cache folder? (If downloaded)`"
+        :message="`'${modelToBeRemoved}' was removed successfully. Do you want to delete the model from the cache folder?`"
         confirm-class="btn btn-error btn-outline"
         @confirm="deleteModel(modelToBeRemoved)"
-        @cancel="closeDeleteModel"
-        @update:open="(value) => !value && closeDeleteModel()"
+        @cancel="closeDeleteModelModal"
+        @update:open="(value) => !value && closeDeleteModelModal()"
     />
 </template>

@@ -208,7 +208,8 @@ export class TaggerController {
             });
             App.logger.info(`[Tagger Manager] Deleted ${modelRepo} successfully`);
 
-            return { error: false, message: "Model deleted successfully", cacheSizeBytes: response.cache_size_bytes }
+            const message = response.success ? "Model deleted successfully" : "Model wasn't downloaded";
+            return { error: false, success: response.success, message, cacheSizeBytes: response.cache_size_bytes }
         } catch (error) {
             console.error(error);
             App.logger.error(`[Tagger Manager] Failed to delete ${modelRepo}: ${Utilities.getErrorMessage(error)}`);

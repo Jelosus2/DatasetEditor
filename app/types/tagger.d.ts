@@ -17,6 +17,7 @@ export type ModelsStatusWSResponse = {
 }
 
 export type DeleteModelWSResponse = {
+    success: boolean;
     cache_size_bytes: number;
 }
 

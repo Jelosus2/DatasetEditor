@@ -193,8 +193,8 @@ async def handler(websocket: websockets.ServerConnection):
                     await safe_send(websocket, payload)
                 elif command == "delete_model":
                     model = data.get("model")
-                    await asyncio.to_thread(delete_model, model)
-                    payload = get_model_action_payload()
+                    success = await asyncio.to_thread(delete_model, model)
+                    payload = { "success": success } | get_model_action_payload()
                     await safe_send(websocket, payload)
                 else:
                     await safe_send(websocket, error_payload(f"Unknown command: {command}"))
