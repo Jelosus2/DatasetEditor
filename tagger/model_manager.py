@@ -1,6 +1,6 @@
-from tqdm.auto import tqdm
 from huggingface_hub import hf_hub_download, scan_cache_dir, try_to_load_from_cache
 from pathlib import Path
+from tqdm import tqdm
 import os
 
 class HFProgress(tqdm):

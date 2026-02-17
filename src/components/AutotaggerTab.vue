@@ -19,7 +19,7 @@ const consoleRef = ref<InstanceType<typeof AutotaggerConsole> | null>(null);
 const isInstalling = ref(false);
 const isServiceStarting = ref(false);
 const isServiceRunning = ref(false);
-const device = ref("Unknown");
+const device = ref("?");
 const models = ref<Map<string, TaggerModelConfigurationProperties>>(new Map());
 const modelsStatus = ref<TaggerModelsStatus>({});
 const cacheSizeBytes = ref(0);
@@ -38,6 +38,9 @@ const editModelTriedSave = ref(false);
 const isRemoveModelModalOpen = ref(false);
 const isDeleteModelModalOpen = ref(false);
 const modelToBeRemoved = ref("");
+const removeUnderscores = ref(true);
+const removeRedundantTags = ref(true);
+const disableCharacterThreshold = ref(false);
 
 const modelNames = computed(() => Array.from(models.value.keys()));
 
@@ -109,7 +112,7 @@ taggerService.onServiceStarted = async () => {
     isServiceRunning.value = true;
 }
 taggerService.onServiceStopped = () => {
-    device.value = "Unknown";
+    device.value = "?";
     modelsStatus.value = {};
     modelsDownloading.value = new Set();
     modelsDeleting.value = new Set();
@@ -395,32 +398,59 @@ onMounted(async () => {
                 <div class="h-full w-full">
                     <AutotaggerConsole ref="consoleRef" @resize="resizeTerminal" />
                 </div>
-                <div class="flex gap-4">
-                    <button
-                        class="btn btn-sm btn-outline"
-                        :class="{
-                            'btn-error': isInstalling,
-                            'btn-info': !isInstalling
-                        }"
-                        :disabled="isServiceStarting || isServiceRunning"
-                        @click="isInstalling ? stopProcess() : installDependencies()"
-                    >
-                        {{ isInstalling ? 'Cancel Installation' : 'Install Dependencies' }}
-                    </button>
-                    <button
-                        class="btn btn-sm btn-outline"
-                        :class="{
-                            'btn-error': isServiceRunning,
-                            'btn-success': !isServiceRunning
-                        }"
-                        :disabled="isInstalling || isServiceStarting"
-                        @click="isServiceRunning ? stopProcess() : startService()"
-                    >
-                        {{ isServiceRunning ? 'Stop Service' : 'Start Service' }}
-                    </button>
-                </div>
-                <div class="flex">
-                    <span>Device: {{ device }}</span>
+                <div class="flex gap-6 pt-6">
+                    <div class="flex flex-col justify-between">
+                        <div class="flex gap-4">
+                            <button
+                                class="btn btn-outline"
+                                :class="{
+                                    'btn-error': isInstalling,
+                                    'btn-info': !isInstalling
+                                }"
+                                :disabled="isServiceStarting || isServiceRunning"
+                                @click="isInstalling ? stopProcess() : installDependencies()"
+                            >
+                                {{ isInstalling ? 'Cancel Installation' : 'Install Dependencies' }}
+                            </button>
+                            <button
+                                class="btn btn-outline"
+                                :class="{
+                                    'btn-error': isServiceRunning,
+                                    'btn-success': !isServiceRunning
+                                }"
+                                :disabled="isInstalling || isServiceStarting"
+                                @click="isServiceRunning ? stopProcess() : startService()"
+                            >
+                                {{ isServiceRunning ? 'Stop Service' : 'Start Service' }}
+                            </button>
+                        </div>
+                        <div class="flex mt-2">
+                            <span class="text-base text-base-content/90">Autotagger Device: {{ device }}</span>
+                        </div>
+                    </div>
+                    <div class="divider m-0 divider-horizontal before:bg-base-content/30 after:bg-base-content/30"></div>
+                    <div class="flex items-center gap-4">
+                        <button class="btn btn-outline">Autotag Images</button>
+                        <button class="btn btn-outline">Load Diff</button>
+                    </div>
+                    <div class="flex flex-col">
+                        <div class="flex gap-4">
+                            <div class="flex items-center gap-2 pt-2">
+                                <input v-model="removeUnderscores" type="checkbox" class="checkbox checkbox-sm" />
+                                <span>Remove underscores</span>
+                            </div>
+                            <div class="flex items-center gap-2 pt-2">
+                                <input v-model="disableCharacterThreshold" type="checkbox" class="checkbox checkbox-sm" />
+                                <span>Disable character threshold</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="flex items-center gap-2 pt-2">
+                                <input v-model="removeRedundantTags" type="checkbox" class="checkbox checkbox-sm" />
+                                <span>Remove redundant tags</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
