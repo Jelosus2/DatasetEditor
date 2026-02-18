@@ -202,17 +202,22 @@ onDeactivated(() => {
                         />
                     </div>
                 </div>
-                <div class="flex w-[30%] items-center justify-center">
+                <div class="flex w-[30%] flex-col">
                     <template v-if="selectedImages.size > 0">
-                        <img
-                            :src="selectedImage?.filePath"
-                            :title="selectedTitle"
-                            decoding="async"
-                            draggable="false"
-                            class="max-h-full"
-                        />
+                        <div class="w-full truncate px-2 py-1 text-center font-medium">
+                            {{ selectedTitle }}
+                        </div>
+                        <div class="flex flex-1 items-center justify-center">
+                            <img
+                                :src="selectedImage?.filePath"
+                                :title="selectedTitle"
+                                decoding="async"
+                                draggable="false"
+                                class="max-h-full"
+                            />
+                        </div>
                     </template>
-                    <div v-else class="text-center text-lg opacity-60">
+                    <div v-else class="flex flex-1 items-center justify-center text-center text-lg opacity-60">
                         No image selected
                     </div>
                 </div>
