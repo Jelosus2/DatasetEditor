@@ -27,6 +27,9 @@ const globalTagFilterInput = ref("");
 const previewImage = ref("");
 const activeModalImageId = ref<string | null>(null);
 const gridMetrics = ref({ columns: 1 });
+const imageModalZoom = ref(1);
+const imageModalPanX = ref(0);
+const imageModalPanY = ref(0);
 
 const datasetStore = useDatasetStore();
 const imageKeys = computed(() => {
@@ -76,6 +79,16 @@ const { setSingleSelection } = useGridNavigation(
     computed(() => gridMetrics.value.columns)
 );
 
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 8;
+const ZOOM_STEP = 0.1;
+
+let isPanning = false;
+let panStartX = 0;
+let panStartY = 0;
+let panOriginX = 0;
+let panOriginY = 0;
+
 watch(imageKeys, (newKeys) => {
     if (newKeys.length === 0) {
         selectedImages.value = new Set();
@@ -113,14 +126,92 @@ watch(filterInput, (val) => {
     }
 });
 
+function getImageModal() {
+    return document.getElementById("my_modal_1") as HTMLDialogElement | null;
+}
+
 function displayFullImage(id: string) {
     if (props.arePreviewsEnabled)
         return;
 
     activeModalImageId.value = id;
+    resetModalView();
 
-    const modal = document.getElementById("my_modal_1") as HTMLDialogElement;
+    const modal = getImageModal();
     modal?.showModal();
+}
+
+function isImageModalOpen() {
+    return !!getImageModal()?.open;
+}
+
+function clampZoom(value: number) {
+    return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(value.toFixed(2))));
+}
+
+function setModalZoom(next: number) {
+    imageModalZoom.value = clampZoom(next);
+
+    if (imageModalZoom.value <= 1) {
+        imageModalPanX.value = 0;
+        imageModalPanY.value = 0;
+    }
+}
+
+function resetModalView() {
+    imageModalZoom.value = 1;
+    imageModalPanX.value = 0;
+    imageModalPanY.value = 0;
+}
+
+function handleModalWheel(event: WheelEvent) {
+    if (!isImageModalOpen() || !activeModalImage.value)
+        return;
+
+    const delta = event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
+    setModalZoom(imageModalZoom.value + delta);
+}
+
+function handleModalZoomKey(event: KeyboardEvent) {
+    if (!event.ctrlKey || !isImageModalOpen() || !activeModalImage.value)
+        return;
+    event.preventDefault();
+
+    const isZoomIn = event.key === "+";
+    const isZoomOut = event.key === "-";
+
+    if (!isZoomIn && !isZoomOut)
+        return;
+
+    setModalZoom(imageModalZoom.value + (isZoomIn ? ZOOM_STEP : -ZOOM_STEP));
+}
+
+function onModalPointerDown(event: PointerEvent) {
+    if (!isImageModalOpen() || !activeModalImage.value || imageModalZoom.value <= 1)
+        return;
+
+    isPanning = true;
+    panStartX = event.clientX;
+    panStartY = event.clientY;
+    panOriginX = imageModalPanX.value;
+    panOriginY = imageModalPanY.value;
+}
+
+function onModalPointerMove(event: PointerEvent) {
+    if (!isPanning)
+        return;
+
+    imageModalPanX.value = panOriginX + (event.clientX - panStartX);
+    imageModalPanY.value = panOriginY + (event.clientY - panStartY);
+}
+
+function onModalPointerUp() {
+    isPanning = false;
+}
+
+function handleImageModalClose() {
+    activeModalImageId.value = null;
+    resetModalView();
 }
 
 function clearImageFilter() {
@@ -156,10 +247,22 @@ function handleOpenImage(ev: Event) {
 
 onActivated(() => {
     window.addEventListener("open-image", handleOpenImage as EventListener);
+    window.addEventListener("keydown", handleModalZoomKey);
+    window.addEventListener("pointermove", onModalPointerMove);
+    window.addEventListener("pointerup", onModalPointerUp);
+    window.addEventListener("pointercancel", onModalPointerUp);
+
+    getImageModal()?.addEventListener("close", handleImageModalClose);
 });
 
 onDeactivated(() => {
     window.removeEventListener("open-image", handleOpenImage as EventListener);
+    window.removeEventListener("keydown", handleModalZoomKey);
+    window.removeEventListener("pointermove", onModalPointerMove);
+    window.removeEventListener("pointerup", onModalPointerUp);
+    window.removeEventListener("pointercancel", onModalPointerUp);
+
+    getImageModal()?.removeEventListener("close", handleImageModalClose);
 });
 </script>
 
@@ -236,13 +339,22 @@ onDeactivated(() => {
         </div>
     </div>
     <ModalComponent :is-image="true">
-        <div class="flex justify-center">
+        <div
+            class="flex max-h-[90vh] max-w-[90vw] items-center justify-center overflow-hidden"
+            @wheel.prevent="handleModalWheel"
+            @pointerdown="onModalPointerDown"
+        >
             <img
                 v-if="activeModalImage"
                 :src="activeModalImage.filePath"
                 draggable="false"
                 decoding="async"
-                class="max-h-screen"
+                class="max-h-screen select-none"
+                :class="imageModalZoom > 1 ? 'cursor-grab active:cursor-grabbing' : ''"
+                :style="{
+                    transform: `translate(${imageModalPanX}px, ${imageModalPanY}px) scale(${imageModalZoom})`,
+                    transformOrigin: 'center center'
+                }"
             />
         </div>
     </ModalComponent>
