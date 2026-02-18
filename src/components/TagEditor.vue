@@ -249,6 +249,11 @@ function addOrRemoveTag(tag: string) {
         tagOperations.addTag(tag, toAdd, position);
 }
 
+function applyAllGroupTags(tags: Set<string>) {
+    const tagInput = [...tags].join(", ");
+    addTag(tagInput);
+}
+
 function copyTextToClipboard(tags: Set<string>) {
     navigator.clipboard.writeText([...tags].join(", "));
     areTagsCopied.value = true;
@@ -626,16 +631,27 @@ function toggleEditMode() {
                         class="collapse collapse-arrow rounded-box border border-base-content/30 bg-base-200/40"
                         :class="{ 'collapse-open': selectedTagGroups.has(name) }"
                     >
-                        <div class="collapse-title flex items-center pr-6" @click="handleTagGroupChange(name)">
-                            <span
-                                class="truncate"
-                                :class="{ 'border border-accent px-2': groupsWithMatches.has(name) }"
-                            >
-                                {{ name }}
-                            </span>
-                            <span class="px-2 rounded-full bg-info text-info-content font-semibold tabular-nums border border-info ml-3">
-                                {{ tagGroupsStore.tagGroups.get(name)?.size ?? 0 }}
-                            </span>
+                        <div class="collapse-title flex items-center justify-between pr-6" @click="handleTagGroupChange(name)">
+                            <div class="flex items-center">
+                                <span
+                                    class="truncate"
+                                    :class="{ 'border border-accent px-2': groupsWithMatches.has(name) }"
+                                >
+                                    {{ name }}
+                                </span>
+                                <span class="px-2 rounded-full bg-info text-info-content font-semibold tabular-nums border border-info ml-3">
+                                    {{ tagGroupsStore.tagGroups.get(name)?.size ?? 0 }}
+                                </span>
+                            </div>
+                            <div class="flex items-center pr-8">
+                                <button
+                                    class="btn btn-sm btn-success btn-outline"
+                                    :disabled="selectedImages.size === 0"
+                                    @click.stop="applyAllGroupTags(tags)"
+                                >
+                                    Apply All
+                                </button>
+                            </div>
                         </div>
                         <div v-if="selectedTagGroups.has(name)" class="collapse-content">
                             <div class="flex flex-wrap gap-2">
