@@ -7,8 +7,9 @@ export type DatasetChangeRecord = {
     tag?: string;
     tagPosition?: number;
     tagPositions?: Map<string, Map<string, number>>;
-    originalTag?: string;
-    newTag?: string;
+    originalTags?: Set<string>;
+    newTags?: Set<string>;
+    replaceBefore?: Map<string, string[]>;
     fromIndex?: number;
     toIndex?: number;
 }

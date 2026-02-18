@@ -45,8 +45,8 @@ export function useTagOperations() {
         datasetStore.removeTagsFromImages(imagesWithTag, new Set([tag]));
     }
 
-    function replaceTag(originalTag: string, newTag: string, images: Set<string>) {
-        datasetStore.replaceTagForImages(images, originalTag, newTag);
+    function replaceTag(originalTag: string, newTags: string[], images: Set<string>) {
+        datasetStore.replaceTagForImages(images, originalTag, newTags);
     }
 
     function reorderTag(imageId: string, tag: string, toIndex: number) {

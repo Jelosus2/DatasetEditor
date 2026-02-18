@@ -276,14 +276,18 @@ function handleTagGroupChange(tagGroup: string) {
 
 function replaceTag(mode: "selected" | "all") {
     const originalTag = replaceSourceInput.value.trim();
-    const tag = replaceTargetInput.value.trim();
-    if (!tag || !originalTag || tag === originalTag)
+    const toTags = replaceTargetInput.value
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+
+    if (!originalTag || toTags.length === 0)
         return;
 
     const rawDataset = toRaw(datasetStore.dataset);
 
     const images = mode === "selected" ? new Set(props.selectedImages) : new Set(rawDataset.keys());
-    tagOperations.replaceTag(originalTag, tag, images);
+    tagOperations.replaceTag(originalTag, toTags, images);
 
     replaceSourceInput.value = "";
     replaceTargetInput.value = "";
@@ -435,7 +439,7 @@ function toggleEditMode() {
                                 :disabled="datasetStore.dataset.size === 0"
                                 :id="'replace-target-list'"
                                 :placeholder="'Type the replacement tag...'"
-                                :multiple="false"
+                                :multiple="true"
                             />
                         </label>
                     </div>

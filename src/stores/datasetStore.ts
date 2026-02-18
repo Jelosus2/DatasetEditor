@@ -169,15 +169,33 @@ export const useDatasetStore = defineStore("dataset", () => {
         triggerUpdate();
     }
 
-    function replaceTagForImages(imageIds: Iterable<string>, originalTag: string, newTag: string, createHistory: boolean = true) {
-        if (!originalTag || !newTag || originalTag === newTag)
+    function normalizeTags(input: string | Iterable<string>): string[] {
+        const list = typeof input === "string" ? [input] : Array.from(input);
+
+        return Array.from(new Set(
+            list.map((tag) => tag.trim()).filter(Boolean)
+        ));
+    }
+
+    function replaceTagForImages(
+            imageIds: Iterable<string>,
+            originalTagsInput: string | Iterable<string>,
+            newTagsInput: string | Iterable<string>,
+            createHistory: boolean = true
+    ) {
+        const originalTags = normalizeTags(originalTagsInput);
+        const newTags = normalizeTags(newTagsInput);
+
+        if (originalTags.length === 0 || newTags.length === 0)
             return;
 
+        const originalSet = new Set(originalTags);
         const imagesSet = new Set(imageIds);
         if (imagesSet.size === 0)
             return;
 
         const changedImages = new Set<string>();
+        const replaceBefore = new Map<string, string[]>();
 
         const rawDataset = toRaw(dataset.value);
         const rawGlobalTags = toRaw(globalTags.value);
@@ -185,30 +203,38 @@ export const useDatasetStore = defineStore("dataset", () => {
 
         for (const imageId of imagesSet) {
             const imageData = rawDataset.get(imageId);
-            if (!imageData || !imageData.tags.has(originalTag))
+            if (!imageData)
                 continue;
 
-            changedImages.add(imageId);
-
+            const previousTags = new Set(imageData.tags);
             const tagsList = [...imageData.tags];
-            const oldIndex = tagsList.indexOf(originalTag);
 
-            tagsList.splice(oldIndex, 1);
+            const sourceIndexes = tagsList
+                .map((tag, index) => originalSet.has(tag) ? index : -1)
+                .filter((index) => index !== -1);
 
-            const existingNewIndex = tagsList.indexOf(newTag);
-            if (existingNewIndex !== -1) {
-                tagsList.splice(existingNewIndex, 1);
+            if (sourceIndexes.length === 0)
+                continue;
 
-                const insertAt = existingNewIndex < oldIndex ? oldIndex - 1 : oldIndex;
-                tagsList.splice(insertAt, 0, newTag);
-            } else {
-                tagsList.splice(oldIndex, 0, newTag);
+            const insertAt = Math.min(...sourceIndexes);
+            const withoutSources = tagsList.filter((tag) => !originalSet.has(tag));
+            const withoutTargets = withoutSources.filter((tag) => !newTags.includes(tag));
+            withoutTargets.splice(Math.min(insertAt, withoutTargets.length), 0, ...newTags);
+
+            const nextTags = new Set(withoutTargets);
+            imageData.tags = nextTags;
+            changedImages.add(imageId);
+            replaceBefore.set(imageId, tagsList);
+
+            for (const tag of previousTags) {
+                if (!nextTags.has(tag))
+                    removeTagMetadata(imageId, tag, rawGlobalTags, rawTagDiff);
             }
 
-            imageData.tags = new Set(tagsList);
-
-            removeTagMetadata(imageId, originalTag, rawGlobalTags, rawTagDiff);
-            addTagMetadata(imageId, newTag, rawGlobalTags, rawTagDiff);
+            for (const tag of nextTags) {
+                if (!previousTags.has(tag))
+                    addTagMetadata(imageId, tag, rawGlobalTags, rawTagDiff);
+            }
         }
 
         if (changedImages.size === 0)
@@ -218,10 +244,39 @@ export const useDatasetStore = defineStore("dataset", () => {
             recordHistory({
                 type: "replace_tag",
                 images: changedImages,
-                tags: new Set([newTag]),
-                originalTag,
-                newTag
+                originalTags: new Set(originalTags),
+                newTags: new Set(newTags),
+                replaceBefore
             });
+        }
+
+        triggerUpdate();
+    }
+
+    function restoreReplaceSnapshot(snapshot: Map<string, string[]>) {
+        const rawDataset = toRaw(dataset.value);
+        const rawGlobalTags = toRaw(globalTags.value);
+        const rawTagDiff = toRaw(tagDiff.value);
+
+        for (const [imageId, tagsArr] of snapshot) {
+            const imageData = rawDataset.get(imageId);
+            if (!imageData)
+                continue;
+
+            const previous = new Set(imageData.tags);
+            const next = new Set(tagsArr);
+
+            imageData.tags = next;
+
+            for (const tag of previous) {
+                if (!next.has(tag))
+                    removeTagMetadata(imageId, tag, rawGlobalTags, rawTagDiff);
+            }
+
+            for (const tag of next) {
+                if (!previous.has(tag))
+                    addTagMetadata(imageId, tag, rawGlobalTags, rawTagDiff);
+            }
         }
 
         triggerUpdate();
@@ -371,8 +426,8 @@ export const useDatasetStore = defineStore("dataset", () => {
                     addTagsToImages(change.images, change.tags!, -1, /* createHistory = */ false);
                 break;
             case "replace_tag":
-                if (change.newTag && change.originalTag)
-                    replaceTagForImages(change.images, change.newTag, change.originalTag, /* createHistory = */ false);
+                if (change.replaceBefore && change.replaceBefore.size > 0)
+                    restoreReplaceSnapshot(change.replaceBefore);
                 break;
             case "reorder_tag":
                 const imageId = change.images.values().next().value;
@@ -399,8 +454,8 @@ export const useDatasetStore = defineStore("dataset", () => {
                 removeTagsFromImages(change.images, change.tags!, /* createHistory = */ false);
                 break;
             case "replace_tag":
-                if (change.newTag && change.originalTag)
-                    replaceTagForImages(change.images, change.originalTag, change.newTag, /* createHistory = */ false);
+                if (change.originalTags && change.newTags)
+                    replaceTagForImages(change.images, change.originalTags, change.newTags, /* createHistory = */ false);
                 break;
             case "reorder_tag":
                 const imageId = change.images.values().next().value;
