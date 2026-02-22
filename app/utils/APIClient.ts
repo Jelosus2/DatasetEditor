@@ -1,4 +1,5 @@
-import type { TaggerWSPayload } from "../types/tagger.js";
+import type { TaggerWSPayload } from "../../shared/tagger.js";
+
 import { App } from "../App.js";
 
 export class APIClient {
@@ -24,70 +25,69 @@ export class APIClient {
             }
 
             this.websocket.onmessage = (event) => {
-                const message = JSON.parse(event.data);
+                const data = JSON.parse(event.data);
 
-                if (message.type === "result") {
-                    const file: string = message.file;
-                    const tags: string[] = message.tags;
+                if (data.type === "result") {
+                    const file: string = data.file;
+                    const tags: string[] = data.tags;
 
                     if (!accumulator.has(file))
                         accumulator.set(file, new Set());
 
                     const currentTags = accumulator.get(file)!;
                     tags.forEach((tag) => currentTags.add(tag));
-                } else if (message.type === "error") {
-                    App.logger.error(`[Tagger Manager] Tagger error from the websocket: ${message.error}`);
-                } else if (message.type === "done") {
-                    this.websocket?.close();
-
+                } else if (data.type === "error") {
+                    App.logger.error(`[Tagger Manager] Tagger error from the websocket: ${data.error}: ${data.details || "No details"}`);
+                } else if (data.type === "done") {
                     const results = new Map<string, string[]>();
                     for (const [file, tags] of accumulator)
                         results.set(file, Array.from(tags));
 
                     resolve(results);
+                    this.closeWSConnectionSafely(this.websocket);
                 }
             }
 
             this.websocket.onerror = (error) => {
-                this.websocket?.close();
+                this.websocket!.onerror = null;
+                this.websocket!.onmessage = null;
+
                 reject(error);
+                this.closeWSConnectionSafely(this.websocket);
+            }
+
+            this.websocket.onclose = () => {
+                reject(new Error("Tagging was aborted"));
             }
         });
     }
 
     static cancelTagging() {
-        if (this.websocket) {
-            this.websocket.close();
-            this.websocket = null;
-        }
+        this.closeWSConnectionSafely(this.websocket);
+        this.websocket = null;
     }
 
     static sendCommandWS<T>(port: number, payload: unknown, timeout?: number): Promise<T> {
         return new Promise((resolve, reject) => {
             const websocket = new WebSocket(`ws://localhost:${port}`);
 
-            const closeConnectionSafely = () => {
-                if (websocket.readyState < WebSocket.CLOSING)
-                    websocket.close();
-            }
-
             const _timeout = timeout ? setTimeout(() => {
-                    closeConnectionSafely();
-                    reject(new Error("The response timed out"))
+                    reject(new Error("The response timed out"));
+                    this.closeWSConnectionSafely(websocket);
                 }, timeout) : null;
 
-            websocket.onopen = () => websocket.send(JSON.stringify(payload))
+            websocket.onopen = () => websocket.send(JSON.stringify(payload));
 
             websocket.onmessage = (event) => {
                 if (_timeout != null)
                     clearTimeout(_timeout);
-                closeConnectionSafely();
 
-                const data = JSON.parse(event.data)
+                const data = JSON.parse(event.data);
                 if (data.error)
-                    reject(`${data.error}: ${data.details || "No details"}`)
+                    reject(`${data.error}: ${data.details || "No details"}`);
 
                 resolve(data);
+                this.closeWSConnectionSafely(websocket);
             }
 
             websocket.onerror = (error) => {
@@ -97,9 +97,18 @@ export class APIClient {
                 if (_timeout != null)
                     clearTimeout(_timeout);
 
-                closeConnectionSafely();
                 reject(error);
+                this.closeWSConnectionSafely(websocket);
+            }
+
+            websocket.onclose = (event) => {
+                reject(new Error(`Connection to the service lost (Code: ${event.code})`));
             }
         });
+    }
+
+    private static closeWSConnectionSafely(websocket: WebSocket | null) {
+        if (websocket && websocket.readyState < WebSocket.CLOSING)
+            websocket.close();
     }
 }

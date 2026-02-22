@@ -41,6 +41,7 @@ const modelToBeRemoved = ref("");
 const removeUnderscores = ref(true);
 const removeRedundantTags = ref(true);
 const disableCharacterThreshold = ref(false);
+const isTagging = ref(false);
 
 const modelNames = computed(() => Array.from(models.value.keys()));
 
@@ -94,6 +95,13 @@ const isEditModelFormValid = computed(() =>
     !onnxFileError.value && !csvTagsFileError.value
 );
 
+const shouldDisableTagButtons = computed(() => {
+    const isModelDownloading = modelsDownloading.value.size > 0;
+    const isModelDeleting = modelsDeleting.value.size > 0;
+
+    return !isServiceRunning.value || isModelDownloading || isModelDeleting;
+});
+
 const { showAlert } = useAlert();
 const taggerService = new TaggerService();
 
@@ -116,6 +124,7 @@ taggerService.onServiceStopped = () => {
     modelsStatus.value = {};
     modelsDownloading.value = new Set();
     modelsDeleting.value = new Set();
+    selectedModels.value = new Set();
 
     isServiceRunning.value = false;
     isServiceStarting.value = false;
@@ -189,8 +198,8 @@ function lowerFileExtension(filename: string) {
 }
 
 function normalizeThreshold(value: number) {
-    const clamped = Math.min(1, Math.max(0.05, value));
-    return Math.round(clamped * 20) / 20;
+    const clamped = Math.min(1, Math.max(0.01, value));
+    return Math.round(clamped * 100) / 100;
 }
 
 function openEditModelModal(model: string) {
@@ -326,7 +335,24 @@ async function deleteModel(model: string) {
         return;
 
     modelsStatus.value[model] = false;
+    selectedModels.value.delete(model);
     cacheSizeBytes.value = result.cacheSizeBytes!;
+}
+
+async function autoTagImages() {
+    const selectedModelsMap = new Map<string, TaggerModelConfigurationProperties>();
+    for (const [name, properties] of models.value) {
+        if (selectedModels.value.has(name))
+            selectedModelsMap.set(name, properties);
+    }
+
+    isTagging.value = true;
+    await taggerService.tagImages(selectedModelsMap, removeUnderscores.value, removeRedundantTags.value, disableCharacterThreshold.value);
+    isTagging.value = false;
+}
+
+async function stopTagger() {
+    await taggerService.stopTagger();
 }
 
 onMounted(async () => {
@@ -367,7 +393,7 @@ onMounted(async () => {
                                 v-if="!modelsStatus[model]"
                                 title="Download model"
                                 class="btn btn-xs btn-accent btn-outline"
-                                :disabled="!isServiceRunning || modelsDownloading.has(model)"
+                                :disabled="!isServiceRunning || modelsDownloading.has(model) || isTagging"
                                 @click.stop="downloadModel(model)"
                             >
                                 <DownloadIcon v-if="!modelsDownloading.has(model)" class="h-5 w-5" />
@@ -377,7 +403,7 @@ onMounted(async () => {
                                 v-else
                                 title="Delete model"
                                 class="btn btn-xs btn-error btn-outline"
-                                :disabled="modelsDeleting.has(model)"
+                                :disabled="modelsDeleting.has(model) || isTagging"
                                 @click.stop="deleteModel(model)"
                             >
                                 <DeleteIcon class="h-5 w-5" />
@@ -430,8 +456,22 @@ onMounted(async () => {
                     </div>
                     <div class="divider m-0 divider-horizontal before:bg-base-content/30 after:bg-base-content/30"></div>
                     <div class="flex items-center gap-4">
-                        <button class="btn btn-outline">Autotag Images</button>
-                        <button class="btn btn-outline">Load Diff</button>
+                        <button
+                            class="btn btn-outline"
+                            :disabled="shouldDisableTagButtons"
+                            :class="{
+                                'btn-error': isTagging
+                            }"
+                            @click="isTagging ? stopTagger() : autoTagImages()"
+                        >
+                            {{ isTagging ? 'Stop Tagger' : 'Autotag Images' }}
+                        </button>
+                        <button
+                            class="btn btn-outline"
+                            :disabled="shouldDisableTagButtons || isTagging"
+                        >
+                            Load Diff
+                        </button>
                     </div>
                     <div class="flex flex-col">
                         <div class="flex gap-4">
@@ -559,13 +599,13 @@ onMounted(async () => {
                     <input
                         v-model.number="editGeneralThreshold"
                         type="range"
-                        min="0.05"
+                        min="0.01"
                         max="1"
-                        step="0.05"
+                        step="0.01"
                         class="range w-full [--range-fill:0] [--range-thumb:var(--color-base-100)] range-sm"
                     />
                     <div class="flex justify-between text-sm opacity-60">
-                        <span>0.05</span><span>1.00</span>
+                        <span>0.01</span><span>1.00</span>
                     </div>
                 </div>
                 <div class="flex flex-col gap-2">
@@ -576,19 +616,19 @@ onMounted(async () => {
                     <input
                         v-model.number="editCharacterThreshold"
                         type="range"
-                        min="0.05"
+                        min="0.01"
                         max="1"
-                        step="0.05"
+                        step="0.01"
                         class="range w-full [--range-fill:0] [--range-thumb:var(--color-base-100)] range-sm"
                     />
                     <div class="flex justify-between text-sm opacity-60">
-                        <span>0.05</span><span>1.00</span>
+                        <span>0.01</span><span>1.00</span>
                     </div>
                 </div>
                 <div class="flex items-center justify-between pt-2">
                     <button
                         class="btn btn-error btn-outline gap-2"
-                        :disabled="!isEditModelCustom"
+                        :disabled="!isEditModelCustom || isTagging"
                         @click="removeModelFromList"
                     >
                         Remove

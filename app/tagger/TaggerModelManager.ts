@@ -40,10 +40,16 @@ export class TaggerModelManager {
                 tagsFile: "selected_tags.csv"
             };
 
+            const isCustomModel = !defaultNames.includes(name);
+            const modelFile = !isCustomModel ? "model.onnx" : (overrides[name]?.modelFile || "");
+            const tagsFile = !isCustomModel ? "selected_tags.csv" : (overrides[name]?.tagsFile || "");
+
             configuration[name] = {
                 ...baseDefault,
                 ...(overrides[name] || {}),
-                isCustomModel: !defaultNames.includes(name)
+                isCustomModel,
+                modelFile,
+                tagsFile
             };
         }
 

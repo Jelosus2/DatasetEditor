@@ -1,13 +1,14 @@
-from model_manager import is_model_downloaded
+from model_manager import is_model_downloaded, get_model_file_paths
+from utils import ws_safe_send, ws_error_payload
 from PIL import Image, ImageFile
 from pathlib import Path
+from tqdm import tqdm
 import onnxruntime as ort
 import pandas as pd
 import numpy as np
 import websockets
 import asyncio
 import torch
-import json
 import gc
 
 class LabelData:
@@ -18,66 +19,79 @@ class LabelData:
 
 async def tag_images(websocket: websockets.ServerConnection, images: list[str], tagger_models: list[dict], remove_underscores: bool, disable_character_threshold: bool, tags_ignored: list[str]):
     for tagger_model in tagger_models:
-        model_repo = tagger_model.get("repoId", "")
-        model_file = tagger_model.get("modelFile", "")
-        model_csv = tagger_model.get("tagsFile", "")
-        general_threshold = float(tagger_model.get("generalThreshold", 0.25))
-        character_threshold = float(tagger_model.get("characterThreshold", 0.35))
+        model_repo = tagger_model.get("repo_id", "")
+        model_file = tagger_model.get("model_file", "")
+        model_tags_file = tagger_model.get("tags_file", "")
+        general_threshold = float(tagger_model.get("general_threshold", 0.25))
+        character_threshold = float(tagger_model.get("character_threshold", 0.35))
 
-        if not is_model_downloaded(model_repo, tagger_model):
+        if not is_model_downloaded(model_repo, model_file, model_tags_file):
             print(f"{model_repo} not found in the cache repository, model skipped")
             continue
 
-        print(f"Loading {tagger_model} model...")
-        model, tag_data, target_size = load_model(tagger_model)
+        print(f"Loading {model_repo} model...")
+        model, tag_data, target_size = load_model(model_repo, model_file, model_tags_file)
 
-        total_images = len(images)
+        with tqdm(desc=f"Autotagging images with {model_repo}...", ascii=" ##########", bar_format="{desc} {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt}", colour="green", total=len(images)) as pbar:
+            for image in images:
+                image_path = Path(image)
+                if not image_path.exists():
+                    print(f"{image} not found, skipping")
+                    pbar.update(1)
+                    continue
 
-        print(f"Found {total_images} images")
-        for index, image in enumerate(images):
-            image_path = Path(image)
-            if not image_path.exists():
-                print(f"{image} not found, skipping")
-                continue
+                try:
+                    with Image.open(image_path) as img:
+                        processed_image = prepare_image(img, target_size)
+                        preds = model.run(None, { model.get_inputs()[0].name: processed_image })[0]
 
-            print(f"({index + 1}/{total_images}) Tagging {image_path.stem}...")
-            try:
-                with Image.open(image_path) as img:
-                    processed_image = prepare_image(img, target_size)
-                    preds = model.run(None, { model.get_inputs()[0].name: processed_image })[0]
+                        processed_tags = process_predictions(preds, tag_data, general_threshold, character_threshold, remove_underscores, tags_ignored, disable_character_threshold)
+                        
+                        response = {
+                            "type": "result",
+                            "file": image_path.as_posix(),
+                            "tags": processed_tags
+                        }
 
-                    processed_tags = process_predictions(preds, tag_data, general_threshold, character_threshold, remove_underscores, tags_ignored)
-                    
-                    response = {
-                        "type": "result",
-                        "file": image_path.as_posix(),
-                        "tags": processed_tags
-                    }
-
-                    await websocket.send(json.dumps(response))
-                    await asyncio.sleep(0)
-            except Exception as e:
-                print(f"Failed to tag {image}: {e}")
-                await websocket.send(json.dumps({ "type": "error", "error": f"Error tagging {image}: {e}" }))
+                        await ws_safe_send(websocket, response)
+                        await asyncio.sleep(0)
+                        pbar.update(1)
+                except websockets.exceptions.ConnectionClosed:
+                    pbar.write("Client disconnected, stopping tagging")
+                    unload_model(model)
+                    return
+                except Exception as e:
+                    print(f"Failed to tag {image}: {e}")
+                    pbar.update(1)
+                    await ws_safe_send(websocket, { "type": "error" } | ws_error_payload(f"Error tagging {image}", str(e)))
 
         unload_model(model)
 
-    print("Tagging finished")
-    await websocket.send(json.dumps({ "type": "done" }))
+    try:
+        print("Tagging finished")
+        await ws_safe_send(websocket, { "type": "done" })
+    except websockets.exceptions.ConnectionClosed:
+        pass
 
-def load_model(tagger_model: str) -> tuple[ort.InferenceSession, LabelData, int]:
-    csv_path, model_path = download_model_legacy(tagger_model)
+def load_model(model_repo: str, model_filename: str, tags_filename: str) -> tuple[ort.InferenceSession, LabelData, int]:
+    model_path, csv_path = get_model_file_paths(model_repo, model_filename, tags_filename)
+    if model_path == None or csv_path == None:
+        print(f"There are files missing for the {model_repo} model, delete it and redownload")
+        raise
+
     try:
         csv_content = pd.read_csv(csv_path)
     except Exception as e:
         print(f"Failed to load tags csv: {e}")
         raise
+
     tag_data = LabelData(
         names=csv_content["name"].tolist(),
         general=list(np.where(csv_content["category"] == 0)[0]),
         character=list(np.where(csv_content["category"] == 4)[0]),
     )
     providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+
     try:
         model = ort.InferenceSession(model_path, providers=providers)
         target_size = model.get_inputs()[0].shape[2]
@@ -103,10 +117,10 @@ def prepare_image(image: ImageFile.ImageFile, target_size: int) -> np.ndarray:
 
     return np.expand_dims(image_array, axis=0)
 
-def process_predictions(preds: np.ndarray, tag_data: LabelData, general_threshold: float, character_threshold: float, remove_underscores: bool, tags_ignored: list[str]) -> list[str]:
+def process_predictions(preds: np.ndarray, tag_data: LabelData, general_threshold: float, character_threshold: float, remove_underscores: bool, tags_ignored: list[str], disable_character_threshold: bool) -> list[str]:
     scores = preds.flatten()
 
-    character_tags = [tag_data.names[i] for i in tag_data.character if scores[i] >= character_threshold]
+    character_tags = [tag_data.names[i] for i in tag_data.character if scores[i] >= character_threshold] if not disable_character_threshold else []
     general_tags = [tag_data.names[i] for i in tag_data.general if scores[i] >= general_threshold]
 
     final_tags = general_tags + character_tags

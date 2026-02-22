@@ -1,5 +1,5 @@
-import type { TaggerWSPayload, DeviceWSResponse, ModelsStatusWSResponse, DeleteModelWSResponse, ModelActionWSResponse } from "../types/tagger.js";
-import type { TaggerModelConfiguration } from "../../shared/tagger.js";
+import type { DeviceWSResponse, ModelsStatusWSResponse, DeleteModelWSResponse, ModelActionWSResponse } from "../types/tagger.js";
+import type { TaggerModelConfiguration, TaggerWSPayload } from "../../shared/tagger.js";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
@@ -113,7 +113,11 @@ export class TaggerController {
     @IpcHandle("tagger:tag_images")
     async tagImages(_event: IpcMainInvokeEvent, payload: TaggerWSPayload, removeRedundantTags: boolean) {
         try {
-            this.port ??= (await App.settings.loadSettings()).taggerPort;
+            const settings = await App.settings.loadSettings();
+
+            this.port ??= settings.taggerPort;
+            payload.tags_ignored = settings.tagsIgnored;
+
             const results = await APIClient.runTaggingWS(this.port, payload);
 
             if (removeRedundantTags) {
@@ -124,27 +128,25 @@ export class TaggerController {
             }
 
             App.logger.info(`[Tagger Manager] Successfully tagged ${results.size} images`);
-            return { error: false, message: `Successfully tagged ${results.size} images`, results }
+            return { error: false, message: `Successfully tagged ${results.size} images`, results };
         } catch (error) {
-            console.error(error);
-            App.logger.error(`[Tagger Manager] Error while tagging the images: ${Utilities.getErrorMessage(error)}`);
             this.port = null;
-            return { error: true, message: "Error while tagging the images, check the logs for more information" }
+
+            const errorMessage = Utilities.getErrorMessage(error);
+            if (errorMessage === "Tagging was aborted") {
+                App.logger.info("[Tagger Manager] Stopped the tagging process");
+                return { error: false, message: errorMessage };
+            }
+
+            console.error(error);
+            App.logger.error(`[Tagger Manager] Error while tagging the images: ${errorMessage}`);
+            return { error: true, message: "Error while tagging the images, check the logs for more information" };
         }
     }
 
     @IpcHandle("tagger:stop_tagging")
     stopTagging() {
-        try {
-            APIClient.cancelTagging();
-            App.logger.info(`[Tagger Manager] Stopped the tagging process`);
-
-            return { error: false, message: 'Stopped the tagging process' }
-        } catch (error) {
-            console.error(error);
-            App.logger.error(`[Tagger Manager] Failed to stop the tagging process: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to stop the tagging process, check the logs for more information" }
-        }
+        APIClient.cancelTagging();
     }
 
     @IpcHandle("tagger:resize_terminal")

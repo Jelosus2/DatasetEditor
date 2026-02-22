@@ -1,7 +1,8 @@
-import type { TaggerModelConfiguration, TaggerModelConfigurationProperties } from "../../shared/tagger";
+import type { TaggerModelConfiguration, TaggerModelConfigurationProperties, TaggerWSPayloadModel } from "../../shared/tagger";
 import type { AlertType } from "@/types/alert";
 
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
+import { useDatasetStore } from "@/stores/datasetStore";
 import { useAlert } from "@/composables/useAlert";
 import { toRaw } from "vue";
 
@@ -9,6 +10,7 @@ export class TaggerService {
     private ipc;
     private alert = useAlert();
     private isServiceRunning = false;
+    private datasetStore = useDatasetStore();
 
     public onData?: (data: string) => void;
     public onServiceStarted?: () => void;
@@ -59,6 +61,28 @@ export class TaggerService {
         return configurationMap;
     }
 
+    private configurationMapToPayload(configurationMap: Map<string, TaggerModelConfigurationProperties>) {
+        const resultArr: TaggerWSPayloadModel[] = [];
+        for (const [name, properties] of configurationMap) {
+            resultArr.push({
+                repo_id: name,
+                general_threshold: properties.generalThreshold,
+                character_threshold: properties.characterThreshold,
+                model_file: properties.modelFile,
+                tags_file: properties.tagsFile
+            });
+        }
+
+        return resultArr;
+    }
+
+    private applyTaggerTagsToDataset(results: Map<string, string[]>) {
+        for (const [name, tags] of results) {
+            if (this.datasetStore.dataset.has(name))
+                this.datasetStore.addTagsToImages([name], new Set(tags));
+        }
+    }
+
     async getModelsConfiguration() {
         const result = await this.ipc.invoke("tagger:load_models_config");
         return this.rawConfigurationToMap(result);
@@ -90,7 +114,7 @@ export class TaggerService {
     }
 
     async resizeTerminal(columms: number, rows: number) {
-        await this.ipc.invoke("tagger:resize_terminal", columms, rows);
+        return this.ipc.invoke("tagger:resize_terminal", columms, rows);
     }
 
     async stopProcess() {
@@ -150,5 +174,41 @@ export class TaggerService {
             error: result.error,
             cacheSizeBytes: result.cacheSizeBytes
         };
+    }
+
+    async tagImages(configurationMap: Map<string, TaggerModelConfigurationProperties>, removeUnderscores: boolean, removeRedundantTags: boolean, disableCharacterThreshold: boolean) {
+        const images = Array.from(this.datasetStore.dataset.values(), (properties) => properties.path);
+        if (images.length === 0) {
+            this.alert.showAlert("warning", "Load a dataset before attempting to autotag it");
+            return;
+        }
+
+        const payloadModels = this.configurationMapToPayload(configurationMap);
+        if (payloadModels.length === 0) {
+            this.alert.showAlert("warning", "Select atleast one autotagger model");
+            return;
+        }
+
+        const result = await this.ipc.invoke("tagger:tag_images", {
+            images,
+            models: payloadModels,
+            tags_ignored: [],
+            remove_underscores: removeUnderscores,
+            disable_character_threshold: disableCharacterThreshold
+        }, removeRedundantTags);
+
+        if (result.error) {
+            this.alert.showAlert("error", result.message);
+            return;
+        }
+
+        if (result.results)
+            this.applyTaggerTagsToDataset(result.results!);
+
+        this.alert.showAlert("success", result.message);
+    }
+
+    async stopTagger() {
+        return this.ipc.invoke("tagger:stop_tagging");
     }
 }

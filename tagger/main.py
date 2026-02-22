@@ -1,3 +1,4 @@
+from utils import ws_safe_send, ws_error_payload
 import asyncio
 import json
 import sys
@@ -24,24 +25,10 @@ async def handle_model_download(model: str, model_file: str, tags_file: str, web
     try:
         await asyncio.to_thread(download_model, model, model_file, tags_file)
         payload = get_model_action_payload()
-        await safe_send(websocket, payload)
+        await ws_safe_send(websocket, payload)
     except Exception as e:
         print(f"Failed to download model: {e}")
-        await safe_send(websocket, error_payload("Failed to download model", str(e)))
-
-async def safe_send(websocket: websockets.ServerConnection, payload: dict):
-    try:
-        await websocket.send(json.dumps(payload))
-    except Exception as e:
-        print(f"Failed to send ws message: {e}")
-
-def error_payload(message: str, details: str | None = None) -> dict:
-    payload = { "error": message }
-    
-    if details:
-        payload["details"] = details
-
-    return payload
+        await ws_safe_send(websocket, ws_error_payload("Failed to download model", str(e)))
 
 async def handler(websocket: websockets.ServerConnection):
     try:
@@ -49,12 +36,12 @@ async def handler(websocket: websockets.ServerConnection):
             try:
                 data = json.loads(message)
             except json.JSONDecodeError as e:
-                await safe_send(websocket, error_payload("Invalid JSON", str(e)))
+                await ws_safe_send(websocket, ws_error_payload("Invalid JSON", str(e)))
                 continue
 
             command = data.get("command")
             if not command:
-                await safe_send(websocket, error_payload("Missing 'command'"))
+                await ws_safe_send(websocket, ws_error_payload("Missing 'command'"))
                 continue
             
             try:
@@ -62,7 +49,7 @@ async def handler(websocket: websockets.ServerConnection):
                     await process_image_stream(websocket, data)
                 elif command == "device":
                     device = "GPU" if torch.cuda.is_available() else "CPU"
-                    await safe_send(websocket, { "device": device })
+                    await ws_safe_send(websocket, { "device": device })
                 elif command == "download_model":
                     model = data.get("model")
                     model_file = data.get("model_file")
@@ -71,18 +58,20 @@ async def handler(websocket: websockets.ServerConnection):
                 elif command == "models_status":
                     models = data.get("models")
                     payload = get_info_payload(models)
-                    await safe_send(websocket, payload)
+                    await ws_safe_send(websocket, payload)
                 elif command == "delete_model":
                     model = data.get("model")
                     success = await asyncio.to_thread(delete_model, model)
                     payload = { "success": success } | get_model_action_payload()
-                    await safe_send(websocket, payload)
+                    await ws_safe_send(websocket, payload)
                 else:
-                    await safe_send(websocket, error_payload(f"Unknown command: {command}"))
-                
+                    await ws_safe_send(websocket, ws_error_payload(f"Unknown command: {command}"))
+
+            except websockets.exceptions.ConnectionClosed:
+                raise
             except Exception as e:
                 print(f"Command failed ({command})")
-                await safe_send(websocket, error_payload("Command failed", str(e)))
+                await ws_safe_send(websocket, ws_error_payload("Command failed", str(e)))
             
     except websockets.exceptions.ConnectionClosed:
         print("Client disconnected")

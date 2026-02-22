@@ -1,4 +1,4 @@
-import type { TaggerModelsStatus, TaggerModelConfiguration } from "./tagger";
+import type { TaggerModelsStatus, TaggerModelConfiguration, TaggerWSPayload } from "./tagger";
 import type { SettingsDefinition, Settings } from "./settings-schema";
 import type { Dataset, GlobalTags } from "./dataset";
 import type { AppStatusPayload } from "./app-status";
@@ -192,6 +192,18 @@ export type IpcInvokeMap = {
             message: string;
             cacheSizeBytes?: number;
         }
+    }
+    "tagger:tag_images": {
+        args: [payload: TaggerWSPayload, removeRedundantTags: boolean];
+        result: {
+            error: boolean;
+            message: string;
+            results?: Map<string, string[]>;
+        }
+    }
+    "tagger:stop_tagging": {
+        args: [];
+        result: void;
     }
 }
 

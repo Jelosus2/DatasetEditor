@@ -23,9 +23,9 @@ export class TaggerManager {
 
         this.process.runPythonTask(App.paths.taggerScriptPath, [port.toString()], "tagger:output")
             .then(({ exitCode, isManualKilling }) => {
-                if (!isManualKilling || exitCode !== 0) {
+                if (!isManualKilling && exitCode !== 0)
                     App.logger.error(`[Tagger Manager] Tagger server stopped with code ${exitCode}`)
-                }
+
                 App.window.ipcSend("tagger:service_stopped")
             })
             .catch((error) => {
