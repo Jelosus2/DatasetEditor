@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AutocompletionComponent from "@/components/AutocompletionComponent.vue";
+import AutocompletionInput from "@/components/AutocompletionInput.vue";
 
 import type { TagGroups } from "../../shared/tag-groups";
 
@@ -270,10 +270,9 @@ function filterMatchesAny(name: string, parts: string[]) {
                                 />
                             </label>
                             <div class="relative flex-1">
-                                <AutocompletionComponent
+                                <AutocompletionInput
                                     v-model="groupTags"
                                     class="textarea w-full h-full resize-none outline-none!"
-                                    :id="'tag-group-creation-list'"
                                     :textarea="true"
                                     :multiple="true"
                                     :dropdown-below="true"
@@ -305,10 +304,9 @@ function filterMatchesAny(name: string, parts: string[]) {
                         </div>
                         <div class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
                             <label class="input w-full px-1 outline-none!">
-                                <AutocompletionComponent
+                                <AutocompletionInput
                                     v-model="tagInput"
                                     :disabled="!selectedGroup"
-                                    :id="'group-completion-list'"
                                     :placeholder="'Type to add tags to the current group...'"
                                     :multiple="true"
                                     @on-complete="addTag"

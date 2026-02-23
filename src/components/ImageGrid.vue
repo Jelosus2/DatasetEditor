@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AutocompletionComponent from "@/components/AutocompletionComponent.vue";
+import AutocompletionInput from "@/components/AutocompletionInput.vue";
 import VirtualImage from "@/components/VirtualImage.vue";
 
 import { useDatasetStore } from "@/stores/datasetStore";
@@ -15,11 +15,11 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "toggle-selection", id: string, event: MouseEvent): void;
-  (e: "hover-image", id: string | undefined): void;
-  (e: "display-full-image", id: string): void;
-  (e: "clear-filter"): void;
-  (e: "grid-metrics", metrics: { columns: number }): void;
+    (e: "toggle-selection", id: string, event: MouseEvent): void;
+    (e: "hover-image", id: string | undefined): void;
+    (e: "display-full-image", id: string): void;
+    (e: "clear-filter"): void;
+    (e: "grid-metrics", metrics: { columns: number }): void;
 }>();
 
 const datasetStore = useDatasetStore();
@@ -215,10 +215,9 @@ onDeactivated(() => {
     </div>
     <div class="mt-auto border-t-2 border-gray-400 pt-1 pb-1 dark:border-base-content/10">
         <label class="input w-full border-r-0 pr-0 pl-1 outline-none!">
-            <AutocompletionComponent
+            <AutocompletionInput
                 v-model="filterInput"
                 :disabled="datasetStore.dataset.size === 0"
-                :id="'filter-completion-list'"
                 :placeholder="'Type tags… use -tag to exclude'"
                 :multiple="true"
                 :custom-list="autocompleteList"

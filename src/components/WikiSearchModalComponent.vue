@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AutocompletionComponent from '@/components/AutocompletionComponent.vue';
+import AutocompletionInput from '@/components/AutocompletionInput.vue';
 
 import { ref, onMounted, onUnmounted } from 'vue';
 import { fetchWiki, fetchPosts, parseWikiBody } from '@/services/wikiService';
@@ -62,9 +62,8 @@ onUnmounted(() => {
       <label for="danbooru_wiki_modal" class="absolute right-2 top-1 cursor-pointer">✕</label>
       <div class="flex justify-center items-end gap-2 pb-4">
         <label class="input pr-0 pl-1 outline-none!">
-          <AutocompletionComponent
+          <AutocompletionInput
             v-model="tag"
-            :id="'wiki-search-list'"
             :placeholder="'Search tag'"
             :dropdown-below="true"
             @on-complete="search"

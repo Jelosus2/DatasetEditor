@@ -1,3 +1,4 @@
+import type { CompletionItem } from "../../shared/autocompletion.js";
 import type { TagBatch } from "../types/database.js";
 
 import { Utilities } from "../utils/Utilities.js";
@@ -89,13 +90,13 @@ export class TagDatabase {
             App.window.sendStatus({ id: taskId, title, message: `Successfully inserted ${globalProgress} tags`, state: "success" });
     }
 
-    retrieveTagCompletions(tagHint: string) {
+    retrieveTagCompletions(tagHint: string): CompletionItem[] {
         if (!tagHint)
             return [];
 
         const statement = this.database.prepare<[string], TagBatch>(`
             SELECT tag, type, results FROM tags
-            WHERE tag LIKES ?
+            WHERE tag LIKE ?
             LIMIT 20
         `);
 

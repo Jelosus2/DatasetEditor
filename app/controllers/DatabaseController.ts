@@ -19,9 +19,4 @@ export class DatabaseController {
             return [];
         }
     }
-
-    @IpcHandle("database:load_csv")
-    async loadCsv() {
-        return await App.importTagsCsvFromDialog();
-    }
 }

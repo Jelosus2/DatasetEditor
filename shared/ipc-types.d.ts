@@ -1,6 +1,7 @@
 import type { TaggerModelsStatus, TaggerModelConfiguration, TaggerWSPayload } from "./tagger";
 import type { SettingsDefinition, Settings } from "./settings-schema";
 import type { Dataset, GlobalTags } from "./dataset";
+import type { CompletionItem } from "./autocompletion";
 import type { AppStatusPayload } from "./app-status";
 import type { TagGroups } from "./tag-groups";
 import type { LogType } from "./log";
@@ -204,6 +205,10 @@ export type IpcInvokeMap = {
     "tagger:stop_tagging": {
         args: [];
         result: void;
+    }
+    "database:retrieve_completions": {
+        args: [tagHint: string];
+        result: CompletionItem[];
     }
 }
 

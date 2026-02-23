@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AutocompletionComponent from "@/components/AutocompletionComponent.vue";
+import AutocompletionInput from "@/components/AutocompletionInput.vue";
 import AlertModal from "@/components/AlertModal.vue";
 
 import type { SettingsDefinition } from "../../shared/settings-schema";
@@ -227,12 +227,11 @@ onMounted(() => {
 
                                 <!-- tagsIgnored (string[]) -->
                                 <div v-if="field.type === 'string[]'" class="mt-3">
-                                    <AutocompletionComponent
+                                    <AutocompletionInput
                                         v-model="stringInputs[field.key]"
                                         class="textarea w-full resize-y outline-none!"
-                                        :rows="3"
-                                        :id="`settings-${field.key}`"
                                         :textarea="true"
+                                        :rows="3"
                                         :multiple="true"
                                         :placeholder="'tag1, tag2, tag3...'"
                                         @on-blur="commitStringList(field)"

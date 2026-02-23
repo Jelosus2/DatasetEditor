@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AutocompletionComponent from "@/components/AutocompletionComponent.vue";
+import AutocompletionInput from "@/components/AutocompletionInput.vue";
 
 import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts";
 import { useTagOperations } from "@/composables/useTagOperations";
@@ -466,22 +466,19 @@ function sortDiffTags(tags?: Set<string>) {
                     <div class="flex gap-3">
                         <label class="input w-full outline-none!">
                             <span class="label">From</span>
-                            <AutocompletionComponent
+                            <AutocompletionInput
                                 v-model="replaceSourceInput"
                                 :disabled="datasetStore.dataset.size === 0"
-                                :id="'replace-source-list'"
                                 :placeholder="'Type the tag to replace...'"
-                                :multiple="false"
                                 :custom-list="displayedGlobalTagsList"
                             />
                         </label>
                         <label class="input w-full outline-none!">
                             <span class="label">To</span>
-                            <AutocompletionComponent
+                            <AutocompletionInput
                                 v-model="replaceTargetInput"
                                 :disabled="datasetStore.dataset.size === 0"
-                                :id="'replace-target-list'"
-                                :placeholder="'Type the replacement tag...'"
+                                :placeholder="'Type the replacement tag(s)...'"
                                 :multiple="true"
                             />
                         </label>
@@ -564,13 +561,12 @@ function sortDiffTags(tags?: Set<string>) {
                                 </button>
                             </div>
                             <label class="input relative w-full pl-1 outline-none!">
-                                <AutocompletionComponent
+                                <AutocompletionInput
                                     v-model="tagInput"
                                     :disabled="selectedImages.size === 0"
-                                    :id="'completion-list'"
                                     :placeholder="'Type to add a tag...'"
                                     :multiple="true"
-                                    @on-complete="addTag()"
+                                    @on-complete="addTag"
                                 />
                             </label>
                             <div class="not-focus-within:hover:tooltip" data-tip="Mode to sort the tags">
@@ -633,10 +629,9 @@ function sortDiffTags(tags?: Set<string>) {
                     <div class="mt-auto flex flex-col gap-2 border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
                         <div class="flex gap-2">
                             <label class="input relative w-full pl-1 outline-none!">
-                                <AutocompletionComponent
+                                <AutocompletionInput
                                     v-model="globalTagInput"
                                     :disabled="datasetStore.dataset.size === 0"
-                                    :id="'global-completion-list'"
                                     :placeholder="'Type to add a global tag...'"
                                     :multiple="true"
                                     @on-complete="addGlobalTag"
