@@ -15,7 +15,7 @@ export const useDatasetStore = defineStore("dataset", () => {
 
     const datasetUndoStack = ref<DatasetChangeRecord[]>([]);
     const datasetRedoStack = ref<DatasetChangeRecord[]>([]);
-    const sortMode = ref("none");
+    const sortMode = ref<"none" | "alphabetical">("none");
 
     const datasetService = new DatasetService();
     const alert = useAlert();
@@ -528,6 +528,41 @@ export const useDatasetStore = defineStore("dataset", () => {
             triggerUpdate();
     }
 
+    function setTagDiffFromResults(results: Map<string, string[]>) {
+        const rawDataset = toRaw(dataset.value);
+        const nextDiff: TagDiffs = new Map();
+
+        for (const [name, tags] of results) {
+            const imageData = rawDataset.get(name);
+            if (!imageData)
+                continue;
+
+            const currentTags = imageData.tags;
+            const taggerOnly = new Set<string>();
+            const originalOnly = new Set<string>();
+
+            for (const tag of tags) {
+                if (!currentTags.has(tag))
+                    taggerOnly.add(tag);
+            }
+
+            for (const tag of currentTags) {
+                if (!tags.includes(tag))
+                    originalOnly.add(tag);
+            }
+
+            if (taggerOnly.size > 0 || originalOnly.size > 0) {
+                nextDiff.set(name, {
+                    tagger: taggerOnly,
+                    original: originalOnly
+                });
+            }
+        }
+
+        tagDiff.value = nextDiff;
+        triggerUpdate();
+    }
+
     function normalizePath(path: string) {
         return path.replace(/\\|\\\\/g, "/");
     }
@@ -549,6 +584,7 @@ export const useDatasetStore = defineStore("dataset", () => {
 
         dataset.value = result.dataset!;
         globalTags.value = result.globalTags!;
+        tagDiff.value = new Map();
 
         if (!reload)
             resetDatasetStatus();
@@ -589,6 +625,7 @@ export const useDatasetStore = defineStore("dataset", () => {
         removeImage,
         removeImages,
         renameImages,
+        setTagDiffFromResults,
         undoDatasetAction,
         redoDatasetAction,
         resetDatasetStatus,

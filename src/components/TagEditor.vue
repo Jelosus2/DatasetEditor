@@ -20,9 +20,9 @@ const props = defineProps<{
     filterInput: string;
 }>();
 
-const sortOrder = defineModel<string>("sortOrder", { required: true });
-const globalSortMode = defineModel<string>("globalSortMode", { required: true });
-const globalSortOrder = defineModel<string>("globalSortOrder", { required: true });
+const sortOrder = defineModel<"asc" | "desc">("sortOrder", { required: true });
+const globalSortMode = defineModel<"alphabetical" | "tag_count">("globalSortMode", { required: true });
+const globalSortOrder = defineModel<"asc" | "desc">("globalSortOrder", { required: true });
 const globalTagFilterInput = defineModel<string>("globalTagFilterInput", { required: true });
 
 const tagInput = ref("");
@@ -125,6 +125,26 @@ const tagEditorMainWidth = computed(() => 70 - tagGroupWidth.value);
 const showTopSection = computed(() =>
     editMode.value === "mass" ? true : settingsStore.showDiffSection
 );
+
+const displayedTaggerDiffTags = computed(() => {
+    void datasetStore.dataVersion;
+
+    if (!hasSingleSelection.value || !selectedImageId.value)
+        return [];
+
+    const diff = datasetStore.tagDiff.get(selectedImageId.value);
+    return sortDiffTags(diff?.tagger);
+});
+
+const displayedOriginalDiffTags = computed(() => {
+    void datasetStore.dataVersion;
+
+    if (!hasSingleSelection.value || !selectedImageId.value)
+        return [];
+
+    const diff = datasetStore.tagDiff.get(selectedImageId.value);
+    return sortDiffTags(diff?.original);
+});
 
 const datasetStore = useDatasetStore();
 const tagGroupsStore = useTagGroupsStore();
@@ -358,6 +378,23 @@ function onTagDrop() {
 function toggleEditMode() {
     editMode.value = editMode.value === "individual" ? "mass" : "individual";
 }
+
+function sortDiffTags(tags?: Set<string>) {
+    const list = tags ? Array.from(tags) : [];
+
+    if (datasetStore.sortMode === "alphabetical") {
+        const keyed = list.map((s) => [s, s.toLocaleLowerCase()]);
+        keyed.sort((a, b) => a[1].localeCompare(b[1]));
+        const sorted = keyed.map(([s]) => s);
+
+        if (sortOrder.value === "desc")
+            sorted.reverse();
+
+        return sorted;
+    }
+
+    return list;
+}
 </script>
 
 <template>
@@ -387,11 +424,14 @@ function toggleEditMode() {
                         <div class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-base-content/10">
                             <p>Tags detected by autotagger but not in the captions</p>
                         </div>
-                        <div v-if="hasSingleSelection" class="mb-2 flex min-h-0 flex-1 flex-wrap gap-2 overflow-auto scroll-smooth pt-2">
+                        <div
+                            v-if="hasSingleSelection"
+                            class="mb-2 flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-auto scroll-smooth pt-2"
+                        >
                             <div
-                                v-for="tag in datasetStore.tagDiff.get(selectedImageId!)?.tagger"
+                                v-for="tag in displayedTaggerDiffTags"
                                 :key="tag"
-                                class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer dark:bg-gray-700"
+                                class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-gray-700"
                                 @click="addTag(tag, selectedImageId!)"
                             >
                                 {{ tag }}
@@ -406,11 +446,14 @@ function toggleEditMode() {
                         <div class="flex items-center justify-center border-b-2 border-gray-400 text-center dark:border-base-content/10">
                             <p>Tags in captions but not detected by the autotagger</p>
                         </div>
-                        <div v-if="hasSingleSelection" class="mb-2 flex min-h-0 flex-1 flex-wrap gap-2 overflow-auto scroll-smooth pt-2">
+                        <div
+                            v-if="hasSingleSelection"
+                            class="mb-2 flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-auto scroll-smooth pt-2"
+                        >
                             <div
-                                v-for="tag in datasetStore.tagDiff.get(selectedImageId!)?.original"
+                                v-for="tag in displayedOriginalDiffTags"
                                 :key="tag"
-                                class="h-fit w-fit bg-[#a6d9e2] px-1.5 text-sm hover:cursor-pointer dark:bg-rose-900"
+                                class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-rose-900"
                                 @click="removeTag(tag, selectedImageId!)"
                             >
                                 {{ tag }}

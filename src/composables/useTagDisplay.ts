@@ -7,9 +7,9 @@ export function useTagDisplay(
     selectedImages: Ref<Set<string>>,
     filterInput: Ref<string>,
     filterMode: Ref<string>,
-    sortOrder: Ref<string>,
-    globalSortMode: Ref<string>,
-    globalSortOrder: Ref<string>,
+    sortOrder: Ref<"asc" | "desc">,
+    globalSortMode: Ref<"alphabetical" | "tag_count">,
+    globalSortOrder: Ref<"asc" | "desc">,
     globalTagFilterInput: Ref<string>,
 ) {
     const datasetStore = useDatasetStore();

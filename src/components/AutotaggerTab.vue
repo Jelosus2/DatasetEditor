@@ -339,7 +339,7 @@ async function deleteModel(model: string) {
     cacheSizeBytes.value = result.cacheSizeBytes!;
 }
 
-async function autoTagImages() {
+async function autoTagImages(mode: "autotag" | "diff") {
     const selectedModelsMap = new Map<string, TaggerModelConfigurationProperties>();
     for (const [name, properties] of models.value) {
         if (selectedModels.value.has(name))
@@ -347,7 +347,7 @@ async function autoTagImages() {
     }
 
     isTagging.value = true;
-    await taggerService.tagImages(selectedModelsMap, removeUnderscores.value, removeRedundantTags.value, disableCharacterThreshold.value);
+    await taggerService.tagImages(selectedModelsMap, removeUnderscores.value, removeRedundantTags.value, disableCharacterThreshold.value, mode);
     isTagging.value = false;
 }
 
@@ -462,13 +462,14 @@ onMounted(async () => {
                             :class="{
                                 'btn-error': isTagging
                             }"
-                            @click="isTagging ? stopTagger() : autoTagImages()"
+                            @click="isTagging ? stopTagger() : autoTagImages('autotag')"
                         >
                             {{ isTagging ? 'Stop Tagger' : 'Autotag Images' }}
                         </button>
                         <button
                             class="btn btn-outline"
                             :disabled="shouldDisableTagButtons || isTagging"
+                            @click="autoTagImages('diff')"
                         >
                             Load Diff
                         </button>

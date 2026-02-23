@@ -176,7 +176,13 @@ export class TaggerService {
         };
     }
 
-    async tagImages(configurationMap: Map<string, TaggerModelConfigurationProperties>, removeUnderscores: boolean, removeRedundantTags: boolean, disableCharacterThreshold: boolean) {
+    async tagImages(
+        configurationMap: Map<string, TaggerModelConfigurationProperties>,
+        removeUnderscores: boolean,
+        removeRedundantTags: boolean,
+        disableCharacterThreshold: boolean,
+        mode: "autotag" | "diff"
+    ) {
         const images = Array.from(this.datasetStore.dataset.values(), (properties) => properties.path);
         if (images.length === 0) {
             this.alert.showAlert("warning", "Load a dataset before attempting to autotag it");
@@ -202,8 +208,10 @@ export class TaggerService {
             return;
         }
 
-        if (result.results)
-            this.applyTaggerTagsToDataset(result.results!);
+        if (mode === "autotag" && result.results)
+            this.applyTaggerTagsToDataset(result.results);
+        else if (mode === "diff" && result.results)
+            this.datasetStore.setTagDiffFromResults(result.results);
 
         this.alert.showAlert("success", result.message);
     }
