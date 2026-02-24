@@ -20,7 +20,7 @@ import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts";
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
 import { useAppStatus } from "@/composables/useAppStatus";
 import { useAlert } from "@/composables/useAlert";
-import { AppController } from "@/controllers/AppController";
+import { AppController } from "@/AppController";
 import { ref, onMounted } from "vue";
 
 const arePreviewsEnabled = ref(false);
@@ -37,7 +37,8 @@ const appController = new AppController({
     datasetStore,
     tagGroupsStore,
     settingsStore,
-    showAlert
+    showAlert,
+    getActiveTab: () => activeTab.value
 });
 
 useKeyboardShortcuts(

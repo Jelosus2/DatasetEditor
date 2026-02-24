@@ -226,7 +226,7 @@ onMounted(() => {
                                 </div>
 
                                 <!-- tagsIgnored (string[]) -->
-                                <div v-if="field.type === 'string[]'" class="mt-3">
+                                <div v-if="field.type === 'string[]'" class="mt-3 relative">
                                     <AutocompletionInput
                                         v-model="stringInputs[field.key]"
                                         class="textarea w-full resize-y outline-none!"

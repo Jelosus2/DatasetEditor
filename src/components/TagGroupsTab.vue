@@ -30,7 +30,11 @@ const tagGroupsList = computed(() => {
     return Array.from(tagGroupsStore.tagGroups.entries());
 });
 
+const tagGroupNames = computed(() => tagGroupsList.value.map(([name]) => name));
+
 const importedGroupsList = computed(() => Array.from(importedGroups.value.entries()));
+
+const importedGroupNames = computed(() => importedGroupsList.value.map(([name]) => name));
 
 const selectedGroupTags = computed(() => {
     void tagGroupsStore.dataVersion;
@@ -165,12 +169,17 @@ function filterMatchesAny(name: string, parts: string[]) {
         <div class="flex h-full">
             <div class="flex w-[25%] flex-col gap-2 overflow-auto pt-1 pl-1">
                 <div class="flex items-center gap-2 mt-2">
-                    <input
-                        class="input w-full outline-none!"
-                        v-model="tagGroupSearch"
-                        :disabled="tagGroupsStore.tagGroups.size === 0"
-                        placeholder="Search groups... (comma separated)"
-                    />
+                    <label class="input z-2 w-full outline-none!">
+                        <AutocompletionInput
+                            v-model="tagGroupSearch"
+                            placeholder="Search groups... (comma separated)"
+                            :disabled="tagGroupsStore.tagGroups.size === 0"
+                            :custom-list="tagGroupNames"
+                            :multiple="true"
+                            :contains-mode="true"
+                            :dropdown-below="true"
+                        />
+                    </label>
                     <button
                         class="btn btn-outline"
                         :disabled="tagGroupsStore.tagGroups.size === 0"
@@ -354,12 +363,17 @@ function filterMatchesAny(name: string, parts: string[]) {
                             <p>Import Preview</p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <input
-                                class="input w-full outline-none!"
-                                v-model="importGroupSearch"
-                                placeholder="Search imported groups... (comma separated)"
-                                :disabled="importedGroups.size === 0"
-                            />
+                            <label class="input z-2 w-full outline-none!">
+                                <AutocompletionInput
+                                    v-model="importGroupSearch"
+                                    placeholder="Search imported groups... (comma separated)"
+                                    :disabled="importedGroups.size === 0"
+                                    :custom-list="importedGroupNames"
+                                    :multiple="true"
+                                    :contains-mode="true"
+                                    :dropdown-below="true"
+                                />
+                            </label>
                             <button
                                 class="btn btn-outline"
                                 :disabled="importedGroups.size === 0"

@@ -79,6 +79,8 @@ const tagGroupsList = computed(() => {
     return Array.from(tagGroupsStore.tagGroups.entries());
 });
 
+const tagGroupNames = computed(() => tagGroupsList.value.map(([name]) => name));
+
 const filteredTagGroups = computed(() => {
     const parts = tagGroupFilterInput.value
         .split(",")
@@ -461,25 +463,27 @@ function sortDiffTags(tags?: Set<string>) {
                         </div>
                     </div>
                 </div>
-                <div v-else class="flex flex-col gap-2 border-b-2 border-gray-400 p-2 dark:border-base-content/10">
+                <div v-else class="flex flex-col gap-2 border-b-2 border-gray-400 p-2 dark:border-base-content/30">
                     <div class="text-center font-medium">Replace tags across images</div>
                     <div class="flex gap-3">
-                        <label class="input w-full outline-none!">
+                        <label class="input z-2 w-full outline-none!">
                             <span class="label">From</span>
                             <AutocompletionInput
                                 v-model="replaceSourceInput"
                                 placeholder="Type the tag to replace..."
                                 :disabled="datasetStore.dataset.size === 0"
                                 :custom-list="displayedGlobalTagsList"
+                                :dropdown-below="true"
                             />
                         </label>
-                        <label class="input w-full outline-none!">
+                        <label class="input z-2 w-full outline-none!">
                             <span class="label">To</span>
                             <AutocompletionInput
                                 v-model="replaceTargetInput"
                                 placeholder="Type the replacement tag(s)..."
                                 :disabled="datasetStore.dataset.size === 0"
                                 :multiple="true"
+                                :dropdown-below="true"
                             />
                         </label>
                     </div>
@@ -586,8 +590,9 @@ function sortDiffTags(tags?: Set<string>) {
                         </div>
                     </div>
                 </div>
-                <div v-else class="flex min-h-0 h-full flex-col border-gray-400 pt-3 pb-1 dark:border-base-content/10">
-                    <div class="flex items-center gap-2 pb-3">
+                <div v-else class="flex min-h-0 h-full flex-col border-gray-400 pt-3 dark:border-base-content/10">
+                    <div class="text-center font-medium">Global Tags</div>
+                    <div class="flex items-center gap-2 pt-3 pb-3">
                         <label class="input w-full outline-none!">
                             <span class="label">Filter Global Tags</span>
                             <input v-model="globalTagFilterInput" type="text" placeholder="Type to filter..." :disabled="datasetStore.globalTags.size === 0" />
@@ -651,12 +656,17 @@ function sortDiffTags(tags?: Set<string>) {
         <div v-if="settingsStore.showTagGroups" class="flex min-h-0 flex-1 flex-col gap-2 overflow-auto pb-1">
             <div class="flex flex-col gap-2">
                 <div class="flex items-center gap-2">
-                    <input
-                        class="input w-full outline-none!"
-                        v-model="tagGroupFilterInput"
-                        :disabled="tagGroupsStore.tagGroups.size === 0"
-                        placeholder="Search groups... (comma separated)"
-                    />
+                    <label class="input z-2 w-full outline-none!">
+                        <AutocompletionInput
+                            v-model="tagGroupFilterInput"
+                            placeholder="Search groups... (comma separated)"
+                            :disabled="tagGroupsStore.tagGroups.size === 0"
+                            :custom-list="tagGroupNames"
+                            :multiple="true"
+                            :contains-mode="true"
+                            :dropdown-below="true"
+                        />
+                    </label>
                     <button
                         class="btn btn-outline"
                         :disabled="tagGroupsStore.tagGroups.size === 0"
