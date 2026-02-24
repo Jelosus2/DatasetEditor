@@ -1,29 +1,11 @@
 <script setup lang="ts">
 import type { AlertType } from "@/types/alert";
 
-import { ref, watch } from "vue";
-
-const props = withDefaults(
-    defineProps<{
-        message: string;
-        timestamp: number;
-        duration?: number;
-        type?: AlertType;
-    }>(),
-    {
-        duration: 2000,
-        type: "info"
-    }
-);
-
-const isVisible = ref(false);
-
-watch([() => props.message, () => props.timestamp], () => {
-    isVisible.value = true;
-    setTimeout(() => {
-        isVisible.value = false;
-    }, props.duration);
-});
+defineProps<{
+    message: string;
+    timestamp: number;
+    type: AlertType;
+}>();
 </script>
 
 <template>
@@ -36,7 +18,8 @@ watch([() => props.message, () => props.timestamp], () => {
         leave-to-class="transform -translate-y-8 opacity-0"
     >
         <div
-            v-if="isVisible"
+            v-if="message"
+            :key="timestamp"
             role="alert"
             class="fixed top-10 left-1/2 z-70 alert flex -translate-x-1/2 transform items-center justify-center"
             :class="{
