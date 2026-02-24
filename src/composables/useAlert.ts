@@ -2,7 +2,7 @@ import type { AlertItem, AlertType } from "@/types/alert";
 
 import { ref } from "vue";
 
-const DEFAULT_DURATION = 3000;
+const DEFAULT_DURATION = 2500;
 
 const message = ref("");
 const type = ref<AlertType>("info");

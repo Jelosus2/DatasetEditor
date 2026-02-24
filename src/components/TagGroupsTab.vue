@@ -273,11 +273,11 @@ function filterMatchesAny(name: string, parts: string[]) {
                                 <AutocompletionInput
                                     v-model="groupTags"
                                     class="textarea w-full h-full resize-none outline-none!"
+                                    placeholder="Tags separated by comma to be added to the group..."
                                     :textarea="true"
                                     :multiple="true"
                                     :dropdown-below="true"
                                     :key-enter-empty="true"
-                                    :placeholder="'Tags separated by comma to be added to the group...'"
                                     @on-complete="createGroup"
                                 />
                             </div>
@@ -306,8 +306,8 @@ function filterMatchesAny(name: string, parts: string[]) {
                             <label class="input w-full px-1 outline-none!">
                                 <AutocompletionInput
                                     v-model="tagInput"
+                                    placeholder="Type to add tags to the current group..."
                                     :disabled="!selectedGroup"
-                                    :placeholder="'Type to add tags to the current group...'"
                                     :multiple="true"
                                     @on-complete="addTag"
                                 />

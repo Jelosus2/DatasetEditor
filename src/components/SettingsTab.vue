@@ -230,10 +230,10 @@ onMounted(() => {
                                     <AutocompletionInput
                                         v-model="stringInputs[field.key]"
                                         class="textarea w-full resize-y outline-none!"
+                                        placeholder="tag1, tag2, tag3..."
                                         :textarea="true"
                                         :rows="3"
                                         :multiple="true"
-                                        :placeholder="'tag1, tag2, tag3...'"
                                         @on-blur="commitStringList(field)"
                                     />
                                 </div>

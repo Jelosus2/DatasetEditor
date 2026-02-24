@@ -64,7 +64,7 @@ onUnmounted(() => {
         <label class="input pr-0 pl-1 outline-none!">
           <AutocompletionInput
             v-model="tag"
-            :placeholder="'Search tag'"
+            placeholder="Search tag"
             :dropdown-below="true"
             @on-complete="search"
           />

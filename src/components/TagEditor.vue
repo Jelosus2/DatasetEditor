@@ -468,8 +468,8 @@ function sortDiffTags(tags?: Set<string>) {
                             <span class="label">From</span>
                             <AutocompletionInput
                                 v-model="replaceSourceInput"
+                                placeholder="Type the tag to replace..."
                                 :disabled="datasetStore.dataset.size === 0"
-                                :placeholder="'Type the tag to replace...'"
                                 :custom-list="displayedGlobalTagsList"
                             />
                         </label>
@@ -477,8 +477,8 @@ function sortDiffTags(tags?: Set<string>) {
                             <span class="label">To</span>
                             <AutocompletionInput
                                 v-model="replaceTargetInput"
+                                placeholder="Type the replacement tag(s)..."
                                 :disabled="datasetStore.dataset.size === 0"
-                                :placeholder="'Type the replacement tag(s)...'"
                                 :multiple="true"
                             />
                         </label>
@@ -563,8 +563,8 @@ function sortDiffTags(tags?: Set<string>) {
                             <label class="input relative w-full pl-1 outline-none!">
                                 <AutocompletionInput
                                     v-model="tagInput"
+                                    placeholder="Type to add a tag..."
                                     :disabled="selectedImages.size === 0"
-                                    :placeholder="'Type to add a tag...'"
                                     :multiple="true"
                                     @on-complete="addTag"
                                 />
@@ -631,8 +631,8 @@ function sortDiffTags(tags?: Set<string>) {
                             <label class="input relative w-full pl-1 outline-none!">
                                 <AutocompletionInput
                                     v-model="globalTagInput"
+                                    placeholder="Type to add a global tag..."
                                     :disabled="datasetStore.dataset.size === 0"
-                                    :placeholder="'Type to add a global tag...'"
                                     :multiple="true"
                                     @on-complete="addGlobalTag"
                                 />

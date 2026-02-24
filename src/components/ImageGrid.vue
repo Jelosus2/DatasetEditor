@@ -217,8 +217,8 @@ onDeactivated(() => {
         <label class="input w-full border-r-0 pr-0 pl-1 outline-none!">
             <AutocompletionInput
                 v-model="filterInput"
+                placeholder="Type tags… use -tag to exclude"
                 :disabled="datasetStore.dataset.size === 0"
-                :placeholder="'Type tags… use -tag to exclude'"
                 :multiple="true"
                 :custom-list="autocompleteList"
                 :contains-mode="true"
