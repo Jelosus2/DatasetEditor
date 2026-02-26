@@ -1,4 +1,5 @@
 import type { TaggerModelsStatus, TaggerModelConfiguration, TaggerWSPayload } from "./tagger";
+import type { AppCloseRequestPayload, AppCloseResponsePayload } from "./app-close";
 import type { SettingsDefinition, Settings } from "./settings-schema";
 import type { Dataset, GlobalTags } from "./dataset";
 import type { CompletionItem } from "./autocompletion";
@@ -231,9 +232,15 @@ export type IpcOnMap = {
     "app:update_error": {
         args: [];
     }
+    "app:close_request": {
+        args: [payload: AppCloseRequestPayload];
+    }
+    "app:close_response": {
+        args: [payload: AppCloseResponsePayload];
+    }
     "tagger:output": {
         args: [line: string];
-    },
+    }
     "tagger:service_stopped": {
         args: [];
     }

@@ -1,4 +1,5 @@
 import type { AppControllerDependencies } from '@/types/controller';
+import type { AppCloseAction } from '../shared/app-close';
 import type { ActiveTab } from '@/types/app';
 
 export class AppController {
@@ -45,11 +46,22 @@ export class AppController {
     }
 
     async saveAllChanges() {
-        await Promise.all([
-            this.deps.datasetStore.saveDataset(),
-            this.deps.tagGroupsStore.saveTagGroups(),
-            this.saveSettingsWithGuards(/* showWarnings = */ false)
+        const [datasetSaved, tagGroupsSaved, settingsSaved] = await Promise.all([
+            this.deps.datasetStore.isDatasetSaved(),
+            this.deps.tagGroupsStore.areTagGroupsSaved(),
+            this.deps.settingsStore.areSettingsSaved()
         ]);
+
+        const tasks: Promise<void>[] = [];
+
+        if (!datasetSaved)
+            tasks.push(this.deps.datasetStore.saveDataset());
+        if (!tagGroupsSaved)
+            tasks.push(this.deps.tagGroupsStore.saveTagGroups());
+        if (!settingsSaved)
+            tasks.push(this.saveSettingsWithGuards(/* showWarnings = */ false));
+
+        await Promise.all(tasks);
     }
 
     async areAllChangesSaved() {
@@ -60,6 +72,13 @@ export class AppController {
         ]);
 
         return datasetSaved && tagGroupsSaved && settingsSaved;
+    }
+
+    async handleCloseRequest(action: AppCloseAction) {
+        if (action === "save")
+            await this.saveAllChanges();
+
+        return this.areAllChangesSaved();
     }
 
     private async saveSettingsWithGuards(showWarnings: boolean = true) {

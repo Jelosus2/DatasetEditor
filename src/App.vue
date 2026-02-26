@@ -53,24 +53,22 @@ useKeyboardShortcuts(
 );
 
 const { send } = useIpcRenderer([
-  {
-    channel: "are_changes_saved",
-    handler: async () => {
-      const allSaved = await appController.areAllChangesSaved();
-      send("changes_saved", allSaved);
+    {
+        channel: "app:close_request",
+        handler: async ({ requestId, action }) => {
+            try {
+                const allSaved = await appController.handleCloseRequest(action);
+                send("app:close_response", { requestId, allSaved });
+            } catch (error) {
+                const message = error instanceof Error ? error.message : "Unknown close request error";
+                send("app:close_response", { requestId, allSaved: false, error: message });
+            }
+        }
+    },
+    {
+        channel: "app:status",
+        handler: appStatus.handleStatus
     }
-  },
-  {
-    channel: "save_all_changes",
-    handler: async () => {
-      await appController.saveAllChanges();
-      send("save_all_done");
-    }
-  },
-  {
-    channel: "app:status",
-    handler: appStatus.handleStatus
-  }
 ]);
 
 onMounted(async () => {
