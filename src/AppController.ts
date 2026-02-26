@@ -11,8 +11,8 @@ export class AppController {
 
     async initialize() {
         await Promise.all([
-            await this.deps.tagGroupsStore.loadTagGroups(),
-            await this.deps.settingsStore.loadSchema()
+            this.deps.tagGroupsStore.loadTagGroups(),
+            this.deps.settingsStore.loadSchema()
         ]);
 
         await this.deps.settingsStore.loadSettings();

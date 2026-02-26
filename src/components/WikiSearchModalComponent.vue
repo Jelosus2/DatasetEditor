@@ -1,95 +1,149 @@
 <script setup lang="ts">
-import AutocompletionInput from '@/components/AutocompletionInput.vue';
+import type { DanbooruWikiPage, DanbooruPostPreview } from "../../shared/danbooru";
 
-import { ref, onMounted, onUnmounted } from 'vue';
-import { fetchWiki, fetchPosts, parseWikiBody } from '@/services/wikiService';
-import { useLogStore } from '@/stores/logStore';
+import AutocompletionInput from "@/components/AutocompletionInput.vue";
 
-const tag = ref('');
-const wiki = ref<{ body: string } | null>(null);
-const posts = ref<Array<{ id: number; file_url: string }>>([]);
-const html = ref('');
+import { WikiService } from "@/services/wikiService";
+import { ref, computed, onMounted, onUnmounted } from "vue";
+
+const SKELETON_POST_COUNT = 10;
+const skeletonSlots = Array.from({ length: SKELETON_POST_COUNT }, (_, i) => i);
+
+const wikiService = new WikiService();
+window.openTagWikiInBrowser = wikiService.openTagWikiInBrowser;
+
+const tag = ref("");
+const wiki = ref<DanbooruWikiPage | null>(null);
+const posts = ref<DanbooruPostPreview[]>([]);
+const html = ref("");
 const loading = ref(false);
-const error = ref('');
+const hasSearched = ref(false);
 
-const logStore = useLogStore();
+let latestSearchId = 0;
+
+const showEmptyPostsState = computed(() =>
+    hasSearched.value && !loading.value && posts.value.length === 0
+);
 
 async function search() {
-  error.value = '';
-  loading.value = true;
+    const query = tag.value.trim();
 
-  try {
-    wiki.value = await fetchWiki(tag.value);
-    posts.value = await fetchPosts(tag.value);
-
-    const description = wiki.value.body.match(/^[\s\S]*?(?=^h[1-6]\.\s+)/m);
-    const result = description ? description[0] : wiki.value.body;
-    html.value = await parseWikiBody(result || 'No description was found for this wiki page');
-  } catch (err) {
+    hasSearched.value = false;
     wiki.value = null;
     posts.value = [];
-    const message = `Failed to fetch wiki: ${(err as Error).message}`;
-    error.value = message;
-    logStore.addLog('error', message);
-  } finally {
-    loading.value = false;
-  }
+    html.value = "";
+
+    if (!query)
+        return;
+
+    const searchId = ++latestSearchId;
+    loading.value = true;
+    hasSearched.value = true;
+
+    const [nextWiki, nextPosts] = await Promise.all([
+        wikiService.fetchWiki(query),
+        wikiService.fetchPosts(query)
+    ]);
+
+    if (searchId !== latestSearchId)
+        return;
+
+    const sourceBody = nextWiki?.body.trim() || "";
+    const description = sourceBody.match(/^[\s\S]*?(?=^h[1-6]\.\s+)/m);
+    const descriptionBody = (description ? description[0] : sourceBody) || "No description was found for this wiki page";
+    const parsedHtml = await wikiService.parseWikiBody(descriptionBody);
+
+    if (searchId !== latestSearchId)
+        return;
+
+    wiki.value = nextWiki;
+    posts.value = nextPosts;
+    html.value = parsedHtml;
+
+    if (searchId === latestSearchId)
+        loading.value = false;
 }
 
-function openImage(id: number) {
-  window.ipcRenderer.invoke('open-url', `https://danbooru.donmai.us/posts/${id}`);
+function openPost(postUrl: string) {
+    wikiService.openDanbooruPostInBrowser(postUrl);
 }
 
 function handleWikiOpen(event: Event) {
-  const tagName = (event as CustomEvent<string>).detail;
-  tag.value = tagName;
-  search();
+    const tagName = (event as CustomEvent<string>).detail;
+    tag.value = tagName;
+    search();
 }
 
 onMounted(() => {
-  window.addEventListener('danbooru-wiki-open', handleWikiOpen);
+    window.addEventListener("danbooru-wiki-open", handleWikiOpen);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('danbooru-wiki-open', handleWikiOpen);
+    window.removeEventListener("danbooru-wiki-open", handleWikiOpen);
 });
 </script>
 
 <template>
-  <input type="checkbox" id="danbooru_wiki_modal" class="modal-toggle" />
-  <div class="modal z-50" role="dialog">
-    <div class="modal-box w-11/12 max-w-5xl h-9/12">
-      <label for="danbooru_wiki_modal" class="absolute right-2 top-1 cursor-pointer">✕</label>
-      <div class="flex justify-center items-end gap-2 pb-4">
-        <label class="input pr-0 pl-1 outline-none!">
-          <AutocompletionInput
-            v-model="tag"
-            placeholder="Search tag"
-            :dropdown-below="true"
-            @on-complete="search"
-          />
-        </label>
-        <button class="btn btn-primary" @click="search">Search</button>
-      </div>
-      <div v-if="loading" class="flex justify-center py-4">
-        <span class="loading loading-spinner"></span>
-      </div>
-      <div v-else>
-        <div v-if="wiki" class="prose max-w-none" v-html="html"></div>
-        <div v-if="posts.length && wiki" class="grid grid-cols-2 gap-2 pt-4 sm:grid-cols-3 md:grid-cols-5">
-          <img
-            v-for="post in posts"
-            :key="post.id"
-            :src="post.file_url"
-            class="w-full cursor-pointer"
-            @click="openImage(post.id)"
-          />
+    <input type="checkbox" id="danbooru_wiki_modal" class="modal-toggle" />
+    <div class="modal z-50" role="dialog">
+        <div class="modal-box h-9/12 w-11/12 max-w-5xl">
+            <label for="danbooru_wiki_modal" class="absolute top-1 right-2 cursor-pointer">✕</label>
+            <div class="flex items-end justify-center gap-2 pb-4">
+                <label class="input pl-1 pr-0 outline-none!">
+                    <AutocompletionInput
+                        v-model="tag"
+                        placeholder="Search tag"
+                        :dropdown-below="true"
+                        @on-complete="search"
+                    />
+                </label>
+                <button class="btn btn-primary" @click="search">Search</button>
+            </div>
+            <div v-if="loading" class="space-y-2">
+                <div class="skeleton bg-base-content/30 h-4 w-full"></div>
+                <div class="skeleton bg-base-content/30 h-4 w-10/12"></div>
+                <div class="skeleton bg-base-content/30 h-4 w-8/12"></div>
+            </div>
+            <div v-else-if="wiki" class="prose max-w-none" v-html="html"></div>
+            <div v-else-if="hasSearched" class="text-base-content/70 py-1">
+                No wiki description found.
+            </div>
+            <div class="pt-4">
+                <div class="grid grid-cols-5 gap-2">
+                    <template v-if="loading || showEmptyPostsState">
+                        <div
+                            v-for="slot in skeletonSlots"
+                            :key="`skeleton-${slot}`"
+                            class="skeleton bg-base-content/30 w-full h-80 rounded-md"
+                        ></div>
+                    </template>
+                    <template v-else>
+                        <button
+                            v-for="post in posts"
+                            :key="post.id"
+                            class="relative w-full rounded-md border border-base-content/20"
+                            @click="openPost(post.postUrl)"
+                        >
+                            <img
+                                :src="post.previewUrl"
+                                class="w-full cursor-pointer"
+                                loading="lazy"
+                                decoding="async"
+                            />
+                            <span
+                                v-if="post.mediaType === 'video'"
+                                class="badge badge-neutral badge-sm absolute top-1 right-1"
+                            >
+                                Video
+                            </span>
+                        </button>
+                    </template>
+                </div>
+                <div v-if="showEmptyPostsState" class="pt-3 text-center text-base-content/70">
+                    No related posts found for this tag.
+                </div>
+            </div>
         </div>
-        <div v-if="error" class="flex justify-center items-center bg-error font-bold p-2">
-          <span>{{ error }}</span>
-        </div>
-      </div>
+        <label class="modal-backdrop" for="danbooru_wiki_modal"></label>
     </div>
-    <label class="modal-backdrop" for="danbooru_wiki_modal"></label>
-  </div>
 </template>

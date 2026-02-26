@@ -1,6 +1,5 @@
 /// <reference types="vite/client" />
 import type { IpcInvokeMap, IpcOnMap } from "./shared/ipc-types";
-import type { openWikiLink } from "@/services/wikiService";
 
 interface ipcElectronAPI {
     invoke: <K extends keyof IpcInvokeMap>(
@@ -35,7 +34,7 @@ declare global {
 
     interface Window {
         ipcRenderer: ipcElectronAPI;
-        openWikiLink: typeof openWikiLink;
+        openTagWikiInBrowser: (event: MouseEvent, href: string) => void;
         __imageUpdatedListenerAdded: boolean;
     }
 }

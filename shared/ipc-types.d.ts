@@ -1,5 +1,6 @@
 import type { TaggerModelsStatus, TaggerModelConfiguration, TaggerWSPayload } from "./tagger";
 import type { AppCloseRequestPayload, AppCloseResponsePayload } from "./app-close";
+import type { DanbooruWikiPage, DanbooruPostPreview } from "./danbooru";
 import type { SettingsDefinition, Settings } from "./settings-schema";
 import type { Dataset, GlobalTags } from "./dataset";
 import type { CompletionItem } from "./autocompletion";
@@ -210,6 +211,22 @@ export type IpcInvokeMap = {
     "database:retrieve_completions": {
         args: [tagHint: string];
         result: CompletionItem[];
+    }
+    "danbooru:fetch_wiki": {
+        args: [tag: string];
+        result: {
+            error: boolean;
+            message?: string;
+            data?: DanbooruWikiPage;
+        }
+    }
+    "danbooru:fetch_posts": {
+        args: [tag: string];
+        result: {
+            error: boolean;
+            message?: string;
+            data?: DanbooruPostPreview[];
+        }
     }
 }
 
