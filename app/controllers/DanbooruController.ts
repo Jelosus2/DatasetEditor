@@ -1,3 +1,4 @@
+import type { Rating } from "../../shared/danbooru.js";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { DanbooruHelper } from "../utils/DanbooruHelper.js";
@@ -16,20 +17,22 @@ export class DanbooruController {
             return { error: false, data }
         } catch (error) {
             console.error(error);
-            App.logger.error(`[Danbooru Manager] Error while trying to fetch the Danbooru wiki: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to fetch wiki, check the logs for more information" }
+            const message = Utilities.getErrorMessage(error);
+            App.logger.error(`[Danbooru Manager] Error while trying to fetch the Danbooru wiki: ${message}`);
+            return { error: true, message }
         }
     }
 
     @IpcHandle("danbooru:fetch_posts")
-    async fetchPosts(_event: IpcMainInvokeEvent, tag: string) {
+    async fetchPosts(_event: IpcMainInvokeEvent, tag: string, rating: Rating) {
         try {
-            const data = await DanbooruHelper.fetchPosts(tag);
+            const data = await DanbooruHelper.fetchPosts(tag, rating);
             return { error: false, data }
         } catch (error) {
             console.error(error);
-            App.logger.error(`[Danbooru Manager] Error while trying to fetch the Danbooru posts: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to fetch posts, check the logs for more information" }
+            const message = Utilities.getErrorMessage(error);
+            App.logger.error(`[Danbooru Manager] Error while trying to fetch the Danbooru posts: ${message}`);
+            return { error: true, message }
         }
     }
 }

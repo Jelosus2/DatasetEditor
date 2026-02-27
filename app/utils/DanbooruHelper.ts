@@ -1,4 +1,4 @@
-import type { DanbooruPostPreview, DanbooruWikiPage } from "../../shared/danbooru.js";
+import type { DanbooruPostPreview, DanbooruWikiPage, Rating } from "../../shared/danbooru.js";
 import type { WikiResponse, PostsResponse } from "../types/danbooru.js";
 
 import { APIClient } from "./APIClient.js";
@@ -20,8 +20,12 @@ export class DanbooruHelper {
         };
     }
 
-    static async fetchPosts(tag: string): Promise<DanbooruPostPreview[]> {
-        const url = `https://danbooru.donmai.us/posts.json?limit=10&tags=${encodeURIComponent(tag.replaceAll(" ", "_").toLowerCase())}`;
+    static async fetchPosts(tag: string, rating: Rating): Promise<DanbooruPostPreview[]> {
+        let tagQuery = `${tag.replaceAll(" ", "_").toLowerCase()}+status:active`;
+        if (rating !== "none")
+            tagQuery += `+rating:${rating}`;
+
+        const url = `https://danbooru.donmai.us/posts.json?limit=10&tags=${encodeURIComponent(tagQuery).replaceAll("%2B", "+")}`;
         const [data, responseOk, statusCode] = await APIClient.get<PostsResponse[]>(url);
 
         if (!responseOk)

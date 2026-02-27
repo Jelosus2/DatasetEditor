@@ -1,6 +1,6 @@
 import type { TaggerModelsStatus, TaggerModelConfiguration, TaggerWSPayload } from "./tagger";
 import type { AppCloseRequestPayload, AppCloseResponsePayload } from "./app-close";
-import type { DanbooruWikiPage, DanbooruPostPreview } from "./danbooru";
+import type { DanbooruWikiPage, DanbooruPostPreview, Rating } from "./danbooru";
 import type { SettingsDefinition, Settings } from "./settings-schema";
 import type { Dataset, GlobalTags } from "./dataset";
 import type { CompletionItem } from "./autocompletion";
@@ -221,7 +221,7 @@ export type IpcInvokeMap = {
         }
     }
     "danbooru:fetch_posts": {
-        args: [tag: string];
+        args: [tag: string, rating: Rating];
         result: {
             error: boolean;
             message?: string;

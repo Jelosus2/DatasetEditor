@@ -7,7 +7,7 @@ import AutotaggerTab from "@/components/AutotaggerTab.vue";
 import SettingsTab from "@/components/SettingsTab.vue";
 import LogsTab from "@/components/LogsTab.vue";
 import AppStatusOverlay from "@/components/AppStatusOverlay.vue";
-import WikiSearchModalComponent from "@/components/WikiSearchModalComponent.vue";
+import WikiModal from "@/components/WikiModal.vue";
 import DuplicateFinderModalComponent from "@/components/DuplicateFinderModalComponent.vue";
 import RenameFilesModalComponent from "@/components/RenameFilesModalComponent.vue";
 
@@ -116,7 +116,7 @@ onMounted(async () => {
         </div>
     </div>
     <AppStatusOverlay />
-    <WikiSearchModalComponent />
+    <WikiModal />
     <DuplicateFinderModalComponent @trigger_alert="showAlert" />
     <RenameFilesModalComponent @trigger_alert="showAlert" />
 </template>

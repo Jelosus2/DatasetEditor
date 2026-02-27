@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DanbooruWikiPage, DanbooruPostPreview } from "../../shared/danbooru";
+import type { DanbooruWikiPage, DanbooruPostPreview, Rating } from "../../shared/danbooru";
 
 import AutocompletionInput from "@/components/AutocompletionInput.vue";
 
@@ -18,6 +18,7 @@ const posts = ref<DanbooruPostPreview[]>([]);
 const html = ref("");
 const loading = ref(false);
 const hasSearched = ref(false);
+const rating = ref<Rating>("none");
 
 let latestSearchId = 0;
 
@@ -42,7 +43,7 @@ async function search() {
 
     const [nextWiki, nextPosts] = await Promise.all([
         wikiService.fetchWiki(query),
-        wikiService.fetchPosts(query)
+        wikiService.fetchPosts(query, rating.value)
     ]);
 
     if (searchId !== latestSearchId)
@@ -86,10 +87,10 @@ onUnmounted(() => {
 <template>
     <input type="checkbox" id="danbooru_wiki_modal" class="modal-toggle" />
     <div class="modal z-50" role="dialog">
-        <div class="modal-box h-9/12 w-11/12 max-w-5xl">
+        <div class="modal-box h-9/12 w-11/12 max-w-6xl">
             <label for="danbooru_wiki_modal" class="absolute top-1 right-2 cursor-pointer">✕</label>
-            <div class="flex items-end justify-center gap-2 pb-4">
-                <label class="input pl-1 pr-0 outline-none!">
+            <div class="flex items-end justify-center gap-2 py-4">
+                <label class="input z-2 pl-1 pr-0 outline-none!">
                     <AutocompletionInput
                         v-model="tag"
                         placeholder="Search tag"
@@ -97,6 +98,15 @@ onUnmounted(() => {
                         @on-complete="search"
                     />
                 </label>
+                <div class="not-focus-within:hover:tooltip" data-tip="Desired rating to use when searching for posts">
+                    <select v-model.lazy="rating" class="select relative outline-none!">
+                        <option value="none">None</option>
+                        <option value="general">General</option>
+                        <option value="sensitive">Sensitive</option>
+                        <option value="questionable">Questionable</option>
+                        <option value="explicit">Explicit</option>
+                    </select>
+                </div>
                 <button class="btn btn-primary" @click="search">Search</button>
             </div>
             <div v-if="loading" class="space-y-2">
@@ -104,7 +114,7 @@ onUnmounted(() => {
                 <div class="skeleton bg-base-content/30 h-4 w-10/12"></div>
                 <div class="skeleton bg-base-content/30 h-4 w-8/12"></div>
             </div>
-            <div v-else-if="wiki" class="prose max-w-none" v-html="html"></div>
+            <div v-else-if="wiki" class="prose text-lg max-w-none" v-html="html"></div>
             <div v-else-if="hasSearched" class="text-base-content/70 py-1">
                 No wiki description found.
             </div>

@@ -9,3 +9,5 @@ export type DanbooruPostPreview = {
     previewUrl: string;
     postUrl: string;
 }
+
+export type Rating = "none" | "general" | "sensitive " | "questionable" | "explicit";

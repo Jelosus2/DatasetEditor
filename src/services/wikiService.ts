@@ -1,3 +1,5 @@
+import type { Rating } from "../../shared/danbooru";
+
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
 import { useAlert } from "@/composables/useAlert";
 import DText from "dtext-parser";
@@ -34,8 +36,8 @@ export class WikiService {
         return result.data!;
     }
 
-    async fetchPosts(tag: string) {
-        const result = await this.ipc.invoke("danbooru:fetch_posts", tag);
+    async fetchPosts(tag: string, rating: Rating) {
+        const result = await this.ipc.invoke("danbooru:fetch_posts", tag, rating);
 
         if (result.error) {
             this.alert.showAlert("error", result.message!);
