@@ -44,7 +44,6 @@ export class DanbooruHelper {
             mapped.push({
                 id: post.id,
                 mediaType: isVideo ? "video" : "image",
-                mediaUrl,
                 previewUrl,
                 postUrl: `https://danbooru.donmai.us/posts/${post.id}`
             });

@@ -40,6 +40,12 @@ const tagGroupWidth = ref(30);
 const areTagsCopied = ref(false);
 const draggingTag = ref<string | null>(null);
 const dropIndex = ref<number | null>(null);
+const tagContextMenu = ref({
+    open: false,
+    tag: "",
+    x: 0,
+    y: 0
+});
 
 const highlightRegexes = computed(() =>
     highlightInput.value
@@ -397,6 +403,41 @@ function sortDiffTags(tags?: Set<string>) {
 
     return list;
 }
+
+function openTagContextMenu(event: MouseEvent, tag: string) {
+    const MENU_WIDTH = 220;
+    const MENU_HEIGHT = 44;
+    const PADDING = 8;
+
+    let x = event.clientX;
+    let y = event.clientY;
+
+    if (x + MENU_WIDTH > window.innerWidth - PADDING)
+        x = window.innerWidth - MENU_WIDTH - PADDING;
+    if (y + MENU_HEIGHT > window.innerHeight - PADDING)
+        y = window.innerHeight - MENU_HEIGHT - PADDING;
+
+    tagContextMenu.value = {
+        open: true,
+        tag,
+        x: Math.max(PADDING, x),
+        y: Math.max(PADDING, y)
+    };
+}
+
+function closeTagContextMenu() {
+    tagContextMenu.value.open = false;
+}
+
+function searchTagInWiki(tag: string) {
+    closeTagContextMenu();
+
+    const modal = document.getElementById("danbooru_wiki_modal") as HTMLInputElement | null;
+    if (modal)
+        modal.checked = true;
+
+    window.dispatchEvent(new CustomEvent("danbooru-wiki-open", { detail: tag }));
+}
 </script>
 
 <template>
@@ -435,6 +476,7 @@ function sortDiffTags(tags?: Set<string>) {
                                 :key="tag"
                                 class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-gray-700"
                                 @click="addTag(tag, selectedImageId!)"
+                                @contextmenu.prevent="openTagContextMenu($event, tag)"
                             >
                                 {{ tag }}
                             </div>
@@ -457,6 +499,7 @@ function sortDiffTags(tags?: Set<string>) {
                                 :key="tag"
                                 class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-rose-900"
                                 @click="removeTag(tag, selectedImageId!)"
+                                @contextmenu.prevent="openTagContextMenu($event, tag)"
                             >
                                 {{ tag }}
                             </div>
@@ -528,6 +571,7 @@ function sortDiffTags(tags?: Set<string>) {
                                     'dark:bg-warning/50': (isFiltering && filterTagsSet.has(tag.toLowerCase())) || highlightSet.has(tag),
                                     'hover:bg-rose-900': !draggingTag
                                 }"
+                                @contextmenu.stop.prevent="openTagContextMenu($event, tag)"
                                 @dragover.stop.prevent="setDropIndex($event, tag, index)"
                                 @drop.stop.prevent="onTagDrop"
                                 @click="removeTag(tag)"
@@ -627,6 +671,7 @@ function sortDiffTags(tags?: Set<string>) {
                             :key="tag"
                             class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
                             @click="removeGlobalTag(tag)"
+                            @contextmenu.prevent="openTagContextMenu($event, tag)"
                         >
                             {{ settingsStore.showTagCount ? tag + ' | ' + datasetStore.globalTags.get(tag)!.size : tag }}
                         </div>
@@ -716,6 +761,7 @@ function sortDiffTags(tags?: Set<string>) {
                                         'bg-[#a6d9e2] dark:bg-gray-700': !displayedTags.has(tag),
                                     }"
                                     @click="addOrRemoveTag(tag)"
+                                    @contextmenu.prevent="openTagContextMenu($event, tag)"
                                 >
                                     {{ tag }}
                                 </div>
@@ -724,6 +770,27 @@ function sortDiffTags(tags?: Set<string>) {
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+    <div
+        v-if="tagContextMenu.open"
+        class="fixed inset-0 z-70"
+        @mousedown.prevent="closeTagContextMenu"
+    >
+        <div
+            class="absolute z-71 min-w-56 rounded-box border border-base-content/20 bg-base-100 p-1 shadow-xl"
+            :style="{
+                left: `${tagContextMenu.x}px`,
+                top: `${tagContextMenu.y}px`
+            }"
+            @mousedown.stop
+        >
+            <button
+                class="btn btn-ghost btn-sm w-full justify-start"
+                @click="searchTagInWiki(tagContextMenu.tag)"
+            >
+                Search in Danbooru Wiki
+            </button>
         </div>
     </div>
 </template>
