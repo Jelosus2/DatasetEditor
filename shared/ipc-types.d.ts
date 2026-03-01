@@ -2,7 +2,7 @@ import type { TaggerModelsStatus, TaggerModelConfiguration, TaggerWSPayload } fr
 import type { AppCloseRequestPayload, AppCloseResponsePayload } from "./app-close";
 import type { DanbooruWikiPage, DanbooruPostPreview, Rating } from "./danbooru";
 import type { SettingsDefinition, Settings } from "./settings-schema";
-import type { Dataset, GlobalTags } from "./dataset";
+import type { Dataset, DatasetPersistable, GlobalTags } from "./dataset";
 import type { CompletionItem } from "./autocompletion";
 import type { AppStatusPayload } from "./app-status";
 import type { TagGroups } from "./tag-groups";
@@ -20,20 +20,30 @@ export type IpcInvokeMap = {
         }
     }
     "dataset:save": {
-        args: [dataset: Dataset];
-        result: { error: boolean; message?: string; }
+        args: [dataset: DatasetPersistable];
+        result: {
+            error: boolean;
+            message?: string;
+        }
     }
     "dataset:compare": {
-        args: [dataset: Dataset];
+        args: [dataset: DatasetPersistable];
         result: boolean;
     }
     "tag_groups:load": {
         args: [];
-        result: { error: boolean; message?: string; tagGroups?: TagGroups; }
+        result: {
+            error: boolean;
+            message?: string;
+            tagGroups?: TagGroups;
+        }
     }
     "tag_groups:save": {
         args: [tagGroups: TagGroups];
-        result: { error: boolean; message?: string; }
+        result: {
+            error: boolean;
+            message?: string;
+        }
     }
     "tag_groups:import": {
         args: [];
@@ -46,7 +56,11 @@ export type IpcInvokeMap = {
     }
     "tag_groups:export": {
         args: [tagGroups: TagGroups];
-        result: { error: boolean; canceled?: boolean; message?: string; }
+        result: {
+            error: boolean;
+            canceled?: boolean;
+            message?: string;
+        }
     }
     "tag_groups:compare": {
         args: [tagGroups: TagGroups];
@@ -226,6 +240,13 @@ export type IpcInvokeMap = {
             error: boolean;
             message?: string;
             data?: DanbooruPostPreview[];
+        }
+    }
+    "image:set_background": {
+        args: [images: string[], color: string];
+        result: {
+            error: boolean;
+            message: string;
         }
     }
 }

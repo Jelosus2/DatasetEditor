@@ -1,24 +1,40 @@
-import { useIpcRenderer } from '@/composables/useIpcRenderer';
-import { useDatasetStore } from '@/stores/datasetStore';
+import { useIpcRenderer } from "@/composables/useIpcRenderer";
+import { useDatasetStore } from "@/stores/datasetStore";
+import { useAlert } from "@/composables/useAlert";
 
-export async function applyBackgroundColor(imageKeys: string[], color: string) {
-  const ipc = useIpcRenderer([]);
-  const datasetStore = useDatasetStore();
-  const paths = imageKeys
-    .filter((key) => datasetStore.dataset.get(key)?.path.endsWith('.png'))
-    .map((key) => datasetStore.dataset.get(key)?.path);
+export class ImageService {
+    private ipc = useIpcRenderer([]);
+    private datasetStore = useDatasetStore();
+    private alert = useAlert();
 
-  const result = await ipc.invoke<{ error: boolean, message: string }>('apply_background_color', paths, color);
+    constructor() {}
 
-  const timestamp = Date.now();
-  for (const key of imageKeys) {
-    const img = datasetStore.dataset.get(key);
-    if (img) {
-      img.filePath = img.filePath.split('?')[0] + `?v=${timestamp}`;
+    async applyBackgroundColor(images: string[], color: string) {
+        const paths = images
+            .map((key) => this.datasetStore.dataset.get(key)?.path)
+            .filter((path): path is string => !!path && path.toLowerCase().endsWith(".png"));
+
+        if (paths.length === 0) {
+            this.alert.showAlert("warning", "No PNG images selected");
+            return true;
+        }
+
+        const result = await this.ipc.invoke("image:set_background", images, color);
+
+        const processed = new Set(paths);
+        const timestamp = Date.now();
+
+        for (const image of this.datasetStore.dataset.values()) {
+            if (!processed.has(image.path))
+                continue;
+
+            image.filePath = image.filePath.split("?")[0] + `?v=${timestamp}`;
+        }
+
+        this.alert.showAlert(result.error ? "error" : "success", result.message);
+
+        return result.error;
     }
-  }
-
-  return result;
 }
 
 export async function cropImage(

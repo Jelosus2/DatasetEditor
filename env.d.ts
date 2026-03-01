@@ -35,7 +35,6 @@ declare global {
     interface Window {
         ipcRenderer: ipcElectronAPI;
         openTagWikiInBrowser: (event: MouseEvent, href: string) => void;
-        __imageUpdatedListenerAdded: boolean;
     }
 }
 

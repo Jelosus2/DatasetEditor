@@ -4,7 +4,8 @@ import { ref, toRaw } from "vue";
 
 export function useImageSelection(imageKeys: Ref<string[]>, filteredImages: Ref<Set<string>>, isFiltering: Ref<boolean>) {
     const selectedImages = ref<Set<string>>(new Set());
-    const lastSelectedIndex = ref<number>(0);
+    const lastSelectedIndex = ref(0);
+    const rangeAnchorIndex = ref(0);
 
     function toggleSelection(imageId: string, event: MouseEvent) {
         const rawImageKeys = toRaw(imageKeys.value);
@@ -16,11 +17,13 @@ export function useImageSelection(imageKeys: Ref<string[]>, filteredImages: Ref<
         const newSelection = new Set(toRaw(selectedImages.value));
 
         if (event.shiftKey) {
-            const start = Math.min(lastSelectedIndex.value, index);
-            const end = Math.max(lastSelectedIndex.value, index);
+            const start = Math.min(rangeAnchorIndex.value, index);
+            const end = Math.max(rangeAnchorIndex.value, index);
             const rawFilteredImages = toRaw(filteredImages.value);
 
-            for (let i = start; i < end; i++) {
+            newSelection.clear();
+
+            for (let i = start; i <= end; i++) {
                 const imageId = rawImageKeys[i];
                 if (!isFiltering.value || rawFilteredImages.has(imageId))
                     newSelection.add(imageId);
@@ -33,9 +36,12 @@ export function useImageSelection(imageKeys: Ref<string[]>, filteredImages: Ref<
             } else {
                 newSelection.add(imageId);
             }
+
+            rangeAnchorIndex.value = index;
         } else {
             newSelection.clear();
             newSelection.add(imageId);
+            rangeAnchorIndex.value = index;
         }
 
         lastSelectedIndex.value = index;

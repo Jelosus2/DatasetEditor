@@ -131,7 +131,7 @@ function handleClick(imageKey: string, event: MouseEvent) {
     const timer = setTimeout(() => {
         emit("toggle-selection", imageKey, event);
         clickTimers.delete(imageKey);
-    }, 250);
+    }, 200);
 
     clickTimers.set(imageKey, timer);
 }

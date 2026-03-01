@@ -1,5 +1,6 @@
 import type { Rating } from "../../shared/danbooru";
 
+import { UtilitiesService } from "@/services/utilitiesService";
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
 import { useAlert } from "@/composables/useAlert";
 import DText from "dtext-parser";
@@ -22,6 +23,7 @@ DText.options({
 export class WikiService {
     private ipc = useIpcRenderer([]);
     private alert = useAlert();
+    private utilitiesService = new UtilitiesService();
 
     constructor() {}
 
@@ -48,14 +50,14 @@ export class WikiService {
     }
 
     openDanbooruPostInBrowser(postUrl: string) {
-        this.ipc.invoke("utilities:open_url", postUrl);
+        this.utilitiesService.openUrlInBrowser(postUrl);
     }
 
     openTagWikiInBrowser = (event: MouseEvent, href: string) => {
         event.preventDefault();
 
         if (event.shiftKey) {
-            this.ipc.invoke("utilities:open_url", href);
+            this.utilitiesService.openUrlInBrowser(href);
             return;
         }
 

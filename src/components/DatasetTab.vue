@@ -2,7 +2,7 @@
 import ModalComponent from "@/components/ModalComponent.vue";
 import ImageGrid from "@/components/ImageGrid.vue";
 import TagEditor from "@/components/TagEditor.vue";
-import BackgroundColorModalComponent from "@/components/BackgroundColorModalComponent.vue";
+import BgColorChangerModal from "@/components/BgColorChangerModal.vue";
 import CropImageModalComponent from "@/components/CropImageModalComponent.vue";
 
 import { useImageSelection } from "@/composables/useImageSelection";
@@ -358,6 +358,6 @@ onDeactivated(() => {
             />
         </div>
     </ModalComponent>
-    <BackgroundColorModalComponent :selected-images="selectedImages" />
+    <BgColorChangerModal :selected-images="selectedImages" />
     <CropImageModalComponent :selected-images="selectedImages" />
 </template>

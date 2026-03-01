@@ -1,4 +1,4 @@
-import type { Dataset, GlobalTags, RenamePair } from "../../shared/dataset.js";
+import type { Dataset, DatasetPersistable, GlobalTags, RenamePair } from "../../shared/dataset.js";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
@@ -65,7 +65,7 @@ export class DatasetController {
     }
 
     @IpcHandle("dataset:save")
-    async saveDataset(_event: IpcMainInvokeEvent, dataset: Dataset) {
+    async saveDataset(_event: IpcMainInvokeEvent, dataset: DatasetPersistable) {
         try {
             for (const properties of dataset.values()) {
                 const tags = Array.from(properties.tags).join(", ");
@@ -75,22 +75,24 @@ export class DatasetController {
             }
 
             App.logger.info("[Dataset Manager] Dataset saved successfully");
-            this.originalDataset = dataset;
+            this.originalDataset = this.transformDataset<Dataset>(dataset, "runtime");
 
-            return { error: false }
+            return { error: false };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Dataset Manager] Error while trying to save the dataset: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to save the dataset, check the logs for more information" }
+            return { error: true, message: "Failed to save the dataset, check the logs for more information" };
         }
     }
 
     @IpcHandle("dataset:compare")
-    compare(_event: IpcMainInvokeEvent, dataset: Dataset) {
+    compare(_event: IpcMainInvokeEvent, dataset: DatasetPersistable) {
         if (!this.originalDataset)
             return true;
 
-        return _.isEqualWith(this.originalDataset, dataset, (val1, val2) => {
+        const originalPersistable = this.transformDataset<DatasetPersistable>(this.originalDataset, "persistable");
+
+        return _.isEqualWith(originalPersistable, dataset, (val1, val2) => {
             if (val1 instanceof Set && val2 instanceof Set) {
                 if (val1.size !== val2.size)
                     return false;
@@ -333,5 +335,29 @@ export class DatasetController {
                 await fs.rename(pair.to, pair.from);
             }
         }, concurrency);
+    }
+
+    private transformDataset<T extends Dataset | DatasetPersistable>(
+        dataset: Dataset | DatasetPersistable,
+        targetType: 'runtime' | 'persistable'
+    ): T {
+        const result = new Map() as T;
+
+        for (const [key, image] of dataset.entries()) {
+            if (targetType === 'runtime') {
+                (result as Dataset).set(key, {
+                    path: image.path,
+                    tags: image.tags,
+                    filePath: url.pathToFileURL(image.path).href
+                });
+            } else {
+                (result as DatasetPersistable).set(key, {
+                    path: image.path,
+                    tags: image.tags
+                });
+            }
+        }
+
+        return result;
     }
 }

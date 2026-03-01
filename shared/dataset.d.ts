@@ -7,6 +7,8 @@ export type DatasetImage = {
     filePath: string;
 }
 
+export type DatasetPersistable = Map<string, Omit<DatasetImage, "filePath">>;
+
 export type RenamePair = {
     from: string;
     to: string;

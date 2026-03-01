@@ -1,4 +1,4 @@
-import type { Dataset } from "../../shared/dataset";
+import type { Dataset, DatasetPersistable } from "../../shared/dataset";
 
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
 import { useAlert } from "@/composables/useAlert";
@@ -10,16 +10,15 @@ export class DatasetService {
 
     constructor() {}
 
-    private getRawDataset(dataset: Dataset) {
+    private getPersistableDataset(dataset: Dataset) {
         const rawMap = toRaw(dataset);
-        const cleanMap: Dataset = new Map();
+        const cleanMap: DatasetPersistable = new Map();
 
         for (const [imageName, properties] of rawMap.entries()) {
             const rawProperties = toRaw(properties);
 
             cleanMap.set(imageName, {
                 path: rawProperties.path,
-                filePath: rawProperties.filePath,
                 tags: toRaw(rawProperties.tags)
             });
         }
@@ -44,8 +43,8 @@ export class DatasetService {
     }
 
     async saveDataset(dataset: Dataset) {
-        const rawDataset = this.getRawDataset(dataset);
-        const result = await this.ipc.invoke("dataset:save", rawDataset);
+        const persistableDataset = this.getPersistableDataset(dataset);
+        const result = await this.ipc.invoke("dataset:save", persistableDataset);
 
         if (result.error) {
             this.alert.showAlert("error", result.message!);
@@ -56,7 +55,7 @@ export class DatasetService {
     }
 
     async compareDatasets(dataset: Dataset) {
-        const rawDataset = this.getRawDataset(dataset);
-        return this.ipc.invoke("dataset:compare", rawDataset);
+        const persistableDataset = this.getPersistableDataset(dataset);
+        return this.ipc.invoke("dataset:compare", persistableDataset);
     }
 }

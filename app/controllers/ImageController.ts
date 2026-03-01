@@ -23,11 +23,6 @@ export class ImageController {
 
                 await fs.rename(tempPath, imagePath);
 
-                let mtimeMs: number;
-                try { mtimeMs = (await fs.stat(imagePath)).mtimeMs } catch { mtimeMs = Date.now() }
-
-                App.window.ipcSend('image-updated', { path: imagePath, mtime: mtimeMs });
-
                 return { status: "fulfilled" }
             } catch (error) {
                 console.error(error);
@@ -39,7 +34,7 @@ export class ImageController {
         const successes = results.filter((result) => result.status === "fulfilled");
         const errors = results.filter((result) => result.status === "rejected");
 
-        App.logger.info(`[Image Manager] Applied the background color to ${successes.length} images`);
+        App.logger.info(`[Image Manager] Applied the background color to ${successes.length} image(s)`);
 
         if (errors.length > 0) {
             for (const error of errors) {
