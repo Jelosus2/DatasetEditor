@@ -354,7 +354,7 @@ onDeactivated(() => {
     </div>
     <ModalComponent :is-image="true">
         <div
-            class="flex max-h-[90vh] max-w-[90vw] items-center justify-center overflow-hidden"
+            class="flex max-h-[95vh] max-w-[90vw] items-center justify-center overflow-hidden"
             @wheel.prevent="handleModalWheel"
             @pointerdown="onModalPointerDown"
         >

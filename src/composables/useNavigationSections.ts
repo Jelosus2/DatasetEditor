@@ -39,9 +39,9 @@ export function useNavigationSections(emit: NavigationEmit, arePreviewsEnabled: 
         {
             id: "tools",
             label: "Tools",
-            menuWidthClass: "min-w-75 w-max max-w-lg",
+            menuWidthClass: "min-w-55 w-max max-w-lg",
             items: [
-                { kind: "modal", label: "Add background color to selected images", targetId: "background_color_modal" },
+                { kind: "modal", label: "Set image background color", targetId: "background_color_modal" },
                 { kind: "modal", label: "Search Danbooru Wiki", targetId: "danbooru_wiki_modal" },
                 { kind: "modal", label: "Crop image", targetId: "crop_image_modal" },
                 { kind: "modal", label: "Find duplicate images", targetId: "duplicate_finder_modal" },
