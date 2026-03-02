@@ -2,6 +2,7 @@ import type { Settings } from "../../shared/settings-schema";
 import type { ArrowDirection } from "@/types/composables";
 import type { Ref } from "vue";
 
+import { useDatasetStore } from "@/stores/datasetStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useAppStatus } from "@/composables/useAppStatus";
 import { onActivated, onDeactivated, watch } from "vue";
@@ -16,6 +17,7 @@ export function useGridNavigation(
 ) {
     const settingsStore = useSettingsStore();
     const appStatus = useAppStatus();
+    const datasetStore = useDatasetStore();
 
     function getVisibleKeys() {
         if (!isFiltering.value)
@@ -25,12 +27,8 @@ export function useGridNavigation(
     }
 
     function setSingleSelection(id: string) {
-        selectedImages.value = new Set([id]);
-
         const visibleKeys = getVisibleKeys();
-        const index = visibleKeys.indexOf(id);
-        if (index !== -1)
-            lastSelectedIndex.value = index;
+        datasetStore.setSingleSelection(id, visibleKeys);
     }
 
     function shouldIgnoreArrowKeys() {
@@ -81,8 +79,7 @@ export function useGridNavigation(
         if (visibleKeys.length === 0)
             return;
 
-        selectedImages.value = new Set(visibleKeys);
-        lastSelectedIndex.value = Math.min(lastSelectedIndex.value, visibleKeys.length - 1);
+        datasetStore.selectAllVisible(visibleKeys);
     }
 
     function handleKeyDown(event: KeyboardEvent) {

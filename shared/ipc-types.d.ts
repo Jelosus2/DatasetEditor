@@ -7,6 +7,7 @@ import type { CompletionItem } from "./autocompletion";
 import type { AppStatusPayload } from "./app-status";
 import type { TagGroups } from "./tag-groups";
 import type { LogType } from "./log";
+import type { Rect } from "./image";
 
 export type IpcInvokeMap = {
     "dataset:load": {
@@ -247,6 +248,14 @@ export type IpcInvokeMap = {
         result: {
             error: boolean;
             message: string;
+        }
+    }
+    "image:crop": {
+        args: [imagePath: string, cropRects: Rect[], overwrite: boolean];
+        result: {
+            error: boolean;
+            canceled?: boolean;
+            message?: string;
         }
     }
 }

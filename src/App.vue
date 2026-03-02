@@ -10,6 +10,8 @@ import AppStatusOverlay from "@/components/AppStatusOverlay.vue";
 import WikiModal from "@/components/WikiModal.vue";
 import DuplicateFinderModalComponent from "@/components/DuplicateFinderModalComponent.vue";
 import RenameFilesModalComponent from "@/components/RenameFilesModalComponent.vue";
+import BgColorChangerModal from "@/components/BgColorChangerModal.vue";
+import CropImageModal from "@/components/CropImageModal.vue";
 
 import type { ActiveTab } from "@/types/app";
 
@@ -119,4 +121,6 @@ onMounted(async () => {
     <WikiModal />
     <DuplicateFinderModalComponent @trigger_alert="showAlert" />
     <RenameFilesModalComponent @trigger_alert="showAlert" />
+    <BgColorChangerModal :selected-images="datasetStore.selectedImages" />
+    <CropImageModal :selected-images="datasetStore.selectedImages" />
 </template>

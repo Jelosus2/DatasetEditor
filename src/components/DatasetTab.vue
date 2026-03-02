@@ -2,10 +2,7 @@
 import ModalComponent from "@/components/ModalComponent.vue";
 import ImageGrid from "@/components/ImageGrid.vue";
 import TagEditor from "@/components/TagEditor.vue";
-import BgColorChangerModal from "@/components/BgColorChangerModal.vue";
-import CropImageModalComponent from "@/components/CropImageModalComponent.vue";
 
-import { useImageSelection } from "@/composables/useImageSelection";
 import { useGridNavigation } from "@/composables/useGridNavigation";
 import { useResizablePane } from "@/composables/useResizablePane";
 import { useTagDisplay } from "@/composables/useTagDisplay";
@@ -40,12 +37,15 @@ const imageKeys = computed(() => {
 
 const activeModalImage = computed(() => activeModalImageId.value ? datasetStore.dataset.get(activeModalImageId.value) : undefined);
 
-const {
-    selectedImages,
-    lastSelectedIndex,
-    toggleSelection,
-    clearSelection
-} = useImageSelection(imageKeys, computed(() => filteredImages.value), isFiltering);
+const selectedImages = computed({
+    get: () => datasetStore.selectedImages,
+    set: (value: Set<string>) => { datasetStore.selectedImages = value; }
+});
+
+const lastSelectedIndex = computed({
+    get: () => datasetStore.lastSelectedIndex,
+    set: (value: number) => { datasetStore.lastSelectedIndex = value; }
+});
 
 const selectedImageId = computed(() => selectedImages.value.values().next().value);
 const selectedImage = computed(() => selectedImageId.value ? datasetStore.dataset.get(selectedImageId.value) : undefined);
@@ -91,7 +91,7 @@ let panOriginY = 0;
 
 watch(imageKeys, (newKeys) => {
     if (newKeys.length === 0) {
-        selectedImages.value = new Set();
+        datasetStore.resetSelectionState();
         return;
     }
 
@@ -113,7 +113,7 @@ watch(filteredImages, (newSet) => {
         } else if (newSet.size > 0) {
             setSingleSelection(newSet.values().next().value!);
         } else {
-            selectedImages.value = new Set();
+            datasetStore.resetSelectionState();
         }
     }
 });
@@ -245,6 +245,20 @@ function handleOpenImage(ev: Event) {
         displayFullImage(id);
 }
 
+function toggleSelection(imageId: string, event: MouseEvent) {
+    datasetStore.toggleSelection(
+        imageId,
+        event,
+        imageKeys.value,
+        filteredImages.value,
+        isFiltering.value
+    );
+}
+
+function clearSelection() {
+    datasetStore.clearSelection(imageKeys.value);
+}
+
 onActivated(() => {
     window.addEventListener("open-image", handleOpenImage as EventListener);
     window.addEventListener("keydown", handleModalZoomKey);
@@ -358,6 +372,4 @@ onDeactivated(() => {
             />
         </div>
     </ModalComponent>
-    <BgColorChangerModal :selected-images="selectedImages" />
-    <CropImageModalComponent :selected-images="selectedImages" />
 </template>

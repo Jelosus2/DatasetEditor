@@ -1,3 +1,5 @@
+import type { Rect } from "../../shared/image";
+
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
 import { useDatasetStore } from "@/stores/datasetStore";
 import { useAlert } from "@/composables/useAlert";
@@ -35,31 +37,25 @@ export class ImageService {
 
         return result.error;
     }
-}
 
-export async function cropImage(
-  imageKey: string,
-  crop: { x: number; y: number; width: number; height: number },
-  overwrite: boolean,
-) {
-  const ipc = useIpcRenderer([]);
-  const datasetStore = useDatasetStore();
-  const path = datasetStore.dataset.get(imageKey)?.path;
-  if (!path) return { error: true, message: 'Image not found' };
+    async cropImage(imageKey: string, cropRects: Rect[], overwrite: boolean) {
+        const image = this.datasetStore.dataset.get(imageKey);
+        if (!image) {
+            this.alert.showAlert("error", "Image not found in the dataset");
+            return true;
+        }
 
-  const result = await ipc.invoke<{ error: boolean; message: string }>(
-    'crop_image',
-    path,
-    crop,
-    overwrite,
-  );
+        const result = await this.ipc.invoke("image:crop", image.path, cropRects, overwrite);
 
-  if (overwrite) {
-    const img = datasetStore.dataset.get(imageKey);
-    if (img) {
-      img.filePath = img.filePath.split('?')[0] + `?v=${Date.now()}`;
+        if (result.canceled) {
+            this.alert.showAlert("info", "Saving cropped image was canceled");
+            return true;
+        }
+
+        if (!result.error && overwrite)
+            image.filePath = image.filePath.split('?')[0] + `?v=${Date.now()}`;
+
+        this.alert.showAlert(result.error ? "error" : "success", result.message!);
+        return result.error;
     }
-  }
-
-  return result;
 }

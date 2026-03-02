@@ -16,6 +16,9 @@ export const useDatasetStore = defineStore("dataset", () => {
     const datasetUndoStack = ref<DatasetChangeRecord[]>([]);
     const datasetRedoStack = ref<DatasetChangeRecord[]>([]);
     const sortMode = ref<"none" | "alphabetical">("none");
+    const selectedImages = ref<Set<string>>(new Set());
+    const lastSelectedIndex = ref(0);
+    const rangeAnchorIndex = ref(0);
 
     const datasetService = new DatasetService();
     const alert = useAlert();
@@ -575,6 +578,91 @@ export const useDatasetStore = defineStore("dataset", () => {
         return "file://" + norm;
     }
 
+    function toggleSelection(
+        imageId: string,
+        event: MouseEvent,
+        imageKeys: string[],
+        filteredImages: Set<string>,
+        isFiltering: boolean
+    ) {
+        const index = imageKeys.indexOf(imageId);
+        if (index === -1)
+            return;
+
+        const newSelection = new Set(selectedImages.value);
+
+        if (event.shiftKey) {
+            const start = Math.min(rangeAnchorIndex.value, index);
+            const end = Math.max(rangeAnchorIndex.value, index);
+
+            newSelection.clear();
+
+            for (let i = start; i <= end; i++) {
+                const id = imageKeys[i];
+                if (!isFiltering || filteredImages.has(id))
+                    newSelection.add(id);
+            }
+        } else if (event.ctrlKey) {
+            if (newSelection.has(imageId)) {
+                if (newSelection.size > 1)
+                    newSelection.delete(imageId);
+            } else {
+                newSelection.add(imageId);
+            }
+
+            rangeAnchorIndex.value = index;
+        } else {
+            newSelection.clear();
+            newSelection.add(imageId);
+            rangeAnchorIndex.value = index;
+        }
+
+        lastSelectedIndex.value = index;
+        selectedImages.value = newSelection;
+    }
+
+    function clearSelection(imageKeys: string[]) {
+        if (imageKeys.length === 0) {
+            selectedImages.value = new Set();
+            lastSelectedIndex.value = 0;
+            rangeAnchorIndex.value = 0;
+            return;
+        }
+
+        selectedImages.value = new Set([imageKeys[0]]);
+        lastSelectedIndex.value = 0;
+        rangeAnchorIndex.value = 0;
+    }
+
+    function setSingleSelection(id: string, visibleKeys: string[]) {
+        selectedImages.value = new Set([id]);
+
+        const index = visibleKeys.indexOf(id);
+        if (index !== -1) {
+            lastSelectedIndex.value = index;
+            rangeAnchorIndex.value = index;
+        }
+    }
+
+    function selectAllVisible(visibleKeys: string[]) {
+        if (visibleKeys.length === 0) {
+            resetSelectionState();
+            return;
+        }
+
+        selectedImages.value = new Set(visibleKeys);
+
+        const clamped = Math.min(lastSelectedIndex.value, visibleKeys.length - 1);
+        lastSelectedIndex.value = clamped;
+        rangeAnchorIndex.value = clamped;
+    }
+
+    function resetSelectionState() {
+        selectedImages.value = new Set();
+        lastSelectedIndex.value = 0;
+        rangeAnchorIndex.value = 0;
+    }
+
     async function loadDataset(reload: boolean = false) {
         const _isDatasetSaved = await isDatasetSaved();
 
@@ -585,6 +673,8 @@ export const useDatasetStore = defineStore("dataset", () => {
         dataset.value = result.dataset!;
         globalTags.value = result.globalTags!;
         tagDiff.value = new Map();
+
+        resetSelectionState();
 
         if (!reload)
             resetDatasetStatus();
@@ -629,6 +719,13 @@ export const useDatasetStore = defineStore("dataset", () => {
         undoDatasetAction,
         redoDatasetAction,
         resetDatasetStatus,
+        selectedImages,
+        lastSelectedIndex,
+        toggleSelection,
+        clearSelection,
+        setSingleSelection,
+        selectAllVisible,
+        resetSelectionState,
         loadDataset,
         saveDataset,
         isDatasetSaved
