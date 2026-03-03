@@ -5,6 +5,7 @@ defineProps<{
     image: DatasetImage;
     path: string;
     selected: boolean;
+    suspendImage: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -25,7 +26,11 @@ const emit = defineEmits<{
         @mouseenter="emit('mouseenter')"
         @mouseleave="emit('mouseleave')"
     >
+        <template v-if="suspendImage">
+            <div class="h-full w-full bg-base-300/40"></div>
+        </template>
         <img
+            v-else
             :src="image.filePath"
             :alt="path"
             draggable="false"

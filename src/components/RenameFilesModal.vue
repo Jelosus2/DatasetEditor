@@ -57,14 +57,10 @@ const canRename = computed(() =>
     isDatasetLoaded.value &&
     !loading.value &&
     !previewLoading.value &&
-    !previewStale.value &&
-    preview.value.length > 0 &&
     conflicts.value === 0
 );
 
 watch([renameMode, startNumberInput, paddingInput, templateInput], () => {
-    preview.value = [];
-    conflicts.value = 0;
     previewStale.value = true;
 });
 
@@ -86,7 +82,7 @@ function resetState() {
 
 function normalizeStartAt() {
     const value = Number(startNumberInput.value);
-    if (!Number.isFinite(value) && value < 1)
+    if (!Number.isFinite(value) || value < 1)
         return 1;
 
     return Math.trunc(value);
@@ -180,7 +176,7 @@ async function renameFiles() {
             <div class="flex flex-col gap-4">
                 <div class="flex items-center justify-between border-b-2 pb-2 dark:border-base-content/10">
                     <div class="text-lg font-semibold">Rename Files</div>
-                    <div class="badge badge-info pb-0.5">{{ filesCount }} file(s)</div>
+                    <div class="badge badge-info pb-0.5 text-base">{{ filesCount }} file(s)</div>
                 </div>
                 <div class="grid gap-3 md:grid-cols-2">
                     <div class="rounded-box border border-base-content/20 p-3">
@@ -222,13 +218,13 @@ async function renameFiles() {
                             placeholder="{index}_{name}"
                         />
                     </label>
-                    <div class="mt-2 text-xs opacity-70">
+                    <div class="mt-2 text-sm opacity-70">
                         Tokens: <code>{index}</code>, <code>{name}</code>, <code>{ext}</code>
                     </div>
                 </div>
                 <div class="rounded-box border border-base-content/20 p-3">
                     <div class="mb-2 flex items-center justify-between">
-                        <div class="font-semibold opacity-80">Preview</div>
+                        <div class="text-lg font-semibold opacity-80">Preview</div>
                         <button class="btn btn-outline" :disabled="previewLoading || loading || !isDatasetLoaded" @click="generatePreview">
                             <span v-if="previewLoading" class="loading loading-spinner loading-xs"></span>
                             {{ previewLoading ? "Building..." : "Generate Preview" }}
@@ -240,7 +236,7 @@ async function renameFiles() {
                     <div v-else class="overflow-hidden rounded-box border border-base-content/10">
                         <div v-for="item in visiblePreview" :key="item.from" class="flex items-start justify-between gap-3 border-b border-base-content/10 px-3 py-2 last:border-b-0">
                             <div class="min-w-0 flex-1">
-                                <div class="truncate text-xs opacity-70">{{ item.fromName }}</div>
+                                <div class="truncate text-sm opacity-70">{{ item.fromName }}</div>
                                 <div class="truncate font-mono">{{ item.toName }}</div>
                                 <div v-if="item.hasConflict" class="mt-1 text-xs text-error">
                                     {{ item.reason }}
@@ -251,9 +247,12 @@ async function renameFiles() {
                             </div>
                         </div>
                     </div>
-                    <div v-if="hiddenPreviewCount > 0" class="pt-2 text-right text-xs opacity-70">
+                    <div v-if="hiddenPreviewCount > 0" class="pt-2 text-right text-sm opacity-70">
                         +{{ hiddenPreviewCount }} more...
                     </div>
+                </div>
+                <div v-if="previewStale && preview.length > 0" class="mb-2 text-warning">
+                    Preview is outdated. Click "Generate Preview" to refresh it.
                 </div>
                 <div v-if="conflicts > 0" class="alert alert-warning">
                     <span>{{ conflicts }} conflict(s) detected. Adjust options and regenerate preview.</span>
@@ -266,7 +265,6 @@ async function renameFiles() {
                     <progress class="progress progress-primary w-full" :value="processed" :max="total"></progress>
                     <div v-if="currentPath" class="mt-2 truncate text-xs opacity-70">{{ currentPath }}</div>
                 </div>
-
                 <div class="flex items-center justify-end gap-2">
                     <button class="btn" :disabled="loading || previewLoading" @click="resetState">Reset</button>
                     <button class="btn btn-primary" :disabled="!canRename" @click="renameFiles">

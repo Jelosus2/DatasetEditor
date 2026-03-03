@@ -22,6 +22,23 @@ const emit = defineEmits<{
     (e: "grid-metrics", metrics: { columns: number }): void;
 }>();
 
+const containerRef = ref<HTMLElement | null>(null);
+const containerWidth = ref(0);
+const containerHeight = ref(0);
+const liveScrollTop = ref(0);
+const virtualScrollTop = ref(0);
+const isFastScrolling = ref(false);
+
+const MIN_COLUMN_WIDTH = 100;
+const GAP = 4;
+const BUFFER_ROWS = 3;
+const FAST_SCROLL_VELOCITY = 2.5;
+const SCROLL_SETTLE_MS = 160;
+
+let settleTimer: number | null = null;
+let lastScrollTop = 0;
+let lastScrollTs = 0;
+
 const datasetStore = useDatasetStore();
 
 const autocompleteList = computed(() => {
@@ -31,15 +48,6 @@ const autocompleteList = computed(() => {
 });
 
 const selectedSet = computed(() => selectedImages.value);
-
-const containerRef = ref<HTMLElement | null>(null);
-const scrollTop = ref(0);
-const containerWidth = ref(0);
-const containerHeight = ref(0);
-
-const MIN_COLUMN_WIDTH = 100;
-const GAP = 4;
-const BUFFER_ROWS = 6;
 
 const allImages = computed(() => {
     void datasetStore.dataVersion;
@@ -81,7 +89,7 @@ const virtualState = computed(() => {
     const totalRows = Math.ceil(totalItems / columns);
     const totalHeight = Math.max(0, totalRows * rowHeight - GAP);
 
-    const startRow = Math.floor(scrollTop.value / rowHeight);
+    const startRow = Math.floor(virtualScrollTop.value / rowHeight);
     const visibleRowCount = Math.ceil(containerHeight.value / rowHeight);
 
     const bufferedStartRow = Math.max(0, startRow - BUFFER_ROWS);
@@ -110,11 +118,39 @@ watch(gridMetrics, (metrics) => {
 let rafId: number | null = null;
 
 function onScroll(event: Event) {
+    const element = event.target as HTMLElement;
+    const nextTop = element.scrollTop;
+    const now = performance.now();
+
+    liveScrollTop.value = nextTop;
+
+    const dt = Math.max(1, now - lastScrollTs);
+    const dy = Math.abs(nextTop - lastScrollTop);
+    const velocity = dy / dt;
+
+    lastScrollTop = nextTop;
+    lastScrollTs = now;
+
+    const fastJump = dy > Math.max(containerHeight.value * 1.5, 600);
+    if (velocity > FAST_SCROLL_VELOCITY || fastJump)
+        isFastScrolling.value = true;
+
+    if (settleTimer !== null)
+        clearTimeout(settleTimer);
+
+    settleTimer = window.setTimeout(() => {
+        isFastScrolling.value = false;
+        virtualScrollTop.value = liveScrollTop.value;
+    }, SCROLL_SETTLE_MS);
+
+    if (isFastScrolling.value)
+        return;
+
     if (rafId !== null)
         return;
 
     rafId = requestAnimationFrame(() => {
-        scrollTop.value = (event.target as HTMLElement).scrollTop;
+        virtualScrollTop.value = liveScrollTop.value;
         rafId = null;
     });
 }
@@ -154,6 +190,10 @@ onActivated(() => {
 
     containerWidth.value = containerRef.value.clientWidth;
     containerHeight.value = containerRef.value.clientHeight;
+    liveScrollTop.value = containerRef.value.scrollTop;
+    virtualScrollTop.value = containerRef.value.scrollTop;
+    lastScrollTop = containerRef.value.scrollTop;
+    lastScrollTs = performance.now();
 
     if (!resizeObserver) {
         resizeObserver = new ResizeObserver((entries) => {
@@ -177,13 +217,19 @@ onDeactivated(() => {
         resizeObserver.disconnect();
     if (containerRef.value)
         containerRef.value.removeEventListener("scroll", onScroll);
+    if (settleTimer !== null)
+        clearTimeout(settleTimer);
+
+    isFastScrolling.value = false;
+    liveScrollTop.value = 0;
+    virtualScrollTop.value = 0;
 });
 </script>
 
 <template>
     <div
         ref="containerRef"
-        class="h-full w-full overflow-y-auto overflow-x-hidden scroll-smooth scrollbar-stable"
+        class="h-full w-full overflow-y-auto overflow-x-hidden scrollbar-stable"
     >
         <div v-if="datasetStore.dataset.size > 0" :style="{ height: virtualState.totalHeight + 'px', position: 'relative' }">
             <div
@@ -200,12 +246,13 @@ onDeactivated(() => {
                     :key="imageKey"
                     :path="imageKey"
                     :image="image"
+                    :suspend-image="isFastScrolling"
                     :selected="selectedSet.has(imageKey)"
                     :style="{ height: layout.cellHeight + 'px' }"
                     @click="handleClick(imageKey, $event)"
                     @dblclick="handleDblClick(imageKey)"
-                    @mouseenter="emit('hover-image', imageKey)"
-                    @mouseleave="emit('hover-image', undefined)"
+                    @mouseenter="!isFastScrolling && emit('hover-image', imageKey)"
+                    @mouseleave="!isFastScrolling && emit('hover-image', undefined)"
                 />
             </div>
         </div>
