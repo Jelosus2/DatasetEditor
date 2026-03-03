@@ -1,18 +1,25 @@
-import { useIpcRenderer } from '@/composables/useIpcRenderer';
+import type { DatasetRenameOptions, RenameProgressPayload } from "../../shared/dataset";
 
-export interface TrashResult {
-  error: boolean;
-  message?: string;
-}
+import { useIpcRenderer } from "@/composables/useIpcRenderer";
 
 export class FileService {
-  private ipc = useIpcRenderer([]);
+    private ipc;
+    public onRenameProgress?: (progress: RenameProgressPayload) => void;
 
-  async trashFiles(paths: string[]): Promise<TrashResult> {
-    return (await this.ipc.invoke<TrashResult>('trash_files', paths)) as TrashResult;
-  }
+    constructor() {
+        this.ipc = useIpcRenderer([
+            {
+                channel: "dataset:rename-progress",
+                handler: (progress) => this.onRenameProgress?.(progress)
+            }
+        ]);
+    }
 
-  async renameFiles(paths: string[], startAt: number): Promise<{ error: boolean; message?: string; renamed?: number; mappings?: { from: string; to: string; mtime: number }[] }>{
-    return (await this.ipc.invoke<{ error: boolean; message?: string; renamed?: number; mappings?: { from: string; to: string; mtime: number }[] }>('rename_files', paths, startAt)) as { error: boolean; message?: string; renamed?: number; mappings?: { from: string; to: string; mtime: number }[] };
-  }
+    async trashFiles(filePaths: string[]) {
+        return this.ipc.invoke("dataset:trash", filePaths);
+    }
+
+    async renameFiles(imagePaths: string[], options: DatasetRenameOptions) {
+        return this.ipc.invoke("dataset:rename", imagePaths, options);
+    }
 }

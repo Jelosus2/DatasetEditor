@@ -1,4 +1,5 @@
-import type { Dataset, DatasetPersistable, GlobalTags, RenamePair } from "../../shared/dataset.js";
+import type { Dataset, DatasetPersistable, DatasetRenameOptions, GlobalTags, RenamePair, RenamePreviewItem, RenameProgressPayload } from "../../shared/dataset.js";
+import type { RenamePlanEntry } from "../types/dataset.js";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
@@ -12,7 +13,7 @@ import _ from "lodash";
 
 @IpcClass()
 export class DatasetController {
-    readonly SUPPORTED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png'];
+    readonly SUPPORTED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png"];
     originalDataset: Dataset | null;
     loadedDirectory: string | null;
 
@@ -69,7 +70,7 @@ export class DatasetController {
         try {
             for (const properties of dataset.values()) {
                 const tags = Array.from(properties.tags).join(", ");
-                const filePath = properties.path.replace(/\.[^.]+$/, '.txt');
+                const filePath = properties.path.replace(/\.[^.]+$/, ".txt");
 
                 await fs.outputFile(filePath, tags, { encoding: "utf-8" });
             }
@@ -119,7 +120,7 @@ export class DatasetController {
                 const directory = path.dirname(filePath);
                 const filename = path.basename(filePath);
 
-                const txtPath = path.join(directory, filename.replace(/\.[^.]+$/, '.txt'));
+                const txtPath = path.join(directory, filename.replace(/\.[^.]+$/, ".txt"));
                 if (await fs.pathExists(txtPath))
                     await shell.trashItem(txtPath);
 
@@ -143,97 +144,105 @@ export class DatasetController {
             return { error: true, message: "Error trashing file, check the logs for more information" }
         }
 
-        return { error: false }
+        return { error: false, message: `Sent ${successes.length} pair of files to the trash bin` };
     }
 
     @IpcHandle("dataset:rename")
-    async renameDataset(_event: IpcMainInvokeEvent, imagePaths: string[], startAt: number) {
-        if (!imagePaths?.length)
-            return { error: false, renamedCount: 0 };
+    async renameDataset(_event: IpcMainInvokeEvent, imagePaths: string[], options: DatasetRenameOptions | number) {
+        if (!imagePaths.length)
+            return { error: false, renamedCount: 0, preview: [], conflicts: 0 };
+
+        const renameOptions = typeof options === "number"
+            ? { mode: "sequence", startAt: options } satisfies DatasetRenameOptions
+            : options;
+
+        const { plan, preview, conflicts } = await this.createRenamePlan(imagePaths, renameOptions);
+
+        if (renameOptions.dryRun)
+            return { error: false, preview, conflicts, renamedCount: 0 };
+        if (conflicts > 0)
+            return { error: true, message: `Found ${conflicts} naming conflict(s). Adjust options before renaming.`, preview, conflicts };
 
         const pairs: RenamePair[] = [];
-        const sourceFiles = new Set(imagePaths.map((p) => path.normalize(p.toLowerCase())));
+        const batchId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        let pairIndex = 0;
 
-        for (let i = 0; i < imagePaths.length; i++) {
-            const imagePath = imagePaths[i];
-            const directory = path.dirname(imagePath);
-            const extension = path.extname(imagePath);
-            const newName = `${startAt + i}`;
+        for (const entry of plan) {
+            const imageExtension = path.extname(entry.imageFrom);
 
-            const newImagePath = path.join(directory, newName + extension);
-
-            if (await fs.pathExists(newImagePath) && !sourceFiles.has(path.normalize(newImagePath.toLowerCase())))
-                return { error: true, message: `Cannot rename: Target '${newImagePath}' exists and is not part of the dataset.` }
-
-            const tempImagePath = path.join(directory, `.tmp_${Date.now()}_img_${i}${extension}`);
             pairs.push({
-                from: imagePath,
-                to: newImagePath,
-                temp: tempImagePath
+                from: entry.imageFrom,
+                to: entry.imageTo,
+                temp: path.join(path.dirname(entry.imageFrom), `.tmp_${batchId}_${pairIndex++}${imageExtension}`)
             });
 
-            const txtPath = imagePath.replace(/\.[^.]+$/, '.txt');
-            if (await fs.pathExists(txtPath)) {
-                const newTxtPath = path.join(directory, newName + ".txt");
-
-                if (await fs.pathExists(newTxtPath) && !sourceFiles.has(path.normalize(newTxtPath.toLowerCase())))
-                    return { error: true, message: `Cannot rename: Target '${newTxtPath}' exists and is not part of the dataset.` }
-
-                const tempTxtPath = path.join(directory, `.tmp_${Date.now()}_txt_${i}.txt`);
+            if (entry.txtFrom && entry.txtTo) {
                 pairs.push({
-                    from: txtPath,
-                    to: newTxtPath,
-                    temp: tempTxtPath
+                    from: entry.txtFrom,
+                    to: entry.txtTo,
+                    temp: path.join(path.dirname(entry.txtFrom), `.tmp_${batchId}_${pairIndex++}.txt`)
                 });
-                sourceFiles.add(path.normalize(txtPath.toLowerCase()));
             }
         }
 
-        let processed = 0;
         const concurrency = 50;
         const totalOperations = pairs.length * 2;
+        let processed = 0;
 
-        const updateProgress = () => {
-            processed++;
-            App.window.ipcSend("rename-progress", { processed, total: totalOperations });
+        const updateProgress = (phase: RenameProgressPayload["phase"], currentPath?: string) => {
+            App.window.ipcSend("dataset:rename-progress", {
+                phase,
+                processed,
+                total: totalOperations,
+                currentPath
+            });
         }
+
+        updateProgress("prepare");
 
         try {
             await Utilities.processMap(pairs, async (pair) => {
                 await fs.rename(pair.from, pair.temp);
-                updateProgress();
+                processed++;
+                updateProgress("rename_temp", pair.from);
             }, concurrency);
 
             await Utilities.processMap(pairs, async (pair) => {
                 await fs.rename(pair.temp, pair.to);
-                updateProgress();
+                processed++;
+                updateProgress("rename_final", pair.to);
             }, concurrency);
 
-            const mappings = pairs
-                .filter((pair) => this.SUPPORTED_IMAGE_EXTENSIONS.includes(path.extname(pair.to)))
-                .map((pair) => ({ from: pair.from, to: pair.to, mtime: Date.now() }));
+            const mappings = plan.map((entry) => ({
+                from: entry.imageFrom,
+                to: entry.imageTo,
+                mtime: Date.now()
+            }));
 
-            App.logger.info(`[Dataset Manager] Successfully renamed ${pairs.length} files`);
-            return { error: false, renamedCount: pairs.length, mappings }
+            this.applyRenameMappingsToOriginalDataset(mappings);
+
+            updateProgress("done");
+            App.logger.info(`[Dataset Manager] Successfully renamed ${plan.length} images`);
+            return { error: false, renamedCount: plan.length, mappings, preview, conflicts: 0 };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Dataset Manager] Error while renaming dataset: ${Utilities.getErrorMessage(error)}`);
-            App.logger.warning("Rename failed. Reverting changes...");
+            App.logger.warning("[Dataset Manager] Rename failed. Reverting changes...");
 
             try {
-                await this.rollbackRenameOperation(pairs, concurrency);
+                await this.rollbackRenameOperation(pairs, concurrency, totalOperations);
 
                 App.logger.info("[Dataset Manager] Rename rollback successful");
-                return { error: true, message: "Rename failed, but files were restored to their original names" }
+                return { error: true, message: "Rename failed, but files were restored to their original names", preview, conflicts: 0 };
             } catch (rollbackError) {
                 console.error(rollbackError);
                 App.logger.error(`[Dataset Manager] Rename rollback failed: ${Utilities.getErrorMessage(rollbackError)}`);
-                return { error: true, message: "Critical error: rename failed and rollback could not be completed. Please check for files named .tmp" }
+                return { error: true, message: "Critical error: rename failed and rollback could not be completed. Please check for files named .tmp", preview, conflicts: 0 };
             }
         }
     }
 
-    async confirmedUnsavedChanges() {
+    private async confirmedUnsavedChanges() {
         const result = await App.showMessageBox({
             type: "question",
             title: "Unsaved Changes",
@@ -244,7 +253,7 @@ export class DatasetController {
         return result.response === 0;
     }
 
-    async selectDirectory() {
+    private async selectDirectory() {
         const result = await App.showOpenDialog({
             title: "Select the dataset directory",
             buttonLabel: "Load Dataset",
@@ -254,7 +263,7 @@ export class DatasetController {
         return result.filePaths[0];
     }
 
-    async processDatasetDirectory(directoryPath: string, recursive?: boolean, sortOnLoad?: boolean) {
+    private async processDatasetDirectory(directoryPath: string, recursive?: boolean, sortOnLoad?: boolean) {
         const dataset: Dataset = new Map();
         const globalTags: GlobalTags = new Map();
 
@@ -281,7 +290,7 @@ export class DatasetController {
             let mtimeMs: number;
             try { mtimeMs = (await fs.stat(file.filePath)).mtimeMs } catch { mtimeMs = Date.now() }
 
-            const imageKey = file.filePath.replace(/\\|\\\\/g, '/');
+            const imageKey = this.normalizePath(file.filePath);
             const filePath = `${url.pathToFileURL(file.filePath).href}?v=${mtimeMs}`;
 
             dataset.set(imageKey, {
@@ -296,8 +305,8 @@ export class DatasetController {
         return { dataset, globalTags }
     }
 
-    async loadImageTags(directoryPath: string, filename: string): Promise<Set<string>> {
-        const sanitizedName = filename.replace(/\.[^.]+$/, '.txt');
+    private async loadImageTags(directoryPath: string, filename: string): Promise<Set<string>> {
+        const sanitizedName = filename.replace(/\.[^.]+$/, ".txt");
         const txtPath = path.join(directoryPath, sanitizedName);
 
         if (!await fs.pathExists(txtPath))
@@ -308,7 +317,7 @@ export class DatasetController {
             return new Set(
                 content
                     .split(",")
-                    .map((tag) => tag.trim().replaceAll('_', ' ').replaceAll('\\(', '(').replaceAll('\\)', ')'))
+                    .map((tag) => tag.trim().replaceAll("_", " ").replaceAll("\\(", "(").replaceAll("\\)", ")"))
                     .filter(Boolean)
             );
         } catch (error) {
@@ -318,7 +327,7 @@ export class DatasetController {
         }
     }
 
-    updateGlobalTags(globalTags: GlobalTags, tags: Set<string>, imageName: string) {
+    private updateGlobalTags(globalTags: GlobalTags, tags: Set<string>, imageName: string) {
         for (const tag of tags) {
             if (!globalTags.has(tag))
                 globalTags.set(tag, new Set());
@@ -327,24 +336,14 @@ export class DatasetController {
         }
     }
 
-    async rollbackRenameOperation(pairs: RenamePair[], concurrency: number) {
-        await Utilities.processMap(pairs, async (pair) => {
-            if (await fs.pathExists(pair.temp)) {
-                await fs.rename(pair.temp, pair.from);
-            } else if (await fs.pathExists(pair.to) && pair.to !== pair.from) {
-                await fs.rename(pair.to, pair.from);
-            }
-        }, concurrency);
-    }
-
     private transformDataset<T extends Dataset | DatasetPersistable>(
         dataset: Dataset | DatasetPersistable,
-        targetType: 'runtime' | 'persistable'
+        targetType: "runtime" | "persistable"
     ): T {
         const result = new Map() as T;
 
         for (const [key, image] of dataset.entries()) {
-            if (targetType === 'runtime') {
+            if (targetType === "runtime") {
                 (result as Dataset).set(key, {
                     path: image.path,
                     tags: image.tags,
@@ -359,5 +358,175 @@ export class DatasetController {
         }
 
         return result;
+    }
+
+    private normalizePath(path: string) {
+        return path.replace(/\\|\\\\/g, "/");
+    }
+
+    private normalizeStartAt(startAt?: number) {
+        const normalized = Number.isFinite(startAt) ? Math.trunc(startAt!) : 1;
+        return normalized > 0 ? normalized : 1;
+    }
+
+    private normalizePadding(padding?: number) {
+        const normalized = Number.isFinite(padding) ? Math.trunc(padding!) : 0;
+        return Math.max(0, Math.min(12, normalized));
+    }
+
+    private sanitizeFilenameSegment(segment: string) {
+        const sanitized = segment
+            .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        if (!sanitized || sanitized === "." || sanitized === "..")
+            return "_";
+
+        return sanitized;
+    }
+
+    private buildTargetBaseName(imagePath: string, index: number, options: DatasetRenameOptions) {
+        const extension = path.extname(imagePath);
+        const currentName = path.basename(imagePath, extension);
+        const startAt = this.normalizeStartAt(options.startAt);
+        const padding = this.normalizePadding(options.padding);
+        const nextIndex = startAt + index;
+        const indexStr = String(nextIndex).padStart(padding, "0");
+
+        if (options.mode === "sequence")
+            return this.sanitizeFilenameSegment(indexStr);
+
+        const template = options.template?.trim() || "{index}_{name}";
+        const target = template
+            .replaceAll("{index}", indexStr)
+            .replaceAll("{name}", currentName)
+            .replaceAll("{ext}", extension.replace(".", ""));
+
+        return this.sanitizeFilenameSegment(target);
+    }
+
+    private async createRenamePlan(imagePaths: string[], options: DatasetRenameOptions) {
+        const sourceFiles = new Set(imagePaths.map((entry) => path.normalize(entry.toLowerCase())));
+        const seenTargets = new Set<string>();
+        const plan: RenamePlanEntry[] = [];
+        const preview: RenamePreviewItem[] = [];
+
+        let conflicts = 0;
+
+        for (let i = 0; i < imagePaths.length; i++) {
+            const imageFrom = imagePaths[i];
+            const directory = path.dirname(imageFrom);
+            const extension = path.extname(imageFrom);
+            const nextBase = this.buildTargetBaseName(imageFrom, i, options);
+            const imageTo = path.join(directory, `${nextBase}${extension}`);
+            const imageToKey = path.normalize(imageTo.toLowerCase());
+
+            let hasConflict = false;
+            let reason: string | undefined;
+
+            const markConflict = (message: string) => {
+                if (!hasConflict) {
+                    hasConflict = true;
+                    reason = message;
+                }
+            }
+
+            if (seenTargets.has(imageToKey))
+                markConflict("Two files would be renamed to the same destination.");
+            else
+                seenTargets.add(imageToKey);
+
+            if (!hasConflict && await fs.pathExists(imageTo) && !sourceFiles.has(imageToKey))
+                markConflict(`Target file already exists: ${path.basename(imageTo)}`);
+
+            const txtFrom = imageFrom.replace(/\.[^.]+$/, ".txt");
+            const hasTxtPair = await fs.pathExists(txtFrom);
+            const txtFromKey = path.normalize(txtFrom.toLowerCase());
+            if (hasTxtPair)
+                sourceFiles.add(txtFromKey);
+
+            let txtTo: string | null = null;
+
+            if (hasTxtPair) {
+                txtTo = path.join(directory, `${nextBase}.txt`);
+                const txtToKey = path.normalize(txtTo.toLowerCase());
+
+                if (seenTargets.has(txtToKey))
+                    markConflict("Two caption files would be renamed to the same destination.");
+                else
+                    seenTargets.add(txtToKey);
+
+                if (!hasConflict && await fs.pathExists(txtTo) && !sourceFiles.has(txtToKey))
+                    markConflict(`Target caption file already exists: ${path.basename(txtTo)}`);
+            }
+
+            if (hasConflict)
+                conflicts++;
+
+            plan.push({
+                imageFrom,
+                imageTo,
+                txtFrom: hasTxtPair ? txtFrom : null,
+                txtTo,
+                hasConflict,
+                reason
+            });
+
+            preview.push({
+                from: imageFrom,
+                to: imageTo,
+                fromName: path.basename(imageFrom),
+                toName: path.basename(imageTo),
+                hasConflict,
+                reason
+            });
+        }
+
+        return { plan, preview, conflicts };
+    }
+
+    private async rollbackRenameOperation(pairs: RenamePair[], concurrency: number, totalOperations: number) {
+        let processed = 0;
+
+        await Utilities.processMap(pairs, async (pair) => {
+            if (await fs.pathExists(pair.temp))
+                await fs.rename(pair.temp, pair.from);
+            else if (await fs.pathExists(pair.to) && pair.to !== pair.from)
+                await fs.rename(pair.to, pair.from);
+
+            processed++;
+            App.window.ipcSend("dataset:rename-progress", {
+                phase: "rollback",
+                processed,
+                total: totalOperations,
+                currentPath: pair.from
+            });
+        }, concurrency);
+    }
+
+    private applyRenameMappingsToOriginalDataset(mappings: { from: string; to: string; mtime: number }[]) {
+        if (!this.originalDataset || mappings.length === 0)
+            return;
+
+        const updated = new Map(this.originalDataset);
+
+        for (const { from, to, mtime } of mappings) {
+            const fromKey = this.normalizePath(from);
+            const toKey = this.normalizePath(to);
+
+            const existing = updated.get(fromKey);
+            if (!existing)
+                continue;
+
+            updated.delete(fromKey);
+            updated.set(toKey, {
+                tags: new Set(existing.tags),
+                path: this.normalizePath(to),
+                filePath: `${url.pathToFileURL(to).href}?v=${typeof mtime === "number" ? mtime : Date.now()}`
+            });
+        }
+
+        this.originalDataset = updated;
     }
 }

@@ -522,7 +522,7 @@ export const useDatasetStore = defineStore("dataset", () => {
 
             moveImageInGlobalTags(oldKey, newKey, tagsCopy, rawGlobalTags);
 
-            const filePath = `${toFileUrl(newPath)}?v=${typeof mtime === "number" ? mtime : Date.now()}`;
+            const filePath = `${toFileUrl(newPath)}?v=${mtime}`;
             rawDataset.delete(oldKey);
             rawDataset.set(newKey, { tags: tagsCopy, path: newPath, filePath });
         }

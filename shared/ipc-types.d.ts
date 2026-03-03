@@ -1,8 +1,8 @@
+import type { Dataset, DatasetPersistable, DatasetRenameOptions, RenameProgressPayload, RenameMapping, RenamePreviewItem, GlobalTags } from "./dataset";
 import type { TaggerModelsStatus, TaggerModelConfiguration, TaggerWSPayload } from "./tagger";
 import type { AppCloseRequestPayload, AppCloseResponsePayload } from "./app-close";
 import type { DanbooruWikiPage, DanbooruPostPreview, Rating } from "./danbooru";
 import type { SettingsDefinition, Settings } from "./settings-schema";
-import type { Dataset, DatasetPersistable, GlobalTags } from "./dataset";
 import type { CompletionItem } from "./autocompletion";
 import type { AppStatusPayload } from "./app-status";
 import type { TagGroups } from "./tag-groups";
@@ -30,6 +30,24 @@ export type IpcInvokeMap = {
     "dataset:compare": {
         args: [dataset: DatasetPersistable];
         result: boolean;
+    }
+    "dataset:trash": {
+        args: [filePaths: string[]];
+        result: {
+            error: boolean;
+            message: string;
+        }
+    }
+    "dataset:rename": {
+        args: [imagePaths: string[], options: DatasetRenameOptions];
+        result: {
+            error: boolean;
+            message?: string;
+            renamedCount?: number;
+            mappings?: RenameMapping[];
+            preview?: RenamePreviewItem[];
+            conflicts?: number;
+        }
     }
     "tag_groups:load": {
         args: [];
@@ -290,5 +308,8 @@ export type IpcOnMap = {
     }
     "tagger:service_stopped": {
         args: [];
+    }
+    "dataset:rename-progress": {
+        args: [payload: RenameProgressPayload];
     }
 }

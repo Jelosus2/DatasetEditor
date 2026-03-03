@@ -20,3 +20,29 @@ export type RenameMapping = {
     to: string;
     mtime: number;
 }
+
+export type RenameMode = "sequence" | "template";
+
+export type DatasetRenameOptions = {
+    mode: RenameMode;
+    startAt?: number;
+    padding?: number;
+    template?: string;
+    dryRun?: boolean;
+}
+
+export type RenamePreviewItem = {
+    from: string;
+    to: string;
+    fromName: string;
+    toName: string;
+    hasConflict: boolean;
+    reason?: string;
+}
+
+export type RenameProgressPayload = {
+    phase: "prepare" | "rename_temp" | "rename_final" | "rollback" | "done";
+    processed: number;
+    total: number;
+    currentPath?: string;
+}
