@@ -8,7 +8,7 @@ import SettingsTab from "@/components/SettingsTab.vue";
 import LogsTab from "@/components/LogsTab.vue";
 import AppStatusOverlay from "@/components/AppStatusOverlay.vue";
 import WikiModal from "@/components/WikiModal.vue";
-import DuplicateFinderModalComponent from "@/components/DuplicateFinderModalComponent.vue";
+import DuplicatesFinderModal from "@/components/DuplicatesFinderModal.vue";
 import RenameFilesModal from "@/components/RenameFilesModal.vue";
 import BgColorChangerModal from "@/components/BgColorChangerModal.vue";
 import CropImageModal from "@/components/CropImageModal.vue";
@@ -119,7 +119,7 @@ onMounted(async () => {
     </div>
     <AppStatusOverlay />
     <WikiModal />
-    <DuplicateFinderModalComponent @trigger_alert="showAlert" />
+    <DuplicatesFinderModal />
     <RenameFilesModal />
     <BgColorChangerModal :selected-images="datasetStore.selectedImages" />
     <CropImageModal :selected-images="datasetStore.selectedImages" />

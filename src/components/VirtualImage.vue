@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import type { DatasetImage } from "../../shared/dataset";
 
-defineProps<{
-    image: DatasetImage;
-    path: string;
-    selected: boolean;
-    suspendImage: boolean;
-}>();
+withDefaults(
+    defineProps<{
+        image: DatasetImage;
+        selected: boolean;
+        suspendImage?: boolean;
+    }>(),
+    {
+        suspendImage: false
+    }
+)
 
 const emit = defineEmits<{
     (e: "click", event: MouseEvent): void;
@@ -20,7 +24,7 @@ const emit = defineEmits<{
     <div
         class="relative h-full w-full cursor-pointer overflow-hidden rounded-md border-2 bg-base-200 transition-all duration-75 hover:border-accent"
         :class="selected ? 'border-primary' : 'border-transparent'"
-        :title="path.split('/').pop()"
+        :title="image.path.split(/\/|\\|\\\\/).pop()"
         @click="emit('click', $event)"
         @dblclick="emit('dblclick')"
         @mouseenter="emit('mouseenter')"
@@ -32,7 +36,7 @@ const emit = defineEmits<{
         <img
             v-else
             :src="image.filePath"
-            :alt="path"
+            :alt="image.path"
             draggable="false"
             loading="lazy"
             decoding="async"

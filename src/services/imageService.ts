@@ -1,15 +1,18 @@
-import type { Rect } from "../../shared/image";
+import type { Rect, DuplicateMethod } from "../../shared/image";
+import type { IpcListener } from "@/types/ipc";
 
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
 import { useDatasetStore } from "@/stores/datasetStore";
 import { useAlert } from "@/composables/useAlert";
 
 export class ImageService {
-    private ipc = useIpcRenderer([]);
+    private ipc;
     private datasetStore = useDatasetStore();
     private alert = useAlert();
 
-    constructor() {}
+    constructor(listeners: IpcListener[] = []) {
+        this.ipc = useIpcRenderer(listeners);
+    }
 
     async applyBackgroundColor(images: string[], color: string) {
         const paths = images
@@ -57,5 +60,18 @@ export class ImageService {
 
         this.alert.showAlert(result.error ? "error" : "success", result.message!);
         return result.error;
+    }
+
+    async getDuplicateGroups(imagePaths: string[], method: DuplicateMethod = "dhash", threshold: number) {
+        const result = await this.ipc.invoke("image:find_duplicates", imagePaths, method, threshold);
+
+        if (result.error)
+            this.alert.showAlert("error", result.message!);
+
+        return result;
+    }
+
+    async getImageDimensions(imagePath: string) {
+        return this.ipc.invoke("image:dimensions", imagePath);
     }
 }

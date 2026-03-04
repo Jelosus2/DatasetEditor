@@ -4,3 +4,5 @@ export type Rect = {
     width: number;
     height: number;
 }
+
+export type DuplicateMethod = "dhash" | "phash";

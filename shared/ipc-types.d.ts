@@ -5,9 +5,9 @@ import type { DanbooruWikiPage, DanbooruPostPreview, Rating } from "./danbooru";
 import type { SettingsDefinition, Settings } from "./settings-schema";
 import type { CompletionItem } from "./autocompletion";
 import type { AppStatusPayload } from "./app-status";
+import type { Rect, DuplicateMethod } from "./image";
 import type { TagGroups } from "./tag-groups";
 import type { LogType } from "./log";
-import type { Rect } from "./image";
 
 export type IpcInvokeMap = {
     "dataset:load": {
@@ -276,6 +276,21 @@ export type IpcInvokeMap = {
             message?: string;
         }
     }
+    "image:dimensions": {
+        args: [imagePath: string];
+        result: {
+            width: number;
+            height: number;
+        }
+    }
+    "image:find_duplicates": {
+        args: [imagePaths: string[], method: DuplicateMethod, threshold: number];
+        result: {
+            error: boolean;
+            message?: string;
+            groups: string[][];
+        }
+    }
 }
 
 export type IpcOnMap = {
@@ -311,5 +326,8 @@ export type IpcOnMap = {
     }
     "dataset:rename-progress": {
         args: [payload: RenameProgressPayload];
+    }
+    "image:duplicate-progress": {
+        args: [{ processed: number; total: number; }];
     }
 }

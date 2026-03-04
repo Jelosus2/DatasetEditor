@@ -27,13 +27,17 @@ const datasetStore = useDatasetStore();
 const settingsStore = useSettingsStore();
 const { showAlert } = useAlert();
 
-const fileService = new FileService();
-fileService.onRenameProgress = (progress) => {
-    processed.value = progress.processed ?? processed.value;
-    total.value = progress.total ?? total.value;
-    phase.value = progress.phase ?? phase.value;
-    currentPath.value = progress.currentPath ?? "";
-}
+const fileService = new FileService([
+    {
+        channel: "dataset:rename-progress",
+        handler: (progress) => {
+            processed.value = progress.processed ?? processed.value;
+            total.value = progress.total ?? total.value;
+            phase.value = progress.phase ?? phase.value;
+            currentPath.value = progress.currentPath ?? "";
+        }
+    }
+]);
 
 const filesCount = computed(() => datasetStore.dataset.size);
 const isDatasetLoaded = computed(() => filesCount.value > 0);

@@ -1,18 +1,13 @@
-import type { DatasetRenameOptions, RenameProgressPayload } from "../../shared/dataset";
+import type { DatasetRenameOptions } from "../../shared/dataset";
+import type { IpcListener } from "@/types/ipc";
 
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
 
 export class FileService {
     private ipc;
-    public onRenameProgress?: (progress: RenameProgressPayload) => void;
 
-    constructor() {
-        this.ipc = useIpcRenderer([
-            {
-                channel: "dataset:rename-progress",
-                handler: (progress) => this.onRenameProgress?.(progress)
-            }
-        ]);
+    constructor(listeners: IpcListener[] = []) {
+        this.ipc = useIpcRenderer(listeners);
     }
 
     async trashFiles(filePaths: string[]) {

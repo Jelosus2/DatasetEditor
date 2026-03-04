@@ -9,6 +9,7 @@ import { App } from "../App.js";
 import path from "node:path";
 import fs from "fs-extra";
 import sharp from "sharp";
+import url from "node:url";
 
 @IpcClass()
 export class ImageController {
@@ -129,34 +130,34 @@ export class ImageController {
 
     @IpcHandle("image:find_duplicates")
     async findDuplicates(_event: IpcMainInvokeEvent, imagePaths: string[], method: "dhash" | "phash" = "dhash", threshold: number = 10) {
-        const total = imagePaths?.length ?? 0;
+        const total = imagePaths.length;
         if (total === 0)
-            return { error: false, groups: [] }
+            return { error: false, groups: [] };
 
         App.logger.info(`[Image Manager] Finding duplicate images (${method}, threshold=${threshold}) in ${total} files...`);
-        App.window.ipcSend("duplicate-progress", { processed: 0, total });
+        App.window.ipcSend("image:duplicate-progress", { processed: 0, total });
 
         try {
-            const workerPath = new URL("../workers/duplicatesWorker.js", import.meta.url).href;
+            const workerPath = url.fileURLToPath(new URL("../workers/duplicatesWorker.js", import.meta.url));
 
             const hashes = await Utilities.runWorkerTask<string, ImageHash>(
                 imagePaths,
                 workerPath,
                 (file) => ({ type: "hash", file, method }),
-                (processed, total) => App.window.ipcSend("duplicate-progress", { processed, total })
+                (processed, total) => App.window.ipcSend("image:duplicate-progress", { processed, total })
             );
 
             if (hashes.length < 2)
-                return { error: false, groups: [] }
+                return { error: false, groups: [] };
 
             const groups = this.groupHashesByDistance(hashes, threshold);
 
             App.logger.info(`[Image Manager] Duplicate search complete, found ${groups.length} group(s)`);
-            return { error: false, groups }
+            return { error: false, groups };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Image Manager] Error trying to find duplicate images: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to find duplicates, check the logs for more information" }
+            return { error: true, message: "Failed to find duplicates, check the logs for more information", groups: [] };
         }
     }
 

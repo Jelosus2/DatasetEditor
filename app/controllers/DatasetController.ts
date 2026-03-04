@@ -124,10 +124,10 @@ export class DatasetController {
                 if (await fs.pathExists(txtPath))
                     await shell.trashItem(txtPath);
 
-                return { status: "fulfilled" }
+                return { status: "fulfilled", filePath };
             } catch (error) {
                 console.error(error);
-                return { status: "rejected", reason: error, path: path.dirname(filePath) }
+                return { status: "rejected", reason: error, path: path.dirname(filePath) };
             }
         });
 
@@ -143,6 +143,9 @@ export class DatasetController {
 
             return { error: true, message: "Error trashing file, check the logs for more information" }
         }
+
+        const removedImages = successes.map((entry) => entry.filePath!);
+        this.removeImagesFromOriginalDataset(removedImages);
 
         return { error: false, message: `Sent ${successes.length} pair of files to the trash bin` };
     }
@@ -523,8 +526,22 @@ export class DatasetController {
             updated.set(toKey, {
                 tags: new Set(existing.tags),
                 path: this.normalizePath(to),
-                filePath: `${url.pathToFileURL(to).href}?v=${typeof mtime === "number" ? mtime : Date.now()}`
+                filePath: `${url.pathToFileURL(to).href}?v=${mtime}`
             });
+        }
+
+        this.originalDataset = updated;
+    }
+
+    private removeImagesFromOriginalDataset(filePaths: string[]) {
+        if (!this.originalDataset || filePaths.length === 0)
+            return;
+
+        const updated = new Map(this.originalDataset);
+
+        for (const filePath of filePaths) {
+            const key = this.normalizePath(filePath);
+            updated.delete(key);
         }
 
         this.originalDataset = updated;
