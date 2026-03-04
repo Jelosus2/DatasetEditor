@@ -7,11 +7,16 @@ import { useDatasetStore } from "@/stores/datasetStore";
 import { ImageService } from "@/services/imageService";
 import { FileService } from "@/services/fileService";
 import { useAlert } from "@/composables/useAlert";
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 
 import DeleteIcon from "@/assets/icons/trash-bin.svg";
 
 const MAX_DIMENSION_WORKERS = 4;
+const FAST_SCROLL_VELOCITY = 6;
+const FAST_SCROLL_MIN_DELTA = 120;
+const FAST_SCROLL_CONSECUTIVE_HITS = 2;
+const SCROLL_SETTLE_MS = 160;
+const groupElements = new Map<number, Element>();
 
 const method = ref<DuplicateMethod>("dhash");
 const threshold = ref(10);
@@ -24,9 +29,18 @@ const kept = ref<Set<string>>(new Set());
 const dimensions = ref<Record<string, string>>({});
 const processed = ref(0);
 const total = ref(0);
+const groupsScrollerRef = ref<HTMLElement | null>(null);
+const hydratedGroupIndexes = ref<Set<number>>(new Set());
+const isFastScrolling = ref(false);
+const dimensionsInFlight = new Set<string>();
 
 let scanRequestId = 0;
-let dimensionsRequestId = 0;
+let groupsObserver: IntersectionObserver | null = null;
+let settleTimer: number | null = null;
+let fastScrollHits = 0;
+let lastScrollTop = 0;
+let lastScrollTs = 0;
+let dimensionsEpoch = 0;
 
 const datasetStore = useDatasetStore();
 const { showAlert } = useAlert();
@@ -66,11 +80,27 @@ const trashableCount = computed(() => {
     return count;
 });
 
-watch(() => groups.value, (nextGroups) => {
-    prefetchMissingDimensions(nextGroups.flat());
+const shouldSuspendImages = computed(() => isFastScrolling.value && itemsCount.value > 200);
+
+watch(groups, async () => {
+    hydratedGroupIndexes.value = new Set();
+    isFastScrolling.value = false;
+
+    if (settleTimer !== null) {
+        clearTimeout(settleTimer);
+        settleTimer = null;
+    }
+
+    groupsObserver?.disconnect();
+    groupsObserver = null;
+    groupElements.clear();
+
+    await nextTick();
+    ensureGroupObserver();
 });
 
 function resetState() {
+    invalidateAsyncWork();
     scanning.value = false;
     trashing.value = false;
     errorMessage.value = "";
@@ -79,6 +109,10 @@ function resetState() {
     dimensions.value = {};
     processed.value = 0;
     total.value = 0;
+    fastScrollHits = 0;
+    lastScrollTop = 0;
+    lastScrollTs = 0;
+    isFastScrolling.value = false;
 }
 
 function getSortedDatasetPaths() {
@@ -123,8 +157,97 @@ function openFullImage(key: string) {
     window.dispatchEvent(new CustomEvent("open-image", { detail: key }));
 }
 
+function hydrateGroup(index: number) {
+    if (hydratedGroupIndexes.value.has(index))
+        return;
+    hydratedGroupIndexes.value.add(index);
+
+    const group = groups.value[index];
+    if (group)
+        prefetchMissingDimensions(group);
+}
+
+function ensureGroupObserver() {
+    if (groupsObserver || !groupsScrollerRef.value)
+        return;
+
+    groupsObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+            if (!entry.isIntersecting)
+                continue;
+
+            const element = entry.target as HTMLElement;
+            const index = Number(element.dataset.groupIndex);
+            if (Number.isFinite(index))
+                hydrateGroup(index);
+        }
+    }, {
+        root: groupsScrollerRef.value,
+        rootMargin: "450px 0px"
+    });
+}
+
+function setGroupRef(index: number, element: HTMLDivElement | null) {
+    const previous = groupElements.get(index);
+    if (previous && groupsObserver)
+        groupsObserver.unobserve(previous);
+
+    if (!element) {
+        groupElements.delete(index);
+        return;
+    }
+
+    groupElements.set(index, element);
+    ensureGroupObserver();
+    groupsObserver?.observe(element);
+}
+
+function onGroupScroll(event: Event) {
+    const element = event.target as HTMLElement;
+    const now = performance.now();
+    const top = element.scrollTop;
+
+    if (lastScrollTs === 0) {
+        lastScrollTs = now;
+        lastScrollTop = top;
+        return;
+    }
+
+    const dt = Math.max(1, now - lastScrollTs);
+    const dy = Math.abs(top - lastScrollTop);
+    const velocity = dy / dt;
+
+    lastScrollTop = top;
+    lastScrollTs = now;
+
+    const viewport = groupsScrollerRef.value?.clientHeight ?? 0;
+    const fastJump = dy > Math.max(viewport * 1.2, 700);
+    const fastSample = fastJump || (dy >= FAST_SCROLL_MIN_DELTA && velocity >= FAST_SCROLL_VELOCITY);
+
+    fastScrollHits = fastSample ? Math.min(fastScrollHits + 1, FAST_SCROLL_CONSECUTIVE_HITS) : 0;
+
+    if (fastScrollHits >= FAST_SCROLL_CONSECUTIVE_HITS)
+        isFastScrolling.value = true;
+
+    if (settleTimer !== null)
+        clearTimeout(settleTimer);
+
+    settleTimer = window.setTimeout(() => {
+        isFastScrolling.value = false;
+        fastScrollHits = 0;
+    }, SCROLL_SETTLE_MS);
+}
+
+function invalidateAsyncWork() {
+    scanRequestId++;
+    dimensionsEpoch++;
+    dimensionsInFlight.clear();
+}
+
 async function scan() {
     const currentScanId = ++scanRequestId;
+    dimensionsEpoch++;
+    dimensionsInFlight.clear();
 
     scanning.value = true;
     errorMessage.value = "";
@@ -133,43 +256,45 @@ async function scan() {
     dimensions.value = {};
     processed.value = 0;
 
-    const files = getSortedDatasetPaths();
-    const pathToKey = buildPathToKeyMap();
-    total.value = files.length;
+    try {
+        const files = getSortedDatasetPaths();
+        const pathToKey = buildPathToKeyMap();
+        total.value = files.length;
 
-    const result = await imageService.getDuplicateGroups(files, method.value, threshold.value);
-    if (currentScanId !== scanRequestId)
-        return;
+        const result = await imageService.getDuplicateGroups(files, method.value, threshold.value);
+        if (currentScanId !== scanRequestId)
+            return;
 
-    if (result.error) {
-        errorMessage.value = result.message!;
-        return;
+        if (result.error) {
+            errorMessage.value = result.message!;
+            return;
+        }
+
+        const mapped = result.groups
+            .map((group) => group.map((path) => pathToKey.get(path)).filter((key): key is string => !!key))
+            .filter((group) => group.length > 1);
+
+        groups.value = mapped;
+        showAlert("success", mapped.length > 0 ? `Found ${mapped.length} duplicate group(s)` : 'No duplicates found');
+    } finally {
+        if (currentScanId === scanRequestId)
+            scanning.value = false;
     }
-
-    const mapped = result.groups
-        .map((group) => group.map((path) => pathToKey.get(path)).filter((key): key is string => !!key))
-        .filter((group) => group.length > 1);
-
-    groups.value = mapped;
-    showAlert("success", mapped.length > 0 ? `Found ${mapped.length} duplicate group(s)` : 'No duplicates found');
-
-    prefetchMissingDimensions(mapped.flat())
-
-    if (currentScanId === scanRequestId)
-        scanning.value = false;
 }
 
 async function prefetchMissingDimensions(keys: string[]) {
-    const missing = keys.filter((key) => !(key in dimensions.value));
+    const epoch = dimensionsEpoch;
+    const missing = keys.filter((key) => !(key in dimensions.value) && !dimensionsInFlight.has(key));
     if (missing.length === 0)
         return;
 
-    const currentDimensionsRequestId = ++dimensionsRequestId;
+    for (const key of missing)
+        dimensionsInFlight.add(key);
     let index = 0;
 
     const runWorker = async () => {
         while (index < missing.length) {
-            if (currentDimensionsRequestId !== dimensionsRequestId)
+            if (epoch !== dimensionsEpoch)
                 return;
 
             const i = index++;
@@ -179,7 +304,7 @@ async function prefetchMissingDimensions(keys: string[]) {
                 continue;
 
             const metadata = await imageService.getImageDimensions(filePath);
-            if (currentDimensionsRequestId !== dimensionsRequestId)
+            if (epoch !== dimensionsEpoch)
                 return;
 
             if (metadata.width > 0 && metadata.height > 0)
@@ -187,7 +312,12 @@ async function prefetchMissingDimensions(keys: string[]) {
         }
     };
 
-    await Promise.all(Array.from({ length: MAX_DIMENSION_WORKERS }, runWorker));
+    try {
+        await Promise.all(Array.from({ length: MAX_DIMENSION_WORKERS }, runWorker));
+    } finally {
+        for (const key of missing)
+            dimensionsInFlight.delete(key);
+    }
 }
 
 async function trashImage(key: string) {
@@ -249,6 +379,23 @@ async function trashNotKept() {
     trashing.value = false;
     showAlert("success", result.message);
 }
+
+onMounted(ensureGroupObserver);
+
+onUnmounted(() => {
+    invalidateAsyncWork();
+    groupsObserver?.disconnect();
+    groupsObserver = null;
+    groupElements.clear();
+
+    if (settleTimer !== null)
+        clearTimeout(settleTimer);
+
+    fastScrollHits = 0;
+    lastScrollTop = 0;
+    lastScrollTs = 0;
+    isFastScrolling.value = false;
+});
 </script>
 
 <template>
@@ -323,11 +470,13 @@ async function trashNotKept() {
                             <span>{{ trashing ? "Moving to trash..." : `Move ${trashableCount} to trash` }}</span>
                         </button>
                     </div>
-                    <div class="min-h-0 flex-1 overflow-y-auto pr-1">
+                    <div ref="groupsScrollerRef" class="min-h-0 flex-1 overflow-y-auto pr-1" @scroll.passive="onGroupScroll">
                         <div class="flex flex-col gap-4">
                             <div
                                 v-for="(group, idx) in groups"
                                 :key="idx"
+                                :data-group-index="idx"
+                                :ref="(element) => setGroupRef(idx, element as HTMLDivElement | null)"
                                 class="rounded-box border p-2 dark:border-base-content/20"
                                 style="content-visibility: auto; contain-intrinsic-size: 200px 200px;"
                             >
@@ -341,12 +490,13 @@ async function trashNotKept() {
                                         Keep first
                                     </button>
                                 </div>
-                                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                                <div v-if="hydratedGroupIndexes.has(idx)" class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                                     <div v-for="key in group" :key="key" class="group relative flex flex-col items-center gap-1">
                                         <div class="relative h-32 w-full overflow-hidden">
                                             <VirtualImage
                                                 :image="datasetStore.dataset.get(key)!"
                                                 :selected="false"
+                                                :suspend-image="shouldSuspendImages"
                                                 class="h-full w-full"
                                                 @click="openFullImage(key)"
                                             />
@@ -378,12 +528,15 @@ async function trashNotKept() {
                                         </div>
                                     </div>
                                 </div>
+                                <div v-else class="rounded-box border border-base-content/10 p-3 text-sm opacity-70">
+                                    Scroll to load this group preview ({{ group.length }} images)
+                                </div>
                             </div>
                         </div>
                     </div>
                 </template>
             </div>
         </div>
-        <label class="modal-backdrop" for="duplicate_finder_modal"></label>
+        <label class="modal-backdrop" for="duplicate_finder_modal" @click="resetState"></label>
     </div>
 </template>
