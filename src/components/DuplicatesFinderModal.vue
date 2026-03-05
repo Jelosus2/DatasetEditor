@@ -2,6 +2,7 @@
 import type { DuplicateMethod } from "../../shared/image";
 
 import VirtualImage from "@/components/VirtualImage.vue";
+import AlertModal from "@/components/AlertModal.vue";
 
 import { useDatasetStore } from "@/stores/datasetStore";
 import { ImageService } from "@/services/imageService";
@@ -17,6 +18,7 @@ const FAST_SCROLL_MIN_DELTA = 120;
 const FAST_SCROLL_CONSECUTIVE_HITS = 2;
 const SCROLL_SETTLE_MS = 160;
 const groupElements = new Map<number, Element>();
+const dimensionsInFlight = new Set<string>();
 
 const method = ref<DuplicateMethod>("dhash");
 const threshold = ref(10);
@@ -32,7 +34,9 @@ const total = ref(0);
 const groupsScrollerRef = ref<HTMLElement | null>(null);
 const hydratedGroupIndexes = ref<Set<number>>(new Set());
 const isFastScrolling = ref(false);
-const dimensionsInFlight = new Set<string>();
+const isTrashImageModalOpen = ref(false);
+const isTrashNotKeptModalOpen = ref(false);
+const imageToTrash = ref("");
 
 let scanRequestId = 0;
 let groupsObserver: IntersectionObserver | null = null;
@@ -82,6 +86,10 @@ const trashableCount = computed(() => {
 
 const shouldSuspendImages = computed(() => isFastScrolling.value && itemsCount.value > 200);
 
+const trashNotKeptMessage = computed(() =>
+    `Are you sure you want to move ${trashableCount.value} image(s) and their caption files to the trash?`
+);
+
 watch(groups, async () => {
     hydratedGroupIndexes.value = new Set();
     isFastScrolling.value = false;
@@ -101,6 +109,8 @@ watch(groups, async () => {
 
 function resetState() {
     invalidateAsyncWork();
+    closeTrashImageModal();
+    closeTrashNotKeptModal();
     scanning.value = false;
     trashing.value = false;
     errorMessage.value = "";
@@ -320,19 +330,45 @@ async function prefetchMissingDimensions(keys: string[]) {
     }
 }
 
-async function trashImage(key: string) {
-    const path = datasetStore.dataset.get(key)?.path;
-    if (!path)
+function openTrashImageModal(key: string) {
+    imageToTrash.value = key;
+    isTrashImageModalOpen.value = true;
+}
+
+function closeTrashImageModal() {
+    isTrashImageModalOpen.value = false;
+    imageToTrash.value = "";
+}
+
+function openTrashNotKeptModal() {
+    if (trashableCount.value === 0)
         return;
+
+    isTrashNotKeptModalOpen.value = true;
+}
+
+function closeTrashNotKeptModal() {
+    isTrashNotKeptModalOpen.value = false;
+}
+
+async function trashImage() {
+    const key = imageToTrash.value;
+    const path = datasetStore.dataset.get(key)?.path;
+    if (!path) {
+        closeTrashImageModal();
+        return;
+    }
 
     const result = await fileService.trashFiles([path]);
     if (result.error) {
-        showAlert("error", result.message);
+        errorMessage.value = result.message;
         return;
     }
 
     datasetStore.removeImage(key);
     pruneGroupsAfterRemoval(new Set([key]));
+
+    closeTrashImageModal();
     showAlert("success", result.message);
 }
 
@@ -361,15 +397,17 @@ async function trashNotKept() {
         .map((key) => datasetStore.dataset.get(key)?.path)
         .filter((path): path is string => !!path);
 
-    if (paths.length === 0)
+    if (paths.length === 0) {
+        closeTrashNotKeptModal();
         return;
+    }
 
     trashing.value = true;
 
     const result = await fileService.trashFiles(paths);
     if (result.error) {
         trashing.value = false;
-        showAlert("error", result.message);
+        errorMessage.value = result.message;
         return;
     }
 
@@ -377,6 +415,7 @@ async function trashNotKept() {
     pruneGroupsAfterRemoval(toTrashKeys);
 
     trashing.value = false;
+    closeTrashNotKeptModal();
     showAlert("success", result.message);
 }
 
@@ -464,7 +503,7 @@ onUnmounted(() => {
                             v-if="keepMode"
                             class="btn btn-error btn-sm ml-auto"
                             :disabled="trashing || trashableCount === 0"
-                            @click="trashNotKept"
+                            @click="openTrashNotKeptModal"
                         >
                             <span v-if="trashing" class="loading loading-spinner mr-1 h-4 w-4"></span>
                             <span>{{ trashing ? "Moving to trash..." : `Move ${trashableCount} to trash` }}</span>
@@ -518,7 +557,7 @@ onUnmounted(() => {
                                             <button
                                                 class="absolute right-1 top-1 rounded cursor-pointer bg-base-200/80 p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-error"
                                                 title="Move to trash"
-                                                @click.stop="trashImage(key)"
+                                                @click.stop="openTrashImageModal(key)"
                                             >
                                                 <DeleteIcon class="w-5 h-5" />
                                             </button>
@@ -539,4 +578,24 @@ onUnmounted(() => {
         </div>
         <label class="modal-backdrop" for="duplicate_finder_modal" @click="resetState"></label>
     </div>
+    <AlertModal
+        :open="isTrashImageModalOpen"
+        title="Image deletion"
+        message="Are you sure you want to move this image and its caption file to the trash?"
+        confirm-text="Move to trash"
+        confirm-class="btn btn-error btn-outline"
+        @confirm="trashImage"
+        @cancel="closeTrashImageModal"
+        @update:open="(value) => !value && closeTrashImageModal()"
+    />
+    <AlertModal
+        :open="isTrashNotKeptModalOpen"
+        title="Bulk image deletion"
+        :message="trashNotKeptMessage"
+        confirm-text="Move to trash"
+        confirm-class="btn btn-error btn-outline"
+        @confirm="trashNotKept"
+        @cancel="closeTrashNotKeptModal"
+        @update:open="(value) => !value && closeTrashNotKeptModal()"
+    />
 </template>

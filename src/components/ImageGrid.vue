@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import AutocompletionInput from "@/components/AutocompletionInput.vue";
 import VirtualImage from "@/components/VirtualImage.vue";
+import AlertModal from "@/components/AlertModal.vue";
 
 import { useDatasetStore } from "@/stores/datasetStore";
+import { FileService } from "@/services/fileService";
+import { useAlert } from "@/composables/useAlert";
 import { computed, onActivated, onDeactivated, ref, watch, toRaw } from "vue";
 
 const selectedImages = defineModel<Set<string>>("selectedImages", { required: true });
@@ -28,6 +31,17 @@ const containerHeight = ref(0);
 const liveScrollTop = ref(0);
 const virtualScrollTop = ref(0);
 const isFastScrolling = ref(false);
+const isDeleteImagesModalOpen = ref(false);
+const imageContextMenu = ref({
+    open: false,
+    x: 0,
+    y: 0,
+    imageKey: "",
+    targetKeys: [] as string[]
+});
+
+const fileService = new FileService();
+const { showAlert } = useAlert();
 
 const MIN_COLUMN_WIDTH = 100;
 const GAP = 4;
@@ -111,6 +125,14 @@ const virtualState = computed(() => {
     }
 });
 
+const deleteImagesMessage = computed(() => {
+    const count = imageContextMenu.value.targetKeys.length;
+
+    return count > 1
+        ? `Are you sure you want to move ${count} images and their caption files to the trash?`
+        : "Are you sure you want to move this image and its caption file to the trash?";
+});
+
 watch(gridMetrics, (metrics) => {
     emit("grid-metrics", metrics);
 }, { immediate: true });
@@ -182,6 +204,80 @@ function handleDblClick(imageKey: string) {
     emit("display-full-image", imageKey);
 }
 
+function openImageContextMenu(imageKey: string, event: MouseEvent) {
+    const MENU_WIDTH = 240;
+    const MENU_HEIGHT = 44;
+    const PADDING = 8;
+
+    let x = event.clientX;
+    let y = event.clientY;
+
+    if (x + MENU_WIDTH > window.innerWidth - PADDING)
+        x = window.innerWidth - MENU_WIDTH - PADDING;
+    if (y + MENU_HEIGHT > window.innerHeight - PADDING)
+        y = window.innerHeight - MENU_HEIGHT - PADDING;
+
+    const targetKeys = selectedImages.value.has(imageKey)
+        ? Array.from(selectedImages.value)
+        : [imageKey];
+
+    if (!selectedImages.value.has(imageKey))
+        selectedImages.value = new Set([imageKey]);
+
+    imageContextMenu.value = {
+        open: true,
+        x: Math.max(PADDING, x),
+        y: Math.max(PADDING, y),
+        imageKey,
+        targetKeys,
+    };
+}
+
+function closeImageContextMenu() {
+    imageContextMenu.value.open = false;
+}
+
+function openDeleteImagesModal() {
+    if (imageContextMenu.value.targetKeys.length === 0)
+        return;
+
+    closeImageContextMenu();
+    isDeleteImagesModalOpen.value = true;
+}
+
+function closeDeleteImagesModal() {
+    isDeleteImagesModalOpen.value = false;
+}
+
+async function trashContextMenuImages() {
+    const keys = imageContextMenu.value.targetKeys;
+    if (keys.length === 0)
+        return;
+
+    const paths = keys
+        .map((key) => datasetStore.dataset.get(key)?.path)
+        .filter((key): key is string => !!key);
+
+    if (paths.length === 0) {
+        closeImageContextMenu();
+        return;
+    }
+
+    const result = await fileService.trashFiles(paths);
+    if (result.error) {
+        showAlert("error", result.message);
+        return;
+    }
+
+    if (keys.length === 1)
+        datasetStore.removeImage(keys[0]);
+    else
+        datasetStore.removeImages(keys);
+
+    closeDeleteImagesModal();
+    showAlert("success", result.message);
+}
+
 let resizeObserver: ResizeObserver | null = null;
 
 onActivated(() => {
@@ -220,6 +316,9 @@ onDeactivated(() => {
     if (settleTimer !== null)
         clearTimeout(settleTimer);
 
+    closeImageContextMenu();
+    closeDeleteImagesModal();
+
     isFastScrolling.value = false;
     liveScrollTop.value = 0;
     virtualScrollTop.value = 0;
@@ -253,6 +352,7 @@ onDeactivated(() => {
                     @dblclick="handleDblClick(imageKey)"
                     @mouseenter="!isFastScrolling && emit('hover-image', imageKey)"
                     @mouseleave="!isFastScrolling && emit('hover-image', undefined)"
+                    @contextmenu="openImageContextMenu(imageKey, $event)"
                 />
             </div>
         </div>
@@ -285,4 +385,37 @@ onDeactivated(() => {
             </div>
         </label>
     </div>
+    <div
+        v-if="imageContextMenu.open"
+        class="fixed inset-0 z-70"
+        @mousedown.prevent="closeImageContextMenu"
+    >
+        <div
+            class="absolute z-71 min-w-60 rounded-box border border-base-content/20 bg-base-100 p-1 shadow-xl"
+            :style="{
+                left: `${imageContextMenu.x}px`,
+                top: `${imageContextMenu.y}px`
+            }"
+            @mousedown.stop
+        >
+            <button
+                class="btn btn-ghost btn-sm w-full justify-start text-error"
+                @click="openDeleteImagesModal"
+            >
+                {{ imageContextMenu.targetKeys.length > 1
+                    ? `Trash ${imageContextMenu.targetKeys.length} images + captions`
+                    : "Trash image + caption" }}
+            </button>
+        </div>
+    </div>
+    <AlertModal
+        :open="isDeleteImagesModalOpen"
+        title="Image(s) deletion"
+        :message="deleteImagesMessage"
+        confirm-text="Move to trash"
+        confirm-class="btn btn-error btn-outline"
+        @confirm="trashContextMenuImages"
+        @cancel="closeDeleteImagesModal"
+        @update:open="(value) => !value && closeDeleteImagesModal()"
+    />
 </template>

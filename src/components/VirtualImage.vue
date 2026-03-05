@@ -17,6 +17,7 @@ const emit = defineEmits<{
     (e: "mouseenter"): void;
     (e: "mouseleave"): void;
     (e: "dblclick"): void;
+    (e: "contextmenu", event: MouseEvent): void;
 }>();
 </script>
 
@@ -29,6 +30,7 @@ const emit = defineEmits<{
         @dblclick="emit('dblclick')"
         @mouseenter="emit('mouseenter')"
         @mouseleave="emit('mouseleave')"
+        @contextmenu.prevent="emit('contextmenu', $event)"
     >
         <template v-if="suspendImage">
             <div class="h-full w-full bg-base-300/40"></div>
