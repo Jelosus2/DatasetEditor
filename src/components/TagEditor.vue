@@ -20,6 +20,10 @@ const props = defineProps<{
     filterInput: string;
 }>();
 
+const emit = defineEmits<{
+    (e: "append-tag-filter", tag: string): void;
+}>();
+
 const sortOrder = defineModel<"asc" | "desc">("sortOrder", { required: true });
 const globalSortMode = defineModel<"alphabetical" | "tag_count">("globalSortMode", { required: true });
 const globalSortOrder = defineModel<"asc" | "desc">("globalSortOrder", { required: true });
@@ -406,7 +410,7 @@ function sortDiffTags(tags?: Set<string>) {
 
 function openTagContextMenu(event: MouseEvent, tag: string) {
     const MENU_WIDTH = 220;
-    const MENU_HEIGHT = 44;
+    const MENU_HEIGHT = 84;
     const PADDING = 8;
 
     let x = event.clientX;
@@ -437,6 +441,11 @@ function searchTagInWiki(tag: string) {
         modal.checked = true;
 
     window.dispatchEvent(new CustomEvent("danbooru-wiki-open", { detail: tag }));
+}
+
+function addTagToImageFilter(tag: string) {
+    emit("append-tag-filter", tag);
+    closeTagContextMenu();
 }
 </script>
 
@@ -790,6 +799,12 @@ function searchTagInWiki(tag: string) {
                 @click="searchTagInWiki(tagContextMenu.tag)"
             >
                 Search in Danbooru Wiki
+            </button>
+            <button
+                class="btn btn-ghost btn-sm w-full justify-start"
+                @click="addTagToImageFilter(tagContextMenu.tag)"
+            >
+                Add to Image Filter
             </button>
         </div>
     </div>

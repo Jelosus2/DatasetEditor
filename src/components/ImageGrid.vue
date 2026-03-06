@@ -206,7 +206,7 @@ function handleDblClick(imageKey: string) {
 
 function openImageContextMenu(imageKey: string, event: MouseEvent) {
     const MENU_WIDTH = 240;
-    const MENU_HEIGHT = 44;
+    const MENU_HEIGHT = 84;
     const PADDING = 8;
 
     let x = event.clientX;
@@ -276,6 +276,20 @@ async function trashContextMenuImages() {
 
     closeDeleteImagesModal();
     showAlert("success", result.message);
+}
+
+function openContextMenuImageInExplorer() {
+    const key = imageContextMenu.value.imageKey;
+    if (!key)
+        return;
+
+    const filePath = datasetStore.dataset.get(key)?.path;
+    closeImageContextMenu();
+
+    if (!filePath)
+        return;
+
+    fileService.openInExplorer(filePath);
 }
 
 let resizeObserver: ResizeObserver | null = null;
@@ -405,6 +419,12 @@ onDeactivated(() => {
                 {{ imageContextMenu.targetKeys.length > 1
                     ? `Trash ${imageContextMenu.targetKeys.length} images + captions`
                     : "Trash image + caption" }}
+            </button>
+            <button
+                class="btn btn-ghost btn-sm w-full justify-start"
+                @click="openContextMenuImageInExplorer"
+            >
+                Open in Explorer
             </button>
         </div>
     </div>

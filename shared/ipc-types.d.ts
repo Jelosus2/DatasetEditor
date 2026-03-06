@@ -49,6 +49,13 @@ export type IpcInvokeMap = {
             conflicts?: number;
         }
     }
+    "dataset:open_in_explorer": {
+        args: [filePath: string];
+        result: {
+            error: boolean;
+            message?: string;
+        }
+    }
     "tag_groups:load": {
         args: [];
         result: {

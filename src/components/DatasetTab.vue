@@ -255,6 +255,25 @@ function toggleSelection(imageId: string, event: MouseEvent) {
     );
 }
 
+function appendTagToImageFilter(tag: string) {
+    const nextTag = tag.trim();
+    if (!nextTag)
+        return;
+
+    const current = filterInput.value
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag): tag is string => !!tag);
+
+    const exists = current.some((tag) => tag.toLowerCase() === nextTag.toLowerCase());
+    if (exists)
+        return;
+
+    filterInput.value = current.length > 0
+        ? `${current.join(", ")}, ${nextTag}`
+        : nextTag;
+}
+
 function clearSelection() {
     datasetStore.clearSelection(imageKeys.value);
 }
@@ -348,6 +367,7 @@ onDeactivated(() => {
                     v-model:global-sort-mode="globalSortMode"
                     v-model:global-sort-order="globalSortOrder"
                     v-model:global-tag-filter-input="globalTagFilterInput"
+                    @append-tag-filter="appendTagToImageFilter"
                 />
             </div>
         </div>

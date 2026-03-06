@@ -245,6 +245,23 @@ export class DatasetController {
         }
     }
 
+    @IpcHandle("dataset:open_in_explorer")
+    async openInExplorer(_event: IpcMainInvokeEvent, filePath: string) {
+        try {
+            const normalizedPath = path.normalize(filePath);
+
+            if (!await fs.pathExists(normalizedPath))
+                return { error: true, message: "File not found" };
+
+            shell.showItemInFolder(normalizedPath);
+            return { error: false };
+        } catch (error) {
+            console.error(error);
+            App.logger.error(`[Dataset Manager] Error opening in explorer (${filePath}): ${Utilities.getErrorMessage(error)}`);
+            return { error: true, message: "Failed to open in explorer, check the logs for more information" };
+        }
+    }
+
     private async confirmedUnsavedChanges() {
         const result = await App.showMessageBox({
             type: "question",
