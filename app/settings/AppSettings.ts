@@ -44,7 +44,7 @@ export class AppSettings {
         type: "select",
         options: [
             { label: "Dark", value: "dark" },
-            { label: "Winter (Light)", value: "winter" }
+            { label: "Light", value: "light" }
         ],
         defaultValue: "dark"
     })

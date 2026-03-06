@@ -81,7 +81,7 @@ export class SettingsManager {
             return;
 
         const defaults = this.buildDefaults({
-            theme: isDarkThemeDefault ? "dark" : "winter"
+            theme: isDarkThemeDefault ? "dark" : "light"
         });
 
         await this.saveSettings(defaults);

@@ -2,7 +2,7 @@
 @plugin 'daisyui' {
     themes:
         dark --prefersdark,
-        winter --default;
+        light --default;
 }
 
 @layer utilities {
