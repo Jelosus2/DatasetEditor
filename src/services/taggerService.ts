@@ -113,8 +113,8 @@ export class TaggerService {
             this.alert.showAlert("error", result.message!);
     }
 
-    async resizeTerminal(columms: number, rows: number) {
-        return this.ipc.invoke("tagger:resize_terminal", columms, rows);
+    async resizeTerminal(columns: number, rows: number) {
+        return this.ipc.invoke("tagger:resize_terminal", columns, rows);
     }
 
     async stopProcess() {

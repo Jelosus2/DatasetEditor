@@ -150,8 +150,8 @@ export class TaggerController {
     }
 
     @IpcHandle("tagger:resize_terminal")
-    resizeTerminal(_event: IpcMainInvokeEvent, columms: number, rows: number) {
-        App.tagger.resizeTerminal(columms, rows);
+    resizeTerminal(_event: IpcMainInvokeEvent, columns: number, rows: number) {
+        App.tagger.resizeTerminal(columns, rows);
     }
 
     @IpcHandle("tagger:download_model")

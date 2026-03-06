@@ -32,9 +32,9 @@ export const useDatasetStore = defineStore("dataset", () => {
         datasetRedoStack.value = [];
     }
 
-    function addTagsToImages(imageIds: Iterable<string>, tags: Set<string>, position: number = -1, createHistory: boolean = true) {
+    function addTagsToImages(imageKeys: Iterable<string>, tags: Set<string>, position: number = -1, createHistory: boolean = true) {
         const tagsArray = Array.from(tags);
-        const imagesSet = new Set(imageIds);
+        const imagesSet = new Set(imageKeys);
 
         if (imagesSet.size === 0 || tagsArray.length === 0)
             return;
@@ -45,8 +45,8 @@ export const useDatasetStore = defineStore("dataset", () => {
         const rawGlobalTags = toRaw(globalTags.value);
         const rawTagDiff = toRaw(tagDiff.value);
 
-        for (const imageId of imagesSet) {
-            const imageData = rawDataset.get(imageId);
+        for (const imageKey of imagesSet) {
+            const imageData = rawDataset.get(imageKey);
             if (!imageData)
                 continue;
 
@@ -55,7 +55,7 @@ export const useDatasetStore = defineStore("dataset", () => {
             if (position === -1 && missingTags.length === 0)
                 continue;
 
-            changedImages.add(imageId);
+            changedImages.add(imageKey);
 
             const currentTagsArray = [...existingTagSet];
             let newTagsList: string[];
@@ -65,7 +65,7 @@ export const useDatasetStore = defineStore("dataset", () => {
 
                 for (const tag of missingTags) {
                     insertTagAtIndex(
-                        imageId,
+                        imageKey,
                         tag,
                         newTagsList.length,
                         newTagsList,
@@ -80,7 +80,7 @@ export const useDatasetStore = defineStore("dataset", () => {
 
                 tagsArray.forEach((tag, offset) => {
                     insertTagAtIndex(
-                        imageId,
+                        imageKey,
                         tag,
                         actualPosition + offset,
                         filteredCurrent,
@@ -111,8 +111,8 @@ export const useDatasetStore = defineStore("dataset", () => {
         triggerUpdate();
     }
 
-    function removeTagsFromImages(imageIds: Iterable<string>, tags: Set<string>, createHistory: boolean = true) {
-        const imagesSet = new Set(imageIds);
+    function removeTagsFromImages(imageKeys: Iterable<string>, tags: Set<string>, createHistory: boolean = true) {
+        const imagesSet = new Set(imageKeys);
         if (imagesSet.size === 0 || tags.size === 0)
             return;
 
@@ -123,8 +123,8 @@ export const useDatasetStore = defineStore("dataset", () => {
         const rawGlobalTags = toRaw(globalTags.value);
         const rawTagDiff = toRaw(tagDiff.value);
 
-        for (const imageId of imagesSet) {
-            const imageData = rawDataset.get(imageId);
+        for (const imageKey of imagesSet) {
+            const imageData = rawDataset.get(imageKey);
             if (!imageData)
                 continue;
 
@@ -144,15 +144,15 @@ export const useDatasetStore = defineStore("dataset", () => {
             if (!hasAnyTag)
                 continue;
             if (positions.size > 0)
-                removedPositions.set(imageId, positions);
+                removedPositions.set(imageKey, positions);
 
-            changedImages.add(imageId);
+            changedImages.add(imageKey);
 
             for (const tag of tags) {
                 if (imageData.tags.has(tag)) {
                     imageData.tags.delete(tag);
 
-                    removeTagMetadata(imageId, tag, rawGlobalTags, rawTagDiff);
+                    removeTagMetadata(imageKey, tag, rawGlobalTags, rawTagDiff);
                 }
             }
         }
@@ -181,7 +181,7 @@ export const useDatasetStore = defineStore("dataset", () => {
     }
 
     function replaceTagForImages(
-            imageIds: Iterable<string>,
+            imageKeys: Iterable<string>,
             originalTagsInput: string | Iterable<string>,
             newTagsInput: string | Iterable<string>,
             createHistory: boolean = true
@@ -193,7 +193,7 @@ export const useDatasetStore = defineStore("dataset", () => {
             return;
 
         const originalSet = new Set(originalTags);
-        const imagesSet = new Set(imageIds);
+        const imagesSet = new Set(imageKeys);
         if (imagesSet.size === 0)
             return;
 
@@ -204,8 +204,8 @@ export const useDatasetStore = defineStore("dataset", () => {
         const rawGlobalTags = toRaw(globalTags.value);
         const rawTagDiff = toRaw(tagDiff.value);
 
-        for (const imageId of imagesSet) {
-            const imageData = rawDataset.get(imageId);
+        for (const imageKey of imagesSet) {
+            const imageData = rawDataset.get(imageKey);
             if (!imageData)
                 continue;
 
@@ -226,17 +226,17 @@ export const useDatasetStore = defineStore("dataset", () => {
 
             const nextTags = new Set(withoutTargets);
             imageData.tags = nextTags;
-            changedImages.add(imageId);
-            replaceBefore.set(imageId, tagsList);
+            changedImages.add(imageKey);
+            replaceBefore.set(imageKey, tagsList);
 
             for (const tag of previousTags) {
                 if (!nextTags.has(tag))
-                    removeTagMetadata(imageId, tag, rawGlobalTags, rawTagDiff);
+                    removeTagMetadata(imageKey, tag, rawGlobalTags, rawTagDiff);
             }
 
             for (const tag of nextTags) {
                 if (!previousTags.has(tag))
-                    addTagMetadata(imageId, tag, rawGlobalTags, rawTagDiff);
+                    addTagMetadata(imageKey, tag, rawGlobalTags, rawTagDiff);
             }
         }
 
@@ -261,8 +261,8 @@ export const useDatasetStore = defineStore("dataset", () => {
         const rawGlobalTags = toRaw(globalTags.value);
         const rawTagDiff = toRaw(tagDiff.value);
 
-        for (const [imageId, tagsArr] of snapshot) {
-            const imageData = rawDataset.get(imageId);
+        for (const [imageKey, tagsArr] of snapshot) {
+            const imageData = rawDataset.get(imageKey);
             if (!imageData)
                 continue;
 
@@ -273,21 +273,21 @@ export const useDatasetStore = defineStore("dataset", () => {
 
             for (const tag of previous) {
                 if (!next.has(tag))
-                    removeTagMetadata(imageId, tag, rawGlobalTags, rawTagDiff);
+                    removeTagMetadata(imageKey, tag, rawGlobalTags, rawTagDiff);
             }
 
             for (const tag of next) {
                 if (!previous.has(tag))
-                    addTagMetadata(imageId, tag, rawGlobalTags, rawTagDiff);
+                    addTagMetadata(imageKey, tag, rawGlobalTags, rawTagDiff);
             }
         }
 
         triggerUpdate();
     }
 
-    function reorderTagInImage(imageId: string, tag: string, toIndex: number, createHistory: boolean = true) {
+    function reorderTagInImage(imageKey: string, tag: string, toIndex: number, createHistory: boolean = true) {
         const rawDataset = toRaw(dataset.value);
-        const imageData = rawDataset.get(imageId);
+        const imageData = rawDataset.get(imageKey);
         if (!imageData)
             return;
 
@@ -307,7 +307,7 @@ export const useDatasetStore = defineStore("dataset", () => {
         if (createHistory) {
             recordHistory({
                 type: "reorder_tag",
-                images: new Set([imageId]),
+                images: new Set([imageKey]),
                 tag,
                 fromIndex,
                 toIndex: insertIndex
@@ -322,8 +322,8 @@ export const useDatasetStore = defineStore("dataset", () => {
         const rawGlobalTags = toRaw(globalTags.value);
         const rawTagDiff = toRaw(tagDiff.value);
 
-        for (const [imageId, positions] of tagPositions) {
-            const imageData = rawDataset.get(imageId);
+        for (const [imageKey, positions] of tagPositions) {
+            const imageData = rawDataset.get(imageKey);
             if (!imageData)
                 continue;
 
@@ -332,7 +332,7 @@ export const useDatasetStore = defineStore("dataset", () => {
 
             for (const [tag, index] of ordered) {
                 insertTagAtIndex(
-                    imageId,
+                    imageKey,
                     tag,
                     index,
                     tagsList,
@@ -349,7 +349,7 @@ export const useDatasetStore = defineStore("dataset", () => {
     }
 
     function insertTagAtIndex(
-        imageId: string,
+        imageKey: string,
         tag: string,
         index: number,
         tagsList: string[],
@@ -364,19 +364,19 @@ export const useDatasetStore = defineStore("dataset", () => {
             return;
 
         existingTagSet.add(tag);
-        addTagMetadata(imageId, tag, rawGlobalTags, rawTagDiff);
+        addTagMetadata(imageKey, tag, rawGlobalTags, rawTagDiff);
     }
 
-    function addTagMetadata(imageId: string, tag: string, rawGlobalTags: GlobalTags, rawTagDiff: TagDiffs) {
+    function addTagMetadata(imageKey: string, tag: string, rawGlobalTags: GlobalTags, rawTagDiff: TagDiffs) {
         let globalSet = rawGlobalTags.get(tag);
         if (!globalSet) {
             globalSet = new Set();
             rawGlobalTags.set(tag, globalSet);
         }
-        globalSet.add(imageId);
+        globalSet.add(imageKey);
 
         if (rawTagDiff.size > 0) {
-            const diff = rawTagDiff.get(imageId);
+            const diff = rawTagDiff.get(imageKey);
             if (diff) {
                 if (diff.tagger.has(tag))
                     diff.tagger.delete(tag);
@@ -386,31 +386,31 @@ export const useDatasetStore = defineStore("dataset", () => {
         }
     }
 
-    function removeTagMetadata(imageId: string, tag: string, rawGlobalTags: GlobalTags, rawTagDiff: TagDiffs) {
-        removeImageFromGlobalTags(imageId, tag, rawGlobalTags);
+    function removeTagMetadata(imageKey: string, tag: string, rawGlobalTags: GlobalTags, rawTagDiff: TagDiffs) {
+        removeImageFromGlobalTags(imageKey, tag, rawGlobalTags);
 
         if (rawTagDiff.size > 0)
-            rawTagDiff.get(imageId)?.original.delete(tag);
+            rawTagDiff.get(imageKey)?.original.delete(tag);
     }
 
-    function removeImageFromGlobalTags(imageId: string, tag: string, rawGlobalTags: GlobalTags) {
+    function removeImageFromGlobalTags(imageKey: string, tag: string, rawGlobalTags: GlobalTags) {
         const globalSet = rawGlobalTags.get(tag);
         if (globalSet) {
-            globalSet.delete(imageId);
+            globalSet.delete(imageKey);
 
             if (globalSet.size === 0)
                 rawGlobalTags.delete(tag);
         }
     }
 
-    function moveImageInGlobalTags(oldId: string, newId: string, tags: Iterable<string>, rawGlobalTags: GlobalTags) {
+    function moveImageInGlobalTags(oldKey: string, newKey: string, tags: Iterable<string>, rawGlobalTags: GlobalTags) {
         for (const tag of tags) {
             const globalSet = rawGlobalTags.get(tag);
             if (!globalSet)
                 continue;
 
-            globalSet.delete(oldId);
-            globalSet.add(newId);
+            globalSet.delete(oldKey);
+            globalSet.add(newKey);
         }
     }
 
@@ -433,11 +433,11 @@ export const useDatasetStore = defineStore("dataset", () => {
                     restoreReplaceSnapshot(change.replaceBefore);
                 break;
             case "reorder_tag":
-                const imageId = change.images.values().next().value;
-                if (!imageId || !change.tag)
+                const imageKey = change.images.values().next().value;
+                if (!imageKey || !change.tag)
                     break;
 
-                reorderTagInImage(imageId, change.tag, change.fromIndex!, /* createHistory = */ false);
+                reorderTagInImage(imageKey, change.tag, change.fromIndex!, /* createHistory = */ false);
                 break;
         }
 
@@ -461,43 +461,43 @@ export const useDatasetStore = defineStore("dataset", () => {
                     replaceTagForImages(change.images, change.originalTags, change.newTags, /* createHistory = */ false);
                 break;
             case "reorder_tag":
-                const imageId = change.images.values().next().value;
-                if (!imageId || !change.tag)
+                const imageKey = change.images.values().next().value;
+                if (!imageKey || !change.tag)
                     break;
 
-                reorderTagInImage(imageId, change.tag, change.toIndex!, /* createHistory = */ false);
+                reorderTagInImage(imageKey, change.tag, change.toIndex!, /* createHistory = */ false);
                 break;
         }
 
         datasetUndoStack.value.push(change);
     }
 
-    function removeImages(imageIds: Iterable<string>) {
+    function removeImages(imageKeys: Iterable<string>) {
         const rawDataset = toRaw(dataset.value);
         const rawGlobalTags = toRaw(globalTags.value);
         const rawTagDiff = toRaw(tagDiff.value);
         let changed = false;
 
-        for (const imageId of imageIds) {
-            const imageData = rawDataset.get(imageId);
+        for (const imageKey of imageKeys) {
+            const imageData = rawDataset.get(imageKey);
             if (!imageData)
                 continue;
 
             changed = true;
 
             for (const tag of imageData.tags)
-                removeImageFromGlobalTags(imageId, tag, rawGlobalTags);
+                removeImageFromGlobalTags(imageKey, tag, rawGlobalTags);
 
-            rawDataset.delete(imageId);
-            rawTagDiff.delete(imageId);
+            rawDataset.delete(imageKey);
+            rawTagDiff.delete(imageKey);
         }
 
         if (changed)
             triggerUpdate();
     }
 
-    function removeImage(imageId: string) {
-        removeImages([imageId]);
+    function removeImage(imageKey: string) {
+        removeImages([imageKey]);
     }
 
     function renameImages(mappings: RenameMapping[]) {
@@ -579,13 +579,13 @@ export const useDatasetStore = defineStore("dataset", () => {
     }
 
     function toggleSelection(
-        imageId: string,
+        imageKey: string,
         event: MouseEvent,
         imageKeys: string[],
         filteredImages: Set<string>,
         isFiltering: boolean
     ) {
-        const index = imageKeys.indexOf(imageId);
+        const index = imageKeys.indexOf(imageKey);
         if (index === -1)
             return;
 
@@ -598,22 +598,22 @@ export const useDatasetStore = defineStore("dataset", () => {
             newSelection.clear();
 
             for (let i = start; i <= end; i++) {
-                const id = imageKeys[i];
-                if (!isFiltering || filteredImages.has(id))
-                    newSelection.add(id);
+                const key = imageKeys[i];
+                if (!isFiltering || filteredImages.has(key))
+                    newSelection.add(key);
             }
         } else if (event.ctrlKey) {
-            if (newSelection.has(imageId)) {
+            if (newSelection.has(imageKey)) {
                 if (newSelection.size > 1)
-                    newSelection.delete(imageId);
+                    newSelection.delete(imageKey);
             } else {
-                newSelection.add(imageId);
+                newSelection.add(imageKey);
             }
 
             rangeAnchorIndex.value = index;
         } else {
             newSelection.clear();
-            newSelection.add(imageId);
+            newSelection.add(imageKey);
             rangeAnchorIndex.value = index;
         }
 
@@ -634,10 +634,10 @@ export const useDatasetStore = defineStore("dataset", () => {
         rangeAnchorIndex.value = 0;
     }
 
-    function setSingleSelection(id: string, visibleKeys: string[]) {
-        selectedImages.value = new Set([id]);
+    function setSingleSelection(imageKey: string, visibleKeys: string[]) {
+        selectedImages.value = new Set([imageKey]);
 
-        const index = visibleKeys.indexOf(id);
+        const index = visibleKeys.indexOf(imageKey);
         if (index !== -1) {
             lastSelectedIndex.value = index;
             rangeAnchorIndex.value = index;

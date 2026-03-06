@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AutocompletionInput from "@/components/AutocompletionInput.vue";
 import VirtualImage from "@/components/VirtualImage.vue";
-import AlertModal from "@/components/AlertModal.vue";
+import ConfirmationAlert from "@/components/ConfirmationAlert.vue";
 
 import { useDatasetStore } from "@/stores/datasetStore";
 import { FileService } from "@/services/fileService";
@@ -18,9 +18,9 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-    (e: "toggle-selection", id: string, event: MouseEvent): void;
-    (e: "hover-image", id: string | undefined): void;
-    (e: "display-full-image", id: string): void;
+    (e: "toggle-selection", imageKey: string, event: MouseEvent): void;
+    (e: "hover-image", imageKey: string | undefined): void;
+    (e: "display-full-image", imageKey: string): void;
     (e: "clear-filter"): void;
     (e: "grid-metrics", metrics: { columns: number }): void;
 }>();
@@ -31,7 +31,7 @@ const containerHeight = ref(0);
 const liveScrollTop = ref(0);
 const virtualScrollTop = ref(0);
 const isFastScrolling = ref(false);
-const isDeleteImagesModalOpen = ref(false);
+const isTrashImagesModalOpen = ref(false);
 const imageContextMenu = ref({
     open: false,
     x: 0,
@@ -73,7 +73,7 @@ const visibleImages = computed(() => {
     if (!props.isFiltering)
         return allImages.value;
 
-    return allImages.value.filter(([imageId]) => props.filteredImages.has(imageId));
+    return allImages.value.filter(([imageKey]) => props.filteredImages.has(imageKey));
 });
 
 const layout = computed(() => {
@@ -125,7 +125,7 @@ const virtualState = computed(() => {
     }
 });
 
-const deleteImagesMessage = computed(() => {
+const trashImagesMessage = computed(() => {
     const count = imageContextMenu.value.targetKeys.length;
 
     return count > 1
@@ -237,16 +237,16 @@ function closeImageContextMenu() {
     imageContextMenu.value.open = false;
 }
 
-function openDeleteImagesModal() {
+function openTrashImagesModal() {
     if (imageContextMenu.value.targetKeys.length === 0)
         return;
 
     closeImageContextMenu();
-    isDeleteImagesModalOpen.value = true;
+    isTrashImagesModalOpen.value = true;
 }
 
-function closeDeleteImagesModal() {
-    isDeleteImagesModalOpen.value = false;
+function closeTrashImagesModal() {
+    isTrashImagesModalOpen.value = false;
 }
 
 async function trashContextMenuImages() {
@@ -256,7 +256,7 @@ async function trashContextMenuImages() {
 
     const paths = keys
         .map((key) => datasetStore.dataset.get(key)?.path)
-        .filter((key): key is string => !!key);
+        .filter((path): path is string => !!path);
 
     if (paths.length === 0) {
         closeImageContextMenu();
@@ -274,7 +274,7 @@ async function trashContextMenuImages() {
     else
         datasetStore.removeImages(keys);
 
-    closeDeleteImagesModal();
+    closeTrashImagesModal();
     showAlert("success", result.message);
 }
 
@@ -331,7 +331,7 @@ onDeactivated(() => {
         clearTimeout(settleTimer);
 
     closeImageContextMenu();
-    closeDeleteImagesModal();
+    closeTrashImagesModal();
 
     isFastScrolling.value = false;
     liveScrollTop.value = 0;
@@ -357,7 +357,6 @@ onDeactivated(() => {
                     v-for="[imageKey, image] in virtualState.visibleItems"
                     v-memo="[imageKey, image.filePath, selectedSet.has(imageKey), layout.cellHeight]"
                     :key="imageKey"
-                    :path="imageKey"
                     :image="image"
                     :suspend-image="isFastScrolling"
                     :selected="selectedSet.has(imageKey)"
@@ -414,7 +413,7 @@ onDeactivated(() => {
         >
             <button
                 class="btn btn-ghost btn-sm w-full justify-start text-error"
-                @click="openDeleteImagesModal"
+                @click="openTrashImagesModal"
             >
                 {{ imageContextMenu.targetKeys.length > 1
                     ? `Trash ${imageContextMenu.targetKeys.length} images + captions`
@@ -428,14 +427,14 @@ onDeactivated(() => {
             </button>
         </div>
     </div>
-    <AlertModal
-        :open="isDeleteImagesModalOpen"
+    <ConfirmationAlert
+        :open="isTrashImagesModalOpen"
         title="Image(s) deletion"
-        :message="deleteImagesMessage"
+        :message="trashImagesMessage"
         confirm-text="Move to trash"
         confirm-class="btn btn-error btn-outline"
         @confirm="trashContextMenuImages"
-        @cancel="closeDeleteImagesModal"
-        @update:open="(value) => !value && closeDeleteImagesModal()"
+        @cancel="closeTrashImagesModal"
+        @update:open="(value) => !value && closeTrashImagesModal()"
     />
 </template>

@@ -144,8 +144,8 @@ export class DatasetController {
             return { error: true, message: "Error trashing file, check the logs for more information" }
         }
 
-        const removedImages = successes.map((entry) => entry.filePath!);
-        this.removeImagesFromOriginalDataset(removedImages);
+        const trashedImages = successes.map((entry) => entry.filePath!);
+        this.removeImagesFromOriginalDataset(trashedImages);
 
         return { error: false, message: `Sent ${successes.length} pair of files to the trash bin` };
     }

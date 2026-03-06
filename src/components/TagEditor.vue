@@ -59,7 +59,7 @@ const highlightRegexes = computed(() =>
         .map((word) => new RegExp(`(^|[^\\p{L}])${escapeRegExp(word)}([^\\p{L}]|$)`, "iu"))
 );
 
-const selectedImageId = computed(() => {
+const selectedImageKey = computed(() => {
     const iterator = props.selectedImages.values().next();
     return iterator.done ? null : iterator.value;
 });
@@ -141,20 +141,20 @@ const showTopSection = computed(() =>
 const displayedTaggerDiffTags = computed(() => {
     void datasetStore.dataVersion;
 
-    if (!hasSingleSelection.value || !selectedImageId.value)
+    if (!hasSingleSelection.value || !selectedImageKey.value)
         return [];
 
-    const diff = datasetStore.tagDiff.get(selectedImageId.value);
+    const diff = datasetStore.tagDiff.get(selectedImageKey.value);
     return sortDiffTags(diff?.tagger);
 });
 
 const displayedOriginalDiffTags = computed(() => {
     void datasetStore.dataVersion;
 
-    if (!hasSingleSelection.value || !selectedImageId.value)
+    if (!hasSingleSelection.value || !selectedImageKey.value)
         return [];
 
-    const diff = datasetStore.tagDiff.get(selectedImageId.value);
+    const diff = datasetStore.tagDiff.get(selectedImageKey.value);
     return sortDiffTags(diff?.original);
 });
 
@@ -228,15 +228,15 @@ function resizeTagGroupWidth(moveEvent: MouseEvent) {
     window.addEventListener("mouseup", onMouseUp);
 }
 
-function addTag(tag?: string, imageId?: string) {
+function addTag(tag?: string, imageKey?: string) {
     const newTag = tag || tagInput.value;
     if (!newTag)
         return;
 
-    const imageIds = imageId ? new Set([imageId]) : new Set(props.selectedImages);
+    const imageKeys = imageKey ? new Set([imageKey]) : new Set(props.selectedImages);
     const position = editMode.value === "mass" ? tagOperations.validateTagPosition(tagPosition.value) : -1;
 
-    tagOperations.addTag(newTag, imageIds, position);
+    tagOperations.addTag(newTag, imageKeys, position);
     tagInput.value = "";
 }
 
@@ -250,8 +250,8 @@ function addGlobalTag() {
     globalTagInput.value = "";
 }
 
-function removeTag(tag: string, imageId?: string) {
-    const images = imageId ? new Set([imageId]) : new Set(props.selectedImages);
+function removeTag(tag: string, imageKey?: string) {
+    const images = imageKey ? new Set([imageKey]) : new Set(props.selectedImages);
     tagOperations.removeTag(tag, images);
 }
 
@@ -265,11 +265,11 @@ function addOrRemoveTag(tag: string) {
 
     const rawDataset = toRaw(datasetStore.dataset);
 
-    for (const imageId of props.selectedImages.values()) {
-        if (rawDataset.get(imageId)?.tags.has(tag)) {
-            toRemove.add(imageId);
+    for (const imageKey of props.selectedImages.values()) {
+        if (rawDataset.get(imageKey)?.tags.has(tag)) {
+            toRemove.add(imageKey);
         } else {
-            toAdd.add(imageId);
+            toAdd.add(imageKey);
         }
     }
 
@@ -379,10 +379,10 @@ function setDropIndexToEnd() {
 }
 
 function onTagDrop() {
-    if (!isDraggable.value || !draggingTag.value || !selectedImageId.value || dropIndex.value === null)
+    if (!isDraggable.value || !draggingTag.value || !selectedImageKey.value || dropIndex.value === null)
         return;
 
-    tagOperations.reorderTag(selectedImageId.value, draggingTag.value, dropIndex.value);
+    tagOperations.reorderTag(selectedImageKey.value, draggingTag.value, dropIndex.value);
     draggingTag.value = null;
     dropIndex.value = null;
 }
@@ -484,7 +484,7 @@ function addTagToImageFilter(tag: string) {
                                 v-for="tag in displayedTaggerDiffTags"
                                 :key="tag"
                                 class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-gray-700"
-                                @click="addTag(tag, selectedImageId!)"
+                                @click="addTag(tag, selectedImageKey!)"
                                 @contextmenu.prevent="openTagContextMenu($event, tag)"
                             >
                                 {{ tag }}
@@ -507,7 +507,7 @@ function addTagToImageFilter(tag: string) {
                                 v-for="tag in displayedOriginalDiffTags"
                                 :key="tag"
                                 class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-rose-900"
-                                @click="removeTag(tag, selectedImageId!)"
+                                @click="removeTag(tag, selectedImageKey!)"
                                 @contextmenu.prevent="openTagContextMenu($event, tag)"
                             >
                                 {{ tag }}

@@ -38,7 +38,7 @@ export class TaggerManager {
         this.process.kill();
     }
 
-    resizeTerminal(columms: number, rows: number) {
-        this.process?.resizeTerminal(columms, rows);
+    resizeTerminal(columns: number, rows: number) {
+        this.process?.resizeTerminal(columns, rows);
     }
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AutotaggerConsole from "@/components/AutotaggerConsole.vue";
-import AlertModal from "@/components/AlertModal.vue";
+import ConfirmationAlert from "@/components/ConfirmationAlert.vue";
 
 import type { TaggerModelsStatus, TaggerModelConfigurationProperties } from "../../shared/tagger";
 
@@ -650,7 +650,7 @@ onMounted(async () => {
             <div class="modal-backdrop" @click="closeEditModelModal"></div>
         </div>
     </div>
-    <AlertModal
+    <ConfirmationAlert
         :open="isRemoveModelModalOpen"
         title="Model deletion"
         :message="`Are you sure you want to remove '${modelToBeRemoved}' from the model list?`"
@@ -659,7 +659,7 @@ onMounted(async () => {
         @cancel="closeRemoveModelModal"
         @update:open="(value) => !value && closeRemoveModelModal()"
     />
-    <AlertModal
+    <ConfirmationAlert
         :open="isDeleteModelModalOpen"
         title="Model removal"
         :message="`'${modelToBeRemoved}' was removed successfully. Do you want to delete the model from the cache folder?`"

@@ -52,11 +52,11 @@ export class Terminal {
         });
     }
 
-    resizeTerminal(columms: number, rows: number) {
-        this.columns = columms;
+    resizeTerminal(columns: number, rows: number) {
+        this.columns = columns;
         this.rows = rows;
 
-        this.ptyProcess?.resize(columms, rows);
+        this.ptyProcess?.resize(columns, rows);
     }
 
     kill() {

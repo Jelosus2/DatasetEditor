@@ -2,7 +2,7 @@
 import type { DuplicateMethod } from "../../shared/image";
 
 import VirtualImage from "@/components/VirtualImage.vue";
-import AlertModal from "@/components/AlertModal.vue";
+import ConfirmationAlert from "@/components/ConfirmationAlert.vue";
 
 import { useDatasetStore } from "@/stores/datasetStore";
 import { ImageService } from "@/services/imageService";
@@ -578,7 +578,7 @@ onUnmounted(() => {
         </div>
         <label class="modal-backdrop" for="duplicate_finder_modal" @click="resetState"></label>
     </div>
-    <AlertModal
+    <ConfirmationAlert
         :open="isTrashImageModalOpen"
         title="Image deletion"
         message="Are you sure you want to move this image and its caption file to the trash?"
@@ -588,7 +588,7 @@ onUnmounted(() => {
         @cancel="closeTrashImageModal"
         @update:open="(value) => !value && closeTrashImageModal()"
     />
-    <AlertModal
+    <ConfirmationAlert
         :open="isTrashNotKeptModalOpen"
         title="Bulk image deletion"
         :message="trashNotKeptMessage"

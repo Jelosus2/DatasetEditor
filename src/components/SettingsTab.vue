@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AutocompletionInput from "@/components/AutocompletionInput.vue";
-import AlertModal from "@/components/AlertModal.vue";
+import ConfirmationAlert from "@/components/ConfirmationAlert.vue";
 
 import type { SettingsDefinition } from "../../shared/settings-schema";
 
@@ -244,7 +244,7 @@ onMounted(() => {
             </div>
         </div>
     </div>
-    <AlertModal
+    <ConfirmationAlert
         :open="isRestartModalOpen"
         title="Restart required"
         message="You changed a setting that requires a restart. Restart now or apply it next time you open the app."

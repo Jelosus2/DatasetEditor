@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import ModalComponent from "@/components/ModalComponent.vue";
 import ImageGrid from "@/components/ImageGrid.vue";
 import TagEditor from "@/components/TagEditor.vue";
 
@@ -15,27 +14,30 @@ const props = defineProps<{
 
 const filterMode = ref("or");
 const filterInput = ref("");
-const isFiltering = computed(() => !!filterInput.value);
 const container = shallowRef<HTMLDivElement | null>(null);
 const sortOrder = ref<"asc" | "desc">("asc");
 const globalSortMode = ref<"alphabetical" | "tag_count">("alphabetical");
 const globalSortOrder = ref<"asc" | "desc">("asc");
 const globalTagFilterInput = ref("");
 const previewImage = ref("");
-const activeModalImageId = ref<string | null>(null);
+const activeModalImageKey = ref<string | null>(null);
 const gridMetrics = ref({ columns: 1 });
 const imageModalZoom = ref(1);
 const imageModalPanX = ref(0);
 const imageModalPanY = ref(0);
+const imageModalRef = shallowRef<HTMLDialogElement | null>(null);
 
 const datasetStore = useDatasetStore();
+
+const isFiltering = computed(() => !!filterInput.value);
+
 const imageKeys = computed(() => {
     void datasetStore.dataVersion;
 
     return Array.from(datasetStore.dataset.keys());
 });
 
-const activeModalImage = computed(() => activeModalImageId.value ? datasetStore.dataset.get(activeModalImageId.value) : undefined);
+const activeModalImage = computed(() => activeModalImageKey.value ? datasetStore.dataset.get(activeModalImageKey.value) : undefined);
 
 const selectedImages = computed({
     get: () => datasetStore.selectedImages,
@@ -47,9 +49,9 @@ const lastSelectedIndex = computed({
     set: (value: number) => { datasetStore.lastSelectedIndex = value; }
 });
 
-const selectedImageId = computed(() => selectedImages.value.values().next().value);
-const selectedImage = computed(() => selectedImageId.value ? datasetStore.dataset.get(selectedImageId.value) : undefined);
-const selectedTitle = computed(() => selectedImageId.value?.split("/").pop());
+const selectedImageKey = computed(() => selectedImages.value.values().next().value);
+const selectedImage = computed(() => selectedImageKey.value ? datasetStore.dataset.get(selectedImageKey.value) : undefined);
+const selectedTitle = computed(() => selectedImageKey.value?.split("/").pop());
 
 const { containerWidth, startResize } = useResizablePane(container, 300, {
     minPercent: 0.2,
@@ -96,7 +98,7 @@ watch(imageKeys, (newKeys) => {
     }
 
     const newKeySet = new Set(newKeys);
-    const hasValidSelection = [...selectedImages.value].some((imageId) => newKeySet.has(imageId));
+    const hasValidSelection = [...selectedImages.value].some((imageKey) => newKeySet.has(imageKey));
 
     if (!hasValidSelection) {
         clearSelection();
@@ -106,7 +108,7 @@ watch(imageKeys, (newKeys) => {
 
 watch(filteredImages, (newSet) => {
     if (isFiltering.value) {
-        const keptSelection = [...selectedImages.value].filter((id) => newSet.has(id));
+        const keptSelection = [...selectedImages.value].filter((imageKey) => newSet.has(imageKey));
 
         if (keptSelection.length > 0) {
             setSingleSelection(keptSelection[0]);
@@ -126,23 +128,15 @@ watch(filterInput, (val) => {
     }
 });
 
-function getImageModal() {
-    return document.getElementById("my_modal_1") as HTMLDialogElement | null;
-}
-
-function displayFullImage(id: string) {
+function openImageModal(imageKey: string) {
     if (props.arePreviewsEnabled)
         return;
 
-    activeModalImageId.value = id;
     resetModalView();
+    activeModalImageKey.value = imageKey;
 
-    const modal = getImageModal();
-    modal?.showModal();
-}
-
-function isImageModalOpen() {
-    return !!getImageModal()?.open;
+    if (!imageModalRef.value?.open)
+        imageModalRef.value?.showModal();
 }
 
 function clampZoom(value: number) {
@@ -165,7 +159,7 @@ function resetModalView() {
 }
 
 function handleModalWheel(event: WheelEvent) {
-    if (!isImageModalOpen() || !activeModalImage.value)
+    if (!imageModalRef.value?.open || !activeModalImage.value)
         return;
 
     const delta = event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
@@ -173,7 +167,7 @@ function handleModalWheel(event: WheelEvent) {
 }
 
 function handleModalZoomKey(event: KeyboardEvent) {
-    if (!event.ctrlKey || !isImageModalOpen() || !activeModalImage.value)
+    if (!event.ctrlKey || !imageModalRef.value?.open || !activeModalImage.value)
         return;
     event.preventDefault();
 
@@ -187,7 +181,7 @@ function handleModalZoomKey(event: KeyboardEvent) {
 }
 
 function onModalPointerDown(event: PointerEvent) {
-    if (!isImageModalOpen() || !activeModalImage.value || imageModalZoom.value <= 1)
+    if (!imageModalRef.value?.open || !activeModalImage.value || imageModalZoom.value <= 1)
         return;
 
     isPanning = true;
@@ -210,7 +204,8 @@ function onModalPointerUp() {
 }
 
 function handleImageModalClose() {
-    activeModalImageId.value = null;
+    isPanning = false;
+    activeModalImageKey.value = null;
     resetModalView();
 }
 
@@ -226,12 +221,12 @@ function clearImageFilter() {
 }
 
 let previewTimer: number | null = null;
-function handlePreviewHover(id?: string) {
+function handlePreviewHover(imageKey?: string) {
     if (previewTimer)
         clearTimeout(previewTimer);
 
     previewTimer = setTimeout(() => {
-        previewImage.value = id || "";
+        previewImage.value = imageKey || "";
     }, 40);
 }
 
@@ -240,14 +235,14 @@ function handleGridMetrics(metrics: { columns: number }) {
 }
 
 function handleOpenImage(ev: Event) {
-    const id = (ev as CustomEvent<string>).detail;
-    if (id)
-        displayFullImage(id);
+    const imageKey = (ev as CustomEvent<string>).detail;
+    if (imageKey)
+        openImageModal(imageKey);
 }
 
-function toggleSelection(imageId: string, event: MouseEvent) {
+function toggleSelection(imageKey: string, event: MouseEvent) {
     datasetStore.toggleSelection(
-        imageId,
+        imageKey,
         event,
         imageKeys.value,
         filteredImages.value,
@@ -284,8 +279,6 @@ onActivated(() => {
     window.addEventListener("pointermove", onModalPointerMove);
     window.addEventListener("pointerup", onModalPointerUp);
     window.addEventListener("pointercancel", onModalPointerUp);
-
-    getImageModal()?.addEventListener("close", handleImageModalClose);
 });
 
 onDeactivated(() => {
@@ -295,7 +288,8 @@ onDeactivated(() => {
     window.removeEventListener("pointerup", onModalPointerUp);
     window.removeEventListener("pointercancel", onModalPointerUp);
 
-    getImageModal()?.removeEventListener("close", handleImageModalClose);
+    if (imageModalRef.value?.open)
+        imageModalRef.value.close();
 });
 </script>
 
@@ -315,7 +309,7 @@ onDeactivated(() => {
                     :is-filtering="isFiltering"
                     @toggle-selection="toggleSelection"
                     @hover-image="handlePreviewHover"
-                    @display-full-image="displayFullImage"
+                    @display-full-image="openImageModal"
                     @clear-filter="clearImageFilter"
                     @grid-metrics="handleGridMetrics"
                 />
@@ -372,24 +366,33 @@ onDeactivated(() => {
             </div>
         </div>
     </div>
-    <ModalComponent :is-image="true">
-        <div
-            class="flex max-h-[95vh] max-w-[90vw] items-center justify-center overflow-hidden"
-            @wheel.prevent="handleModalWheel"
-            @pointerdown="onModalPointerDown"
-        >
-            <img
-                v-if="activeModalImage"
-                :src="activeModalImage.filePath"
-                draggable="false"
-                decoding="async"
-                class="max-h-screen select-none"
-                :class="imageModalZoom > 1 ? 'cursor-grab active:cursor-grabbing' : ''"
-                :style="{
-                    transform: `translate(${imageModalPanX}px, ${imageModalPanY}px) scale(${imageModalZoom})`,
-                    transformOrigin: 'center center'
-                }"
-            />
+    <dialog
+        ref="imageModalRef"
+        class="modal z-50"
+        @close="handleImageModalClose"
+    >
+        <div class="modal-box w-fit max-w-[90%] p-0">
+            <div
+                class="flex max-h-[95vh] max-w-[90vw] items-center justify-center overflow-hidden"
+                @wheel.prevent="handleModalWheel"
+                @pointerdown="onModalPointerDown"
+            >
+                <img
+                    v-if="activeModalImage"
+                    :src="activeModalImage.filePath"
+                    draggable="false"
+                    decoding="async"
+                    class="max-h-screen select-none"
+                    :class="imageModalZoom > 1 ? 'cursor-grab active:cursor-grabbing' : ''"
+                    :style="{
+                        transform: `translate(${imageModalPanX}px, ${imageModalPanY}px) scale(${imageModalZoom})`,
+                        transformOrigin: 'center center'
+                    }"
+                />
+            </div>
         </div>
-    </ModalComponent>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
 </template>

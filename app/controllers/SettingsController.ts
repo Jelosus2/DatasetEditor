@@ -91,7 +91,7 @@ export class SettingsController {
             console.error(error);
             App.logger.error(`[Settings Manager] Unknown error checking directory permissions: ${Utilities.getErrorMessage(error)}`);
 
-            return { ok: false, message: "Unkown error, check the logs for more information" }
+            return { ok: false, message: "Unknown error, check the logs for more information" }
         }
     }
 }
