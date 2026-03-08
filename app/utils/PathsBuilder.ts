@@ -1,12 +1,25 @@
 import type { TagBatch } from "../types/database.js";
 
 import { Utilities } from "./Utilities.js";
-import { App } from "../App.js";
 import readline from "node:readline";
 import { app } from "electron";
 import path from "node:path";
 import url from "node:url";
 import fs from "fs-extra";
+
+const dataRootScopeMap: Record<string, string> = {
+    dev: app.getAppPath(),
+    portable: process.resourcesPath,
+    machine: app.getPath("userData"),
+    user: app.getPath("userData")
+}
+
+const taggerRootScopeMap: Record<string, string> = {
+    dev: app.getAppPath(),
+    portable: process.resourcesPath,
+    machine: path.join(process.env.ProgramData!, "dataset-editor"),
+    user: app.getPath("userData")
+}
 
 export class PathsBuilder {
     readonly dataPath: string;
@@ -17,7 +30,7 @@ export class PathsBuilder {
     readonly pythonExecutablePath: string;
     readonly databasePath: string;
     readonly settingsPath: string;
-    readonly tagAutocompletionFilePath: string;
+    readonly bundledTagAutocompletionFilePath: string;
     readonly tagGroupsFilePath: string;
     readonly taggerScriptPath: string;
     readonly taggerModelsConfigPath: string;
@@ -26,30 +39,32 @@ export class PathsBuilder {
     readonly appIconPath: string;
     readonly preloadFilePath: string;
     readonly indexFilePath: string;
-    readonly uninstallerPath: string;
     readonly defaultHuggingFacePath: string;
 
-    constructor(basePath: string) {
+    constructor(installScope: string) {
         const __dirname = this.__dirname(import.meta.url);
+        const dataRoot = dataRootScopeMap[installScope];
+        const taggerRoot = taggerRootScopeMap[installScope];
 
-        this.dataPath = path.join(basePath, "Data");
+        this.dataPath = path.join(dataRoot, "Data");
         this.tagGroupsPath = path.join(this.dataPath, "TagGroups");
         this.tagAutocompletionsPath = path.join(this.dataPath, "TagAutocompletions");
-        this.taggerPath = path.join(basePath, "tagger");
+        this.taggerPath = path.join(taggerRoot, "tagger");
         this.pythonPath = path.join(this.taggerPath, "embedded_python");
         this.pythonExecutablePath = path.join(this.pythonPath, "python.exe");
         this.databasePath = path.join(this.tagAutocompletionsPath, "tags.db");
         this.settingsPath = path.join(this.dataPath, "settings.json");
-        this.tagAutocompletionFilePath = path.join(this.tagAutocompletionsPath, "danbooru.csv");
+        this.bundledTagAutocompletionFilePath = installScope === "dev"
+            ? path.join(this.dataPath, "TagAutocompletions", "danbooru.csv")
+            : path.join(process.resourcesPath, "seed-data", "danbooru.csv");
         this.tagGroupsFilePath = path.join(this.tagGroupsPath, "tag_groups.json");
         this.taggerScriptPath = path.join(this.taggerPath, "main.py");
         this.taggerModelsConfigPath = path.join(this.dataPath, "models_config.json");
         this.distPath = path.join(__dirname, "..", "..", "dist");
         this.publicPath = path.join(__dirname, "..", "..", "public");
-        this.appIconPath = !App.IS_DEVELOPMENT ? path.join(this.distPath, "doro.ico") : path.join(this.publicPath, "doro.ico");
+        this.appIconPath = installScope !== "dev" ? path.join(this.distPath, "doro.ico") : path.join(this.publicPath, "doro.ico");
         this.preloadFilePath = path.join(__dirname, "..", "preload.js");
         this.indexFilePath = path.join(this.distPath, "index.html");
-        this.uninstallerPath = path.join(path.dirname(app.getPath("exe")), "Uninstall Dataset Editor.exe");
         this.defaultHuggingFacePath = this.getHuggingFaceCachePath();
     }
 

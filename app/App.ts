@@ -26,23 +26,13 @@ export class App {
     static tagger: TaggerManager;
     static taggerModels: TaggerModelManager;
 
-    static async getBasePath() {
-        let basePath = this.IS_DEVELOPMENT ? app.getAppPath() : app.getPath("userData");
-
-        // Check if it's a portable installation
-        const portableTestPath = path.join(path.dirname(app.getPath("exe")), "Uninstall Dataset Editor.exe");
-        if (!this.IS_DEVELOPMENT && await fs.pathExists(portableTestPath))
-            basePath = process.resourcesPath;
-
-        return basePath;
-    }
-
     static async isPortableInstallation() {
-        return !(await fs.pathExists(App.paths.uninstallerPath));
+        const uninstallerPath = path.join(path.dirname(app.getPath("exe")), "Uninstall Dataset Editor.exe");
+        return !(await fs.pathExists(uninstallerPath));
     }
 
     static async loadModules(debugFlag: boolean) {
-        this.paths = new PathsBuilder(await this.getBasePath());
+        this.paths = new PathsBuilder(await this.getInstallScope());
         this.window = new WindowManager(debugFlag);
         this.settings = new SettingsManager();
         this.updater = new UpdateManager();
@@ -145,9 +135,25 @@ export class App {
             this.logger.info("[Database Manager] Successfully inserted tags into the database");
             return { error: false }
         } catch (error) {
-            console.log(error);
+            console.error(error);
             this.logger.error(`[Database Manager] Failed to insert tags into database: ${Utilities.getErrorMessage(error)}`);
             return { error: true, message: "Failed to insert tags, check the logs for more information" }
+        }
+    }
+
+    static async getInstallScope() {
+        if (this.IS_DEVELOPMENT)
+            return "dev";
+        if (await this.isPortableInstallation())
+            return "portable";
+
+        try {
+            const scopeFilePath = path.join(path.dirname(app.getPath("exe")), "install-scope.json");
+            const payload: { scope: string } = await fs.readJSON(scopeFilePath);
+            return payload.scope;
+        } catch {
+            const taggerDirectoryTest = path.join(process.env.ProgramData!, "dataset-editor", "tagger");
+            return await fs.pathExists(taggerDirectoryTest) ? "machine" : "user";
         }
     }
 }

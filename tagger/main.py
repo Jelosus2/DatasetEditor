@@ -1,9 +1,9 @@
-from utils import ws_safe_send, ws_error_payload
 import asyncio
 import json
 import sys
 
 try:
+    from utils import ws_safe_send, ws_error_payload
     from model_manager import download_model, get_info_payload, delete_model, get_model_action_payload
     from tagger import tag_images
     import websockets

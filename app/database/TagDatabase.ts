@@ -47,9 +47,16 @@ export class TagDatabase {
 
     async tryLoadDefaultCsv() {
         const rowCount = this.database.prepare("SELECT COUNT(*) FROM tags").pluck().get() as number;
-        if (rowCount === 0 && await fs.pathExists(App.paths.tagAutocompletionFilePath)) {
-            await this.loadCsv(App.paths.tagAutocompletionFilePath, /* resetTable = */ true)
+        if (rowCount > 0)
+            return;
+
+        const bundledCsvPath = App.paths.bundledTagAutocompletionFilePath;
+        if (!await fs.pathExists(bundledCsvPath)) {
+            App.logger.warning(`[Database Manager] Default tags CSV not found at ${bundledCsvPath}`);
+            return;
         }
+
+        await this.loadCsv(bundledCsvPath, /* resetTable = */ true);
     }
 
     async loadCsv(csvPath: string, resetTable?: boolean) {

@@ -19,7 +19,7 @@ tagger/venv
 tagger/dependencies_installed
 tagger/__pycache__
 embedded_python
-dist-electron
+dist_app
 
 /cypress/videos/
 /cypress/screenshots/

@@ -2,7 +2,7 @@
   "name": "dataset-editor",
   "version": "0.2.0",
   "type": "module",
-  "main": "dist-electron/main.js",
+  "main": "dist_app/main.js",
   "description": "A dataset editor",
   "author": "Jelosus1",
   "license": "MIT",
@@ -18,7 +18,7 @@
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
-    "package:win": "vite build && electron-builder build --win",
+    "package:win": "vite build && pnpm build:electron && electron-builder build --win",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {

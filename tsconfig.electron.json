@@ -5,7 +5,7 @@
     "module": "nodenext",
     "target": "es2023",
     "rootDir": "app",
-    "outDir": "dist-electron",
+    "outDir": "dist_app",
     "types": ["node", "electron"],
     "esModuleInterop": true,
     "skipLibCheck": true,
