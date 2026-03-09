@@ -13,7 +13,7 @@ export class TaggerManager {
         if (this.process && !this.process.hasEnded())
             throw new Error("A process is still running");
 
-        const args = ["pip", "install", "--no-warn-script-location", "--disable-pip-version-check", "-r", "../requirements.txt"]
+        const args = ["pip", "install", "--no-warn-script-location", "--disable-pip-version-check", "-r", "requirements.txt"]
         return this.process.runPythonTask("-m", args, "tagger:output");
     }
 

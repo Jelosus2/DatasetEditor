@@ -51,7 +51,9 @@ export class PathsBuilder {
         this.tagAutocompletionsPath = path.join(this.dataPath, "TagAutocompletions");
         this.taggerPath = path.join(taggerRoot, "tagger");
         this.pythonPath = path.join(this.taggerPath, "embedded_python");
-        this.pythonExecutablePath = path.join(this.pythonPath, "python.exe");
+        this.pythonExecutablePath = process.platform === "win32"
+            ? path.join(this.pythonPath, "python.exe")
+            : "python3";
         this.databasePath = path.join(this.tagAutocompletionsPath, "tags.db");
         this.settingsPath = path.join(this.dataPath, "settings.json");
         this.bundledTagAutocompletionFilePath = installScope === "dev"

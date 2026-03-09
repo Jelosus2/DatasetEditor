@@ -1,5 +1,6 @@
 !include "LogicLib.nsh"
 !include "WinMessages.nsh"
+!include "FileFunc.nsh"
 
 !macro customInstall
     Var /GLOBAL SourceTaggerDir
@@ -136,18 +137,42 @@ FunctionEnd
 !define CT_TEXT_LABEL 1006
 
 Function IsInstDirWritable
-    StrCpy $0 "$INSTDIR\test_write_perm.tmp"
+    StrCpy $0 "$INSTDIR"
+
+find_parent:
+    IfFileExists "$0\*.*" parent_found
+    ${GetParent} "$0" $0
+    ${If} "$0" == ""
+        Push 0
+        Return
+    ${EndIf}
+    Goto find_parent
+
+parent_found:
+    StrCpy $1 "$0\.de_write_probe"
+    StrCpy $2 "$1\probe.temp"
+
     ClearErrors
-    FileOpen $1 $0 w
-    IfErrors NotWritable
-    FileClose $1
-    Delete $0
+    CreateDirectory "$1"
+    IfErrors not_writeable
+
+    ClearErrors
+    FileOpen $3 "$2" w
+    IfErrors cleanup_not_writeable
+    FileWrite $3 "ok"
+    FileClose $3
+
+    Delete "$2"
+    RMDir "$1"
     Push 1
     Return
 
-NotWritable:
+cleanup_not_writeable:
+    Delete "$2"
+    RMDir "$1"
+
+not_writeable:
     Push 0
-    Return
 FunctionEnd
 
 Function .onVerifyInstDir

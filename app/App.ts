@@ -27,6 +27,9 @@ export class App {
     static taggerModels: TaggerModelManager;
 
     static async isPortableInstallation() {
+        if (process.platform !== "win32")
+            return false;
+
         const uninstallerPath = path.join(path.dirname(app.getPath("exe")), "Uninstall Dataset Editor.exe");
         return !(await fs.pathExists(uninstallerPath));
     }
@@ -72,7 +75,7 @@ export class App {
             this.database.tryLoadDefaultCsv();
             this.setupDanbooruRefererHeader();
 
-            if (settings.autoCheckUpdates && !this.isPortableInstallation())
+            if (settings.autoCheckUpdates && !await this.isPortableInstallation())
                 this.updater.checkForUpdates();
         } catch (error) {
             console.error(error);
@@ -144,6 +147,8 @@ export class App {
     static async getInstallScope() {
         if (this.IS_DEVELOPMENT)
             return "dev";
+        if (process.platform !== "win32")
+            return "user";
         if (await this.isPortableInstallation())
             return "portable";
 

@@ -24,7 +24,7 @@ export class Terminal {
                     name: "xterm-color",
                     cols: this.columns,
                     rows: this.rows,
-                    cwd: App.paths.pythonPath,
+                    cwd: App.paths.taggerPath,
                     env: process.env
                 });
 
