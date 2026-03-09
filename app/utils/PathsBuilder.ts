@@ -17,7 +17,7 @@ const dataRootScopeMap: Record<string, string> = {
 const taggerRootScopeMap: Record<string, string> = {
     dev: app.getAppPath(),
     portable: process.resourcesPath,
-    machine: path.join(process.env.ProgramData!, "dataset-editor"),
+    machine: path.join(process.env.ProgramData ?? "", "dataset-editor"),
     user: app.getPath("userData")
 }
 
