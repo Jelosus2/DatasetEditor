@@ -184,11 +184,20 @@ export type IpcInvokeMap = {
             stopped?: boolean;
         }
     }
+    "tagger:uninstall": {
+        args: [];
+        result: {
+            error: boolean;
+            message?: string;
+            stopped?: boolean;
+        }
+    }
     "tagger:start": {
         args: [];
         result: {
             error: boolean;
             message?: string;
+            port?: number;
         }
     }
     "tagger:stop": {

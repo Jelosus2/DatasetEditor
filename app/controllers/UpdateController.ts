@@ -55,6 +55,6 @@ export class UpdateController {
 
     @IpcHandle("update:availability")
     async areUpdatesAvailable() {
-        return !(await App.isPortableInstallation());
+        return !App.IS_DEVELOPMENT && !(await App.isPortableInstallation());
     }
 }

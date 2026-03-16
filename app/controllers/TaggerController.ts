@@ -6,6 +6,7 @@ import { IpcClass, IpcHandle } from "../decorators/ipc.js";
 import { APIClient } from "../utils/APIClient.js";
 import { Utilities } from "../utils/Utilities.js";
 import { App } from "../App.js";
+import net from "node:net";
 
 @IpcClass()
 export class TaggerController {
@@ -55,6 +56,26 @@ export class TaggerController {
         }
     }
 
+    @IpcHandle("tagger:uninstall")
+    async uninstallDependencies() {
+        try {
+            App.logger.info("[Tagger Manager] Uninstalling dependencies...");
+            const result = await App.tagger.runUninstallProcess();
+
+            if (result.isManualKilling)
+                return { stopped: true };
+            if (result.exitCode !== 0)
+                throw new Error(`Dependency uninstallation failed with exit code ${result.exitCode}`);
+
+             App.logger.info("[Tagger Manager] Dependencies uninstalled successfully");
+            return { error: false, message: "Dependencies uninstalled successfully" };
+        } catch (error) {
+            console.error(error);
+            App.logger.error(`[Tagger Manager] Error while uninstalling dependencies: ${Utilities.getErrorMessage(error)}`);
+            return { error: true, message: "Failed to uninstall dependencies, check the logs for more information" };
+        }
+    }
+
     @IpcHandle("tagger:start")
     async startTagger() {
         try {
@@ -63,18 +84,25 @@ export class TaggerController {
             process.env["HF_HUB_CACHE"] = settings.huggingFaceCacheDirectory;
             process.env["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1";
 
-            App.logger.info("[Tagger Manager] Starting server...");
-            App.tagger.runTaggerProcess(settings.taggerPort);
+            if (process.platform !== "win32" && !await App.tagger.hasVirtualEnv())
+                return { error: true, message: "Install the tagger dependencies first" };
 
-            this.port = settings.taggerPort;
+            const port = await this.findAvailablePort(settings.taggerPort);
+            if (port !== settings.taggerPort)
+                 App.logger.info(`[Tagger Manager] Preferred port ${settings.taggerPort} is in use, using ${port} instead`);
+
+            App.logger.info(`[Tagger Manager] Starting server on port ${port}...`);
+            App.tagger.runTaggerProcess(port);
+
+            this.port = port;
 
             App.logger.info("[Tagger Manager] Server started successfully");
-            return { error: false }
+            return { error: false, port };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Tagger Manager] Error while installing the dependencies: ${Utilities.getErrorMessage(error)}`);
             this.port = null;
-            return { error: true, message: "Failed to install the dependencies, check the logs for more information" }
+            return { error: true, message: "Failed to install the dependencies, check the logs for more information" };
         }
     }
 
@@ -82,6 +110,7 @@ export class TaggerController {
     stopTagger() {
         try {
             App.logger.info("[Tagger Manager] Stopping process...");
+            this.port = null;
             App.tagger.cleanup();
             App.logger.info("[Tagger Manager] Process stopped successfully");
 
@@ -218,5 +247,32 @@ export class TaggerController {
             this.port = null;
             return { error: true, message: "Failed to delete the model, check the logs for more information" }
         }
+    }
+
+    private isPortAvailable(port: number) {
+        return new Promise<boolean>((resolve) => {
+            const server = net.createServer();
+
+            server.once("error", () => {
+                resolve(false);
+            });
+
+            server.once("listening", () => {
+                server.close(() => resolve(true));
+            });
+
+            server.listen(port, "127.0.0.1");
+        });
+    }
+
+    private async findAvailablePort(startPort: number, maxAttempts = 100) {
+        let port = startPort;
+
+        for (let i = 0; i < maxAttempts; i++, port++) {
+            if (await this.isPortAvailable(port))
+                return port;
+        }
+
+        throw new Error(`No available port found starting from ${startPort}`);
     }
 }

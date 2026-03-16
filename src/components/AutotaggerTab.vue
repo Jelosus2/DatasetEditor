@@ -13,10 +13,12 @@ import DeleteIcon from "@/assets/icons/trash-bin.svg";
 import RemoveIcon from "@/assets/icons/x.svg";
 import EditIcon from "@/assets/icons/edit.svg";
 import AddIcon from "@/assets/icons/plus.svg";
+import CaretDownIcon from "@/assets/icons/caret-down.svg";
 
 const selectedModels = ref<Set<string>>(new Set());
 const consoleRef = ref<InstanceType<typeof AutotaggerConsole> | null>(null);
 const isInstalling = ref(false);
+const isUninstalling = ref(false);
 const isServiceStarting = ref(false);
 const isServiceRunning = ref(false);
 const device = ref("?");
@@ -42,6 +44,8 @@ const removeUnderscores = ref(true);
 const removeRedundantTags = ref(true);
 const disableCharacterThreshold = ref(false);
 const isTagging = ref(false);
+const selectedDependencyAction = ref<"install" | "uninstall">("install");
+const isUninstallDependenciesModalOpen = ref(false);
 
 const modelNames = computed(() => Array.from(models.value.keys()));
 
@@ -100,6 +104,19 @@ const shouldDisableTagButtons = computed(() => {
     const isModelDeleting = modelsDeleting.value.size > 0;
 
     return !isServiceRunning.value || isModelDownloading || isModelDeleting;
+});
+
+const isDependencyActionRunning = computed(() => isInstalling.value || isUninstalling.value);
+
+const dependencyButtonLabel = computed(() => {
+    if (isInstalling.value)
+        return "Cancel Installation";
+    if (isUninstalling.value)
+        return "Cancel Uninstall";
+
+    return selectedDependencyAction.value === "install"
+        ? "Install Dependencies"
+        : "Uninstall Dependencies";
 });
 
 const { showAlert } = useAlert();
@@ -301,9 +318,42 @@ async function installDependencies() {
     isInstalling.value = false;
 }
 
+function openUninstallDependenciesModal() {
+    isUninstallDependenciesModalOpen.value = true;
+}
+
+function closeUninstallDependenciesModal() {
+    isUninstallDependenciesModalOpen.value = false;
+}
+
+async function uninstallDependencies() {
+    closeUninstallDependenciesModal();
+
+    isUninstalling.value = true;
+    await taggerService.uninstallDependencies();
+    isUninstalling.value = false;
+}
+
+async function runSelectedDependencyAction() {
+    if (isDependencyActionRunning.value) {
+        await stopProcess();
+        return;
+    }
+
+    if (selectedDependencyAction.value === "install") {
+        await installDependencies();
+        return;
+    }
+
+    openUninstallDependenciesModal();
+}
+
 async function startService() {
     isServiceStarting.value = true;
-    await taggerService.startService();
+    const error = await taggerService.startService();
+
+    if (error)
+        isServiceStarting.value = false;
 }
 
 async function stopProcess() {
@@ -427,24 +477,60 @@ onMounted(async () => {
                 <div class="flex gap-6 pt-6">
                     <div class="flex flex-col justify-between">
                         <div class="flex gap-4">
-                            <button
-                                class="btn btn-outline"
-                                :class="{
-                                    'btn-error': isInstalling,
-                                    'btn-info': !isInstalling
-                                }"
-                                :disabled="isServiceStarting || isServiceRunning"
-                                @click="isInstalling ? stopProcess() : installDependencies()"
-                            >
-                                {{ isInstalling ? 'Cancel Installation' : 'Install Dependencies' }}
-                            </button>
+                            <div class="join">
+                                <button
+                                    class="btn btn-outline join-item"
+                                    :class="{
+                                        'btn-info': !isDependencyActionRunning && selectedDependencyAction === 'install',
+                                        'btn-error': (!isDependencyActionRunning && selectedDependencyAction === 'uninstall') || isDependencyActionRunning
+                                    }"
+                                    :disabled="isServiceStarting || isServiceRunning"
+                                    @click="runSelectedDependencyAction"
+                                >
+                                    {{ dependencyButtonLabel }}
+                                </button>
+                                <div class="dropdown dropdown-top dropdown-end">
+                                    <button
+                                        tabindex="0"
+                                        class="btn btn-outline join-item px-3"
+                                        :class="{
+                                            'btn-info': !isDependencyActionRunning && selectedDependencyAction === 'install',
+                                            'btn-error': (!isDependencyActionRunning && selectedDependencyAction === 'uninstall') || isDependencyActionRunning
+                                        }"
+                                        :disabled="isDependencyActionRunning || isServiceStarting || isServiceRunning"
+                                    >
+                                        <CaretDownIcon class="w-5 h-5" />
+                                    </button>
+                                    <ul
+                                        tabindex="0"
+                                        class="dropdown-content menu z-50 mb-2 w-60 rounded-box border border-base-content/20 bg-base-100 p-2 shadow-lg"
+                                    >
+                                        <li>
+                                            <button
+                                                :class="{ 'active': selectedDependencyAction === 'install' }"
+                                                @click="selectedDependencyAction = 'install'"
+                                            >
+                                                Install Dependencies
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button
+                                                :class="{ 'active': selectedDependencyAction === 'uninstall' }"
+                                                @click="selectedDependencyAction = 'uninstall'"
+                                            >
+                                                Uninstall Dependencies
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
                             <button
                                 class="btn btn-outline"
                                 :class="{
                                     'btn-error': isServiceRunning,
                                     'btn-success': !isServiceRunning
                                 }"
-                                :disabled="isInstalling || isServiceStarting"
+                                :disabled="isDependencyActionRunning || isServiceStarting"
                                 @click="isServiceRunning ? stopProcess() : startService()"
                             >
                                 {{ isServiceRunning ? 'Stop Service' : 'Start Service' }}
@@ -667,5 +753,14 @@ onMounted(async () => {
         @confirm="deleteModel(modelToBeRemoved)"
         @cancel="closeDeleteModelModal"
         @update:open="(value) => !value && closeDeleteModelModal()"
+    />
+    <ConfirmationAlert
+        :open="isUninstallDependenciesModalOpen"
+        title="Dependencies removal"
+        message="Are you sure you want to uninstall the autotagger dependencies?"
+        confirm-class="btn btn-error btn-outline"
+        @confirm="uninstallDependencies"
+        @cancel="closeUninstallDependenciesModal"
+        @update:open="(value) => !value && closeUninstallDependenciesModal()"
     />
 </template>

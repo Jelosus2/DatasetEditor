@@ -77,6 +77,8 @@ export class App {
 
             if (settings.autoCheckUpdates && !await this.isPortableInstallation())
                 this.updater.checkForUpdates();
+
+            await this.paths.ensureBundleTaggerIsSynced(this.IS_DEVELOPMENT);
         } catch (error) {
             console.error(error);
             this.logger.error(`[App] Error during initialization: ${Utilities.getErrorMessage(error)}`);
@@ -94,7 +96,7 @@ export class App {
             await this.window.createMainWindow();
     }
 
-    static setupDanbooruRefererHeader() {
+    private static setupDanbooruRefererHeader() {
         session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
             const { hostname } = new URL(details.url);
             if (hostname.endsWith("donmai.us"))

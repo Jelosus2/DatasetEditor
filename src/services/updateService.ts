@@ -1,4 +1,4 @@
-import { useIpcRenderer } from '@/composables/useIpcRenderer';
+import { useIpcRenderer } from "@/composables/useIpcRenderer";
 
 export class UpdateService {
     private ipc = useIpcRenderer([]);
@@ -10,14 +10,14 @@ export class UpdateService {
     }
 
     async downloadUpdate() {
-        return this.ipc.invoke('update:download');
+        return this.ipc.invoke("update:download");
     }
 
     installUpdate() {
-        this.ipc.invoke('update:install');
+        this.ipc.invoke("update:install");
     }
 
     async canUpdate() {
-        return this.ipc.invoke('update:availability');
+        return this.ipc.invoke("update:availability");
     }
 }

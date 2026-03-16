@@ -14,18 +14,23 @@ export class Terminal {
         this.rows = 0;
     }
 
-    runPythonTask(scriptPath: string, args: string[] = [], channel: string): Promise<{ exitCode: number; isManualKilling: boolean; }> {
+    runTask(
+        command: string,
+        args: string[] = [],
+        channel: string,
+        options?: { cwd?: string; env?: NodeJS.ProcessEnv }
+    ): Promise<{ exitCode: number; isManualKilling: boolean; }> {
         return new Promise((resolve, reject) => {
             try {
                 this.kill();
                 this.isManualKilling = false;
 
-                this.ptyProcess = pty.spawn(App.paths.pythonExecutablePath, ["-u", scriptPath, ...args], {
+                this.ptyProcess = pty.spawn(command, args, {
                     name: "xterm-color",
                     cols: this.columns,
                     rows: this.rows,
-                    cwd: App.paths.taggerPath,
-                    env: process.env
+                    cwd: options?.cwd,
+                    env: options?.env ?? process.env
                 });
 
                 this.ptyProcess.onData((data) => {

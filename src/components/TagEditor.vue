@@ -11,6 +11,7 @@ import { ref, shallowRef, computed, toRaw } from "vue";
 
 import CopyIcon from "@/assets/icons/copy.svg";
 import SortArrowIcon from "@/assets/icons/sort-arrow.svg";
+import HandleIcon from "@/assets/icons/handle.svg";
 
 const props = defineProps<{
     selectedImages: Set<string>;
@@ -575,7 +576,7 @@ function addTagToImageFilter(tag: string) {
                                 {{ draggingTag }}
                             </div>
                             <div
-                                class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-gray-700"
+                                class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-gray-700 flex items-center"
                                 :class="{
                                     'dark:bg-warning/50': (isFiltering && filterTagsSet.has(tag.toLowerCase())) || highlightSet.has(tag),
                                     'hover:bg-rose-900': !draggingTag
@@ -593,7 +594,9 @@ function addTagToImageFilter(tag: string) {
                                     @click.stop
                                     @dragstart="onTagDragStart(tag, $event)"
                                     @dragend="onTagDragEnd"
-                                >⋮⋮</span>
+                                >
+                                    <HandleIcon />
+                                </span>
                                 <span>{{ tag }}</span>
                             </div>
                         </template>

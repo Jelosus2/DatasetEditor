@@ -15,12 +15,14 @@ export class ImageService {
     }
 
     async applyBackgroundColor(images: string[], color: string) {
+        const supportedExtensions = [".png", ".webp"];
+
         const paths = images
             .map((key) => this.datasetStore.dataset.get(key)?.path)
-            .filter((path): path is string => !!path && path.toLowerCase().endsWith(".png"));
+            .filter((path): path is string => !!path && supportedExtensions.some((extension) => path.toLowerCase().endsWith(extension)));
 
         if (paths.length === 0) {
-            this.alert.showAlert("warning", "No PNG images selected");
+            this.alert.showAlert("warning", "No PNG or WebP images selected");
             return true;
         }
 

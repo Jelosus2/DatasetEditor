@@ -5,6 +5,10 @@ directories:
 files:
   - "dist/**/*"
   - "dist_app/**/*"
+publish:
+  - provider: "github"
+    owner: "Jelosus2"
+    repo: "DatasetEditor"
 extraResources:
   - from: "tagger"
     to: "tagger"
@@ -12,16 +16,12 @@ extraResources:
       - "**/*"
       - "!**/embedded_python/*"
       - "!**/__pycache__/*"
-  
+
   - from: "Data/TagAutocompletions/danbooru.csv"
     to: "seed-data/danbooru.csv"
 win:
   artifactName: "Dataset-Editor-${version}.${ext}"
   icon: "public/doro.ico"
-  publish:
-    - provider: "github"
-      owner: "Jelosus2"
-      repo: "DatasetEditor"
   target:
     - "nsis"
     - "zip"
@@ -30,6 +30,16 @@ win:
       to: "tagger/embedded_python"
       filter:
         - "**/*"
+linux:
+  artifactName: "Dataset-Editor-${version}.${ext}"
+  icon: "build/doro.png"
+  category: "Utility"
+  asarUnpack:
+    - "**/node_modules/@img/**/*"
+  target:
+    - "deb"
+    - "rpm"
+    - "appimage"
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

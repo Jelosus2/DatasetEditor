@@ -28,6 +28,7 @@ export class PathsBuilder {
     readonly taggerPath: string;
     readonly pythonPath: string;
     readonly pythonExecutablePath: string;
+    readonly venvPath: string;
     readonly databasePath: string;
     readonly settingsPath: string;
     readonly bundledTagAutocompletionFilePath: string;
@@ -51,9 +52,10 @@ export class PathsBuilder {
         this.tagAutocompletionsPath = path.join(this.dataPath, "TagAutocompletions");
         this.taggerPath = path.join(taggerRoot, "tagger");
         this.pythonPath = path.join(this.taggerPath, "embedded_python");
+        this.venvPath = path.join(this.taggerPath, "venv");
         this.pythonExecutablePath = process.platform === "win32"
             ? path.join(this.pythonPath, "python.exe")
-            : "python3";
+            : path.join(this.venvPath, "bin", "python");
         this.databasePath = path.join(this.tagAutocompletionsPath, "tags.db");
         this.settingsPath = path.join(this.dataPath, "settings.json");
         this.bundledTagAutocompletionFilePath = installScope === "dev"
@@ -127,23 +129,51 @@ export class PathsBuilder {
         }
     }
 
-    __dirname(fileURL: string): string {
+    async ensureBundleTaggerIsSynced(isDevelopment: boolean) {
+        if (isDevelopment || process.platform === "win32")
+            return;
+
+        const bundledTaggerPath = path.join(process.resourcesPath, "tagger");
+        const bundledVersionPath = path.join(bundledTaggerPath, "bundle-version");
+        const installedVersionPath = path.join(this.taggerPath, "bundle-version");
+
+        if (!await fs.pathExists(bundledTaggerPath))
+            throw new Error(`Bundled tagger folder was not found at ${bundledTaggerPath}`);
+
+        const bundledVersion = await this.readTaggerBundleVersion(bundledVersionPath);
+        const installedVersion = await this.readTaggerBundleVersion(installedVersionPath);
+
+        if (installedVersion && bundledVersion && installedVersion === bundledVersion)
+            return;
+
+        await fs.ensureDir(this.taggerPath);
+        await fs.copy(bundledTaggerPath, this.taggerPath);
+    }
+
+    private __dirname(fileURL: string): string {
         return path.dirname(url.fileURLToPath(fileURL));
     }
 
-    getHuggingFaceCachePath() {
+    private getHuggingFaceCachePath() {
         if (process.env.HF_HUB_CACHE)
             return process.env.HF_HUB_CACHE;
         if (process.env.HF_HOME)
             return path.join(process.env.HF_HOME, "hub");
 
         const homeDirectory = app.getPath("home");
-        app.getPath("home")
         const xdgCache = process.env.XDG_CACHE_HOME || path.join(homeDirectory, ".cache");
 
         if (process.platform === "win32")
-            return path.join(homeDirectory, ".cache", "huggingface", "hub")
+            return path.join(homeDirectory, ".cache", "huggingface", "hub");
         else
-            return path.join(xdgCache, "huggingface", "hub")
+            return path.join(xdgCache, "huggingface", "hub");
+    }
+
+    private async readTaggerBundleVersion(filePath: string) {
+        if (!await fs.pathExists(filePath))
+            return null;
+
+        const version = await fs.readFile(filePath, { encoding: "utf-8" });
+        return version.trim() || null;
     }
 }

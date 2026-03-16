@@ -56,7 +56,9 @@ export class ImageController {
         let tempPath: string | null = null;
 
         try {
-            const metadata = await sharp(imagePath).metadata();
+            const image = sharp(imagePath);
+
+            const metadata = await image.clone().metadata();
             const imageWidth = metadata.width ?? 0;
             const imageHeight = metadata.height ?? 0;
 
@@ -72,7 +74,7 @@ export class ImageController {
 
             if (overwrite) {
                 tempPath = `${imagePath}.crop.tmp`;
-                await sharp(imagePath).extract(regions[0]).toFile(tempPath);
+                await image.clone().extract(regions[0]).toFile(tempPath);
                 await fs.rename(tempPath, imagePath);
                 tempPath = null;
 
@@ -96,7 +98,7 @@ export class ImageController {
             for (let i = 0; i < regions.length; i++) {
                 const rawPath = path.join(outputDirectory, `${base}_crop${extension}`);
                 const outputPath = await this.getUniquePath(rawPath, i + 1);
-                await sharp(imagePath).extract(regions[i]).toFile(outputPath);
+                await image.clone().extract(regions[i]).toFile(outputPath);
                 saved++;
             }
 

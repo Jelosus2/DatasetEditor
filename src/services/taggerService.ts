@@ -106,11 +106,24 @@ export class TaggerService {
         this.alert.showAlert(result.error ? "error" : "success", result.message!);
     }
 
+    async uninstallDependencies() {
+        const result = await this.ipc.invoke("tagger:uninstall");
+
+        if (result.stopped)
+            return;
+
+        this.alert.showAlert(result.error ? "error" : "success", result.message!);
+    }
+
     async startService() {
         const result = await this.ipc.invoke("tagger:start");
 
         if (result.error)
             this.alert.showAlert("error", result.message!);
+        if (!result.error && result.port)
+            this.alert.showAlert("info", `Starting tagger service on port ${result.port}`);
+
+        return result.error;
     }
 
     async resizeTerminal(columns: number, rows: number) {

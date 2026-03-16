@@ -13,7 +13,7 @@ import _ from "lodash";
 
 @IpcClass()
 export class DatasetController {
-    readonly SUPPORTED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png"];
+    readonly SUPPORTED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
     originalDataset: Dataset | null;
     loadedDirectory: string | null;
 
