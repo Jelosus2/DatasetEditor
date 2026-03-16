@@ -694,7 +694,7 @@ export const useDatasetStore = defineStore("dataset", () => {
     }
 
     async function isDatasetSaved() {
-        return await datasetService.compareDatasets(dataset.value);
+        return datasetService.compareDatasets(dataset.value);
     }
 
     function resetDatasetStatus() {

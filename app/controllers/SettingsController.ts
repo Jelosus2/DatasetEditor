@@ -43,7 +43,7 @@ export class SettingsController {
     @IpcHandle("settings:action")
     async action(_event: IpcMainInvokeEvent, actionId: string) {
         if (actionId === "loadTagsCsv")
-            return await App.importTagsCsvFromDialog();
+            return App.importTagsCsvFromDialog();
 
         return { error: true, message: `Unknown settings action: ${actionId}` };
     }

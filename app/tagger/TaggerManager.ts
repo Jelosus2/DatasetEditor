@@ -83,7 +83,7 @@ export class TaggerManager {
         if (process.platform === "win32")
             return true;
 
-        return await fs.pathExists(App.paths.venvPath);
+        return fs.pathExists(App.paths.venvPath);
     }
 
     private async ensureLinuxVirtualEnv() {
