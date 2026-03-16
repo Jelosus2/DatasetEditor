@@ -33,10 +33,10 @@ terminal.loadAddon(fit);
 const handleResize = () => {
     fit.fit();
     emit("resize", terminal.cols, terminal.rows);
-};
+}
 const write = (line: string) => terminal.write(line);
 
-let resizeObserver: ResizeObserver | null = null
+let resizeObserver: ResizeObserver | null = null;
 
 onActivated(async () => {
     if (!container.value)

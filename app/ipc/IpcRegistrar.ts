@@ -1,7 +1,7 @@
+import type { GenericMethod } from "../types/decorator.js";
+
 import * as ipcDecorator from "../decorators/ipc.js";
 import { ipcMain } from "electron";
-
-type GenericMethod = (...args: unknown[]) => unknown;
 
 export class IpcRegistrar {
     static registerAll() {

@@ -30,7 +30,7 @@ export function useTagGroupsOperations() {
         }
 
         if (tagGroupsStore.tagGroups.has(newName)) {
-            alert.showAlert("warning", "A tag group with that name already exists")
+            alert.showAlert("warning", "A tag group with that name already exists");
             return false;
         }
 
@@ -96,5 +96,5 @@ export function useTagGroupsOperations() {
         mergeTagGroups,
         importTagGroups,
         exportTagGroups
-    }
+    };
 }

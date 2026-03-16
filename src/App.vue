@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ActiveTab } from "@/types/app";
+
 import NavigationBar from "@/components/NavigationBar.vue";
 import DatasetTab from "@/components/DatasetTab.vue";
 import TagGroupsTab from "@/components/TagGroupsTab.vue";
@@ -12,8 +14,6 @@ import DuplicatesFinderModal from "@/components/DuplicatesFinderModal.vue";
 import RenameFilesModal from "@/components/RenameFilesModal.vue";
 import BgColorChangerModal from "@/components/BgColorChangerModal.vue";
 import CropImageModal from "@/components/CropImageModal.vue";
-
-import type { ActiveTab } from "@/types/app";
 
 import { useDatasetStore } from "@/stores/datasetStore";
 import { useTagGroupsStore } from "@/stores/tagGroupsStore";

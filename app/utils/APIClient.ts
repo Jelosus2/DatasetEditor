@@ -3,7 +3,7 @@ import type { TaggerWSPayload } from "../../shared/tagger.js";
 import { App } from "../App.js";
 
 export class APIClient {
-    static websocket: WebSocket | null = null;
+    private static websocket: WebSocket | null = null;
 
     static async get<T>(url: string): Promise<[T, boolean, number]> {
         const response = await fetch(url);

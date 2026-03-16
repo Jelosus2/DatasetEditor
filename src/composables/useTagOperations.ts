@@ -10,7 +10,7 @@ export function useTagOperations() {
         return Math.trunc(position);
     }
 
-    function addTag(tagsInput: string, images: Set<string>, tagPosition: number = -1) {
+    function addTag(tagsInput: string, images: Set<string>, tagPosition = -1) {
         const tags = tagsInput.split(",").map((tag) => tag.trim()).filter(Boolean);
         if (tags.length === 0)
             return;

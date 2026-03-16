@@ -31,7 +31,7 @@ function close() {
 }
 
 function confirm() {
-    emit("confirm")
+    emit("confirm");
 }
 
 function onBackdropClick() {

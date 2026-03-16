@@ -26,5 +26,5 @@ export function useAppStatus() {
             alert.showAlert("success", payload.message ?? `${payload.title} completed`);
     }
 
-    return { active, title, message, handleStatus }
+    return { active, title, message, handleStatus };
 }

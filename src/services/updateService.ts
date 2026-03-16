@@ -3,8 +3,6 @@ import { useIpcRenderer } from "@/composables/useIpcRenderer";
 export class UpdateService {
     private ipc = useIpcRenderer([]);
 
-    constructor() {}
-
     async checkForUpdates() {
         return this.ipc.invoke("update:check");
     }

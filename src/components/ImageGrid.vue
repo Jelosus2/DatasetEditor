@@ -14,7 +14,7 @@ const filterMode = defineModel<string>("filterMode", { required: true });
 
 const props = defineProps<{
     filteredImages: Set<string>;
-    isFiltering: boolean
+    isFiltering: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -79,7 +79,7 @@ const visibleImages = computed(() => {
 const layout = computed(() => {
     const width = containerWidth.value;
     if (width === 0)
-        return { columns: 1, cellHeight: 150 }
+        return { columns: 1, cellHeight: 150 };
 
     let columns = Math.floor((width + GAP) / (MIN_COLUMN_WIDTH + GAP));
     if (columns < 1)
@@ -88,7 +88,7 @@ const layout = computed(() => {
     const availableWidth = width - (columns - 1) * GAP;
     const cellWidth = Math.floor(availableWidth / columns);
 
-    return { columns, cellHeight: cellWidth }
+    return { columns, cellHeight: cellWidth };
 });
 
 const gridMetrics = computed(() => ({
@@ -122,7 +122,7 @@ const virtualState = computed(() => {
         visibleItems,
         columns,
         cellHeight
-    }
+    };
 });
 
 const trashImagesMessage = computed(() => {

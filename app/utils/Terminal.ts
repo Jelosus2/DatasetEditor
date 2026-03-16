@@ -2,10 +2,10 @@ import { App } from "../App.js";
 import pty from "@homebridge/node-pty-prebuilt-multiarch";
 
 export class Terminal {
-    isManualKilling: boolean;
-    ptyProcess: pty.IPty | null;
-    columns: number;
-    rows: number;
+    private isManualKilling: boolean;
+    private ptyProcess: pty.IPty | null;
+    private columns: number;
+    private rows: number;
 
     constructor () {
         this.isManualKilling = false;

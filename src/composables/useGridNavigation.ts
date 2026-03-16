@@ -137,5 +137,5 @@ export function useGridNavigation(
     onActivated(() => window.addEventListener("keydown", handleKeyDown));
     onDeactivated(() => window.removeEventListener("keydown", handleKeyDown));
 
-    return { setSingleSelection }
+    return { setSingleSelection };
 }

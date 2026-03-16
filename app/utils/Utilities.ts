@@ -69,7 +69,7 @@ export class Utilities {
         return tags.filter((tag) => !toRemove.has(tag));
     }
 
-    static async processMap<I, O>(items: I[], mapper: (item: I) => Promise<O>, concurrency: number = os.availableParallelism()): Promise<O[]> {
+    static async processMap<I, O>(items: I[], mapper: (item: I) => Promise<O>, concurrency = os.availableParallelism()): Promise<O[]> {
         const results: O[] = new Array(items.length);
         let nextIndex = 0;
 
@@ -90,7 +90,12 @@ export class Utilities {
         return results;
     }
 
-    static async runWorkerTask<I, O>(items: I[], workerPath: string, payloadFactory: (item: I, id: number) => Record<string, unknown>, onProgress?: (processed: number, total: number) => void): Promise<O[]> {
+    static async runWorkerTask<I, O>(
+        items: I[],
+        workerPath: string,
+        payloadFactory: (item: I, id: number) => Record<string, unknown>,
+        onProgress?: (processed: number, total: number) => void
+    ): Promise<O[]> {
         const total = items.length;
         if (total === 0)
             return [];
@@ -100,9 +105,7 @@ export class Utilities {
         let nextIndex = 0;
         let processed = 0;
 
-        const workers = Array.from({ length: poolSize }, () =>
-            new Worker(workerPath)
-        );
+        const workers = Array.from({ length: poolSize }, () => new Worker(workerPath));
 
         const run = (worker: Worker) => new Promise<void>((resolve) => {
             const dispatch = () => {
@@ -117,11 +120,10 @@ export class Utilities {
             }
 
             worker.on("message", (message) => {
-                if (message.type === "result") {
+                if (message.type === "result")
                     results.push(message.data);
-                } else if (message.type === "error") {
-                    console.error(`Worker error: ${Utilities.getErrorMessage(message.error)}`)
-                }
+                else if (message.type === "error")
+                    console.error(`Worker error: ${Utilities.getErrorMessage(message.error)}`);
 
                 processed++;
                 onProgress?.(processed, total);

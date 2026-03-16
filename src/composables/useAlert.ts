@@ -49,5 +49,5 @@ export function useAlert() {
         type,
         timestamp,
         showAlert
-    }
+    };
 }

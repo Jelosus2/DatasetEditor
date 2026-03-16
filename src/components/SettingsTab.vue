@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import type { SettingsDefinition } from "../../shared/settings-schema";
+
 import AutocompletionInput from "@/components/AutocompletionInput.vue";
 import ConfirmationAlert from "@/components/ConfirmationAlert.vue";
-
-import type { SettingsDefinition } from "../../shared/settings-schema";
 
 import { useSettingsOperations } from "@/composables/useSettingsOperations";
 import { useSettingsStore } from "@/stores/settingsStore";

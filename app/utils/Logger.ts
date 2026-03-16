@@ -2,9 +2,9 @@ import type { LogType } from "../../shared/log.js";
 import type { BrowserWindow } from "electron";
 
 export class Logger {
-    readonly mainWindow: BrowserWindow;
+    private readonly mainWindow: BrowserWindow;
 
-    constructor(mainWindow: BrowserWindow) {
+    private constructor(mainWindow: BrowserWindow) {
         this.mainWindow = mainWindow;
     }
 
@@ -24,7 +24,7 @@ export class Logger {
         this.sendLog("error", message);
     }
 
-    sendLog(type: LogType, message: string) {
+    private sendLog(type: LogType, message: string) {
         if (this.mainWindow && !this.mainWindow.isDestroyed())
             this.mainWindow.webContents.send("app:log", { type, message });
     }

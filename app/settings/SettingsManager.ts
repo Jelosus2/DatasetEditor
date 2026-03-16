@@ -35,7 +35,7 @@ export class SettingsManager {
         return { ...defaults, ...overrides } as Settings;
     }
 
-    async saveSettings(settings: Settings) {
+    private async saveSettings(settings: Settings) {
         const sanitized = this.buildDefaults(settings);
         await fs.outputJson(App.paths.settingsPath, sanitized, { spaces: 2, encoding: "utf-8" });
 

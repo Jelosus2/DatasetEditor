@@ -57,7 +57,7 @@
     --scrollbar-size: 10px;
     --scrollbar-track: transparent;
     --scrollbar-thumb: rgba(120, 120, 120, 0.35);
-    --scrollbar-thumb-hover: rgba(0, 170, 255, 0.7); /* accent hover */
+    --scrollbar-thumb-hover: rgba(0, 170, 255, 0.7);
 }
 
 [data-theme="dark"] {

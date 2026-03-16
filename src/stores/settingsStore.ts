@@ -281,7 +281,7 @@ export const useSettingsStore = defineStore("settings", () => {
     const sortImagesAlphabetically = useSettingField("sortImagesAlphabetically");
     const enableHardwareAcceleration = useSettingField("enableHardwareAcceleration");
 
-    function buildSettings(snapshot: boolean = false) {
+    function buildSettings(snapshot = false) {
         return {
             ...(snapshot ? settings : toRaw(settings)),
             tagsIgnored: [...settings.tagsIgnored]
@@ -440,5 +440,5 @@ export const useSettingsStore = defineStore("settings", () => {
         importTagsFromCsv,
         pickDirectory,
         validateDirectory
-    }
+    };
 });

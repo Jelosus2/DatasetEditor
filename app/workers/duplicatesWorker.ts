@@ -111,7 +111,7 @@ parentPort?.on("message", async (message: DuplicatesWorkerPayload) => {
 
             parentPort?.postMessage({ type: "result", data: { file: message.file, hash: Array.from(bytes) } });
         } catch (error) {
-            parentPort?.postMessage({ type: "error", error:  Utilities.getErrorMessage(error), file: message.file })
+            parentPort?.postMessage({ type: "error", error:  Utilities.getErrorMessage(error), file: message.file });
         }
     }
 });

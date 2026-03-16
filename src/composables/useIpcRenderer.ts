@@ -55,5 +55,5 @@ export function useIpcRenderer(listeners: IpcListener[]) {
         window.ipcRenderer.send(channel, ...args);
     }
 
-    return { invoke, send }
+    return { invoke, send };
 }

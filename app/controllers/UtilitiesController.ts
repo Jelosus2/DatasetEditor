@@ -5,7 +5,6 @@ import { app, shell } from "electron";
 
 @IpcClass()
 export class UtilitiesController {
-    constructor() {}
 
     @IpcHandle("utilities:open_url")
     openExternalUrl(_event: IpcMainInvokeEvent, url: string) {

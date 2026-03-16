@@ -171,7 +171,7 @@ useKeyboardShortcuts(
         { combo: settingsStore.getSetting("shortcutToggleTagEditMode"), handler: () => toggleEditMode(), preventDefault: true }
     ],
     { isEnabled: () => !appStatus.active.value }
-)
+);
 
 function escapeRegExp(str: string) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -685,7 +685,7 @@ function addTagToImageFilter(tag: string) {
                             @click="removeGlobalTag(tag)"
                             @contextmenu.prevent="openTagContextMenu($event, tag)"
                         >
-                            {{ settingsStore.showTagCount ? tag + ' | ' + datasetStore.globalTags.get(tag)!.size : tag }}
+                            {{ settingsStore.showTagCount ? tag + " | " + datasetStore.globalTags.get(tag)!.size : tag }}
                         </div>
                     </div>
                     <div class="mt-auto flex flex-col gap-2 border-t-2 border-gray-400 pt-1 dark:border-base-content/10">

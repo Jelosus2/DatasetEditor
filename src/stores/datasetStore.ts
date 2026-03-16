@@ -32,7 +32,7 @@ export const useDatasetStore = defineStore("dataset", () => {
         datasetRedoStack.value = [];
     }
 
-    function addTagsToImages(imageKeys: Iterable<string>, tags: Set<string>, position: number = -1, createHistory: boolean = true) {
+    function addTagsToImages(imageKeys: Iterable<string>, tags: Set<string>, position = -1, createHistory = true) {
         const tagsArray = Array.from(tags);
         const imagesSet = new Set(imageKeys);
 
@@ -111,7 +111,7 @@ export const useDatasetStore = defineStore("dataset", () => {
         triggerUpdate();
     }
 
-    function removeTagsFromImages(imageKeys: Iterable<string>, tags: Set<string>, createHistory: boolean = true) {
+    function removeTagsFromImages(imageKeys: Iterable<string>, tags: Set<string>, createHistory = true) {
         const imagesSet = new Set(imageKeys);
         if (imagesSet.size === 0 || tags.size === 0)
             return;
@@ -181,10 +181,10 @@ export const useDatasetStore = defineStore("dataset", () => {
     }
 
     function replaceTagForImages(
-            imageKeys: Iterable<string>,
-            originalTagsInput: string | Iterable<string>,
-            newTagsInput: string | Iterable<string>,
-            createHistory: boolean = true
+        imageKeys: Iterable<string>,
+        originalTagsInput: string | Iterable<string>,
+        newTagsInput: string | Iterable<string>,
+        createHistory = true
     ) {
         const originalTags = normalizeTags(originalTagsInput);
         const newTags = normalizeTags(newTagsInput);
@@ -285,7 +285,7 @@ export const useDatasetStore = defineStore("dataset", () => {
         triggerUpdate();
     }
 
-    function reorderTagInImage(imageKey: string, tag: string, toIndex: number, createHistory: boolean = true) {
+    function reorderTagInImage(imageKey: string, tag: string, toIndex: number, createHistory = true) {
         const rawDataset = toRaw(dataset.value);
         const imageData = rawDataset.get(imageKey);
         if (!imageData)
@@ -339,7 +339,7 @@ export const useDatasetStore = defineStore("dataset", () => {
                     imageData.tags,
                     rawGlobalTags,
                     rawTagDiff
-                )
+                );
             }
 
             imageData.tags = new Set(tagsList);
@@ -663,7 +663,7 @@ export const useDatasetStore = defineStore("dataset", () => {
         rangeAnchorIndex.value = 0;
     }
 
-    async function loadDataset(reload: boolean = false) {
+    async function loadDataset(reload = false) {
         const _isDatasetSaved = await isDatasetSaved();
 
         const result = await datasetService.loadDataset(_isDatasetSaved, reload);
@@ -729,5 +729,5 @@ export const useDatasetStore = defineStore("dataset", () => {
         loadDataset,
         saveDataset,
         isDatasetSaved
-    }
+    };
 });

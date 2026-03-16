@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import type { TaggerModelsStatus, TaggerModelConfigurationProperties } from "../../shared/tagger";
+
 import AutotaggerConsole from "@/components/AutotaggerConsole.vue";
 import ConfirmationAlert from "@/components/ConfirmationAlert.vue";
-
-import type { TaggerModelsStatus, TaggerModelConfigurationProperties } from "../../shared/tagger";
 
 import { TaggerService } from "@/services/taggerService";
 import { useAlert } from "@/composables/useAlert";
@@ -92,7 +92,7 @@ const isAddModelFormValid = computed(() =>
 
 const isEditModelCustom = computed(() => {
     const model = editModel.value;
-    return !!model && !!models.value.get(model)?.isCustomModel
+    return !!model && !!models.value.get(model)?.isCustomModel;
 });
 
 const isEditModelFormValid = computed(() =>
@@ -533,7 +533,7 @@ onMounted(async () => {
                                 :disabled="isDependencyActionRunning || isServiceStarting"
                                 @click="isServiceRunning ? stopProcess() : startService()"
                             >
-                                {{ isServiceRunning ? 'Stop Service' : 'Start Service' }}
+                                {{ isServiceRunning ? "Stop Service" : "Start Service" }}
                             </button>
                         </div>
                         <div class="flex mt-2">
@@ -550,7 +550,7 @@ onMounted(async () => {
                             }"
                             @click="isTagging ? stopTagger() : autoTagImages('autotag')"
                         >
-                            {{ isTagging ? 'Stop Tagger' : 'Autotag Images' }}
+                            {{ isTagging ? "Stop Tagger" : "Autotag Images" }}
                         </button>
                         <button
                             class="btn btn-outline"

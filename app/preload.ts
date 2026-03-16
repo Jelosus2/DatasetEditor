@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
 
         return () => {
             ipcRenderer.removeListener(channel, subscription);
-        }
+        };
     },
     receive: (channel: string, func: (...args: unknown[]) => void) => ipcRenderer.on(channel, (_, ...args) => func(...args)),
 });

@@ -60,7 +60,7 @@ export function useSettingsOperations() {
             settingsStore.setSetting(
                 key,
                 String(raw).split(",").map((value) => value.trim()).filter(Boolean)
-            )
+            );
         else if (definition.type === "shortcut")
             settingsStore.setSetting(key, String(raw));
         else
@@ -125,5 +125,5 @@ export function useSettingsOperations() {
         matchesShortcut,
         pickDirectory,
         validateDirectory
-    }
+    };
 }

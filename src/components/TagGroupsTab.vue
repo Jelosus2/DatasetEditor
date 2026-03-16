@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import AutocompletionInput from "@/components/AutocompletionInput.vue";
-
 import type { TagGroups } from "../../shared/tag-groups";
+
+import AutocompletionInput from "@/components/AutocompletionInput.vue";
 
 import { useTagGroupsOperations } from "@/composables/useTagGroupsOperations";
 import { useTagGroupsStore } from "@/stores/tagGroupsStore";
@@ -31,9 +31,7 @@ const tagGroupsList = computed(() => {
 });
 
 const tagGroupNames = computed(() => tagGroupsList.value.map(([name]) => name));
-
 const importedGroupsList = computed(() => Array.from(importedGroups.value.entries()));
-
 const importedGroupNames = computed(() => importedGroupsList.value.map(([name]) => name));
 
 const selectedGroupTags = computed(() => {

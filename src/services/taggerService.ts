@@ -12,9 +12,9 @@ export class TaggerService {
     private isServiceRunning = false;
     private datasetStore = useDatasetStore();
 
-    public onData?: (data: string) => void;
-    public onServiceStarted?: () => void;
-    public onServiceStopped?: () => void;
+    onData?: (data: string) => void;
+    onServiceStarted?: () => void;
+    onServiceStopped?: () => void;
 
     constructor() {
         this.ipc = useIpcRenderer([
@@ -27,14 +27,14 @@ export class TaggerService {
                         this.alert.showAlert("success", "Server started successfully");
                     }
 
-                    this.onData?.(data)
+                    this.onData?.(data);
                 }
             },
             {
                 channel: "tagger:service_stopped",
                 handler: () => {
                     this.isServiceRunning = false;
-                    this.onServiceStopped?.()
+                    this.onServiceStopped?.();
                 }
             }
         ]);
@@ -127,7 +127,7 @@ export class TaggerService {
     }
 
     async resizeTerminal(columns: number, rows: number) {
-        return this.ipc.invoke("tagger:resize_terminal", columns, rows);
+        await this.ipc.invoke("tagger:resize_terminal", columns, rows);
     }
 
     async stopProcess() {

@@ -10,7 +10,7 @@ withDefaults(
     {
         suspendImage: false
     }
-)
+);
 
 const emit = defineEmits<{
     (e: "click", event: MouseEvent): void;

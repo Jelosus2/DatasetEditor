@@ -10,7 +10,7 @@ import _ from "lodash";
 
 @IpcClass()
 export class TagGroupsController {
-    originalTagGroups: TagGroups | null;
+    private originalTagGroups: TagGroups | null;
 
     constructor() {
         this.originalTagGroups = null;
@@ -20,11 +20,11 @@ export class TagGroupsController {
     async loadTagGroups() {
         try {
             if (!await fs.pathExists(App.paths.tagGroupsFilePath))
-                return { error: false, tagGroups: new Map() }
+                return { error: false, tagGroups: new Map() };
 
             const data: TagGroupsRaw = await fs.readJson(App.paths.tagGroupsFilePath);
             if (typeof data !== "object" || data === null)
-                return { error: true, message: "Invalid JSON structure: Expect an object" }
+                return { error: true, message: "Invalid JSON structure: Expect an object" };
 
             const tagGroups: TagGroups = new Map();
             for (const groupName in data) {
@@ -36,11 +36,11 @@ export class TagGroupsController {
             this.originalTagGroups = tagGroups;
 
             App.logger.info("[Tag Groups Manager] Tag groups loaded successfully");
-            return { error: false, tagGroups }
+            return { error: false, tagGroups };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Tag Groups Manager] Error loading tag groups: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to load tag groups, check the logs for more information" }
+            return { error: true, message: "Failed to load tag groups, check the logs for more information" };
         }
     }
 
@@ -55,11 +55,11 @@ export class TagGroupsController {
             this.originalTagGroups = tagGroups;
 
             App.logger.info("[Tag Groups Manager] Tag groups saved successfully");
-            return { error: false }
+            return { error: false };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Tag Groups Manager] Error saving tag groups: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to save tag groups, check the logs for more information" }
+            return { error: true, message: "Failed to save tag groups, check the logs for more information" };
         }
     }
 
@@ -80,26 +80,26 @@ export class TagGroupsController {
             const filePath = result.filePaths[0];
             if (!filePath) {
                 App.logger.info("[Tag Groups Manager] Tag groups import was canceled by the user");
-                return { error: false, canceled: true }
+                return { error: false, canceled: true };
             }
 
             const data: TagGroupsRaw = await fs.readJson(filePath);
             if (!this.validateTagGroupsData(data)) {
                 App.logger.error(`[Tag Groups Manager] Invalid JSON strucuture in ${filePath}`);
-                return { error: true, message: "Failed to import tag groups, check the logs for more information" }
+                return { error: true, message: "Failed to import tag groups, check the logs for more information" };
             }
 
             const tagGroups: TagGroups = new Map();
             for (const groupName in data) {
-                const tags = data[groupName]
+                const tags = data[groupName];
                 tagGroups.set(groupName, new Set(tags));
             }
 
-            return { error: false, tagGroups }
+            return { error: false, tagGroups };
         } catch (error) {
             console.log(error);
             App.logger.error(`[Tag Groups Manager] Error importing tag groups: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to import tag groups, check the logs for more information" }
+            return { error: true, message: "Failed to import tag groups, check the logs for more information" };
         }
     }
 
@@ -120,7 +120,7 @@ export class TagGroupsController {
             const filePath = result.filePath;
             if (!filePath) {
                 App.logger.info("[Tag Groups Manager] Tag groups export was canceled by the user");
-                return { error: false, canceled: true }
+                return { error: false, canceled: true };
             }
 
             const jsonOutput: TagGroupsRaw = {};
@@ -128,11 +128,11 @@ export class TagGroupsController {
                 jsonOutput[groupName] = Array.from(tagsSet);
 
             await fs.outputJson(filePath, jsonOutput, { spaces: 2, encoding: "utf-8" });
-            return { error: false }
+            return { error: false };
         } catch (error) {
             console.log(error);
             App.logger.error(`[Tag Groups Manager] Error exporting tag groups: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to export tag groups, check the logs for more information" }
+            return { error: true, message: "Failed to export tag groups, check the logs for more information" };
         }
     }
 
@@ -158,7 +158,7 @@ export class TagGroupsController {
         });
     }
 
-    validateTagGroupsData(data: TagGroupsRaw) {
+    private validateTagGroupsData(data: TagGroupsRaw) {
         if (!_.isPlainObject(data))
             return false;
 

@@ -1,6 +1,6 @@
-import type { AppControllerDependencies } from '@/types/controller';
-import type { AppCloseAction } from '../shared/app-close';
-import type { ActiveTab } from '@/types/app';
+import type { AppControllerDependencies } from "@/types/controller";
+import type { AppCloseAction } from "../shared/app-close";
+import type { ActiveTab } from "@/types/app";
 
 export class AppController {
     private deps: AppControllerDependencies;
@@ -19,7 +19,7 @@ export class AppController {
         this.deps.settingsStore.loadTheme();
     }
 
-    async loadDataset(reload: boolean = false) {
+    async loadDataset(reload = false) {
         return this.deps.datasetStore.loadDataset(reload);
     }
 
@@ -81,7 +81,7 @@ export class AppController {
         return this.areAllChangesSaved();
     }
 
-    private async saveSettingsWithGuards(showWarnings: boolean = true) {
+    private async saveSettingsWithGuards(showWarnings = true) {
         if (!this.deps.settingsStore.hasChanges) {
             if (showWarnings)
                 this.deps.showAlert("warning", "There's no changes in settings to save");

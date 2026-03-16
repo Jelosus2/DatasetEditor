@@ -31,7 +31,7 @@ const updateInfoMap = {
     check: { value: "Check for Updates", class: "btn-primary" },
     download: { value: "Download Update", class: "btn-success" },
     restart: { value: "Restart to Install", class: "btn-warning" }
-} as const;
+};
 
 const updateInfo = computed(() => updateInfoMap[updateState.value]);
 
@@ -73,7 +73,7 @@ useIpcRenderer([
         channel: "app:update_progress",
         handler: (progress) => {
             isDownloading.value = true;
-            downloadProgressMessage.value = `Downloading... ${Math.round(progress)}%`
+            downloadProgressMessage.value = `Downloading... ${Math.round(progress)}%`;
         }
     },
     {

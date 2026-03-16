@@ -13,9 +13,9 @@ import _ from "lodash";
 
 @IpcClass()
 export class DatasetController {
-    readonly SUPPORTED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
-    originalDataset: Dataset | null;
-    loadedDirectory: string | null;
+    private readonly SUPPORTED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"];
+    private originalDataset: Dataset | null;
+    private loadedDirectory: string | null;
 
     constructor() {
         this.originalDataset = null;
@@ -23,7 +23,7 @@ export class DatasetController {
     }
 
     @IpcHandle("dataset:load")
-    async loadDataset(_event: IpcMainInvokeEvent, isAllSaved: boolean, reloadDataset: boolean = false) {
+    async loadDataset(_event: IpcMainInvokeEvent, isAllSaved: boolean, reloadDataset = false) {
         let tmpDirectory: string | null = null;
 
         if (!isAllSaved && !await this.confirmedUnsavedChanges()) {
@@ -49,14 +49,14 @@ export class DatasetController {
             const { dataset, globalTags } = await this.processDatasetDirectory(directoryPath, settings.recursiveDatasetLoad, settings.sortImagesAlphabetically);
             if (dataset.size === 0) {
                 App.logger.warning("[Dataset Manager] Skipping dataset load as it constains 0 elements");
-                return { error: true, message: "Failed to load the dataset, check the logs for more information" }
+                return { error: true, message: "Failed to load the dataset, check the logs for more information" };
             }
 
             this.originalDataset = dataset;
             this.loadedDirectory = directoryPath;
 
             App.logger.info("[Dataset Manager] Dataset loaded successfully");
-            return { error: false, dataset, globalTags }
+            return { error: false, dataset, globalTags };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Dataset Manager] Error loading the dataset: ${Utilities.getErrorMessage(error)}`);
@@ -141,7 +141,7 @@ export class DatasetController {
                 App.logger.error(`[Dataset Manager] Error deleting pair in ${error.path}: ${Utilities.getErrorMessage(error.reason)}`);
             }
 
-            return { error: true, message: "Error trashing file, check the logs for more information" }
+            return { error: true, message: "Error trashing file, check the logs for more information" };
         }
 
         const trashedImages = successes.map((entry) => entry.filePath!);
@@ -322,7 +322,7 @@ export class DatasetController {
             this.updateGlobalTags(globalTags, tags, imageKey);
         }
 
-        return { dataset, globalTags }
+        return { dataset, globalTags };
     }
 
     private async loadImageTags(directoryPath: string, filename: string): Promise<Set<string>> {
@@ -342,7 +342,7 @@ export class DatasetController {
             );
         } catch (error) {
             console.error(error);
-            App.logger.error(`[Dataset Manager] Error reading the tags from ${filename}: ${Utilities.getErrorMessage(error)}`)
+            App.logger.error(`[Dataset Manager] Error reading the tags from ${filename}: ${Utilities.getErrorMessage(error)}`);
             return new Set();
         }
     }

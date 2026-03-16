@@ -6,7 +6,6 @@ import { App } from "../App.js";
 
 @IpcClass()
 export class DatabaseController {
-    constructor() {}
 
     @IpcHandle("database:retrieve_completions")
     retrieveTagCompletions(_event: IpcMainInvokeEvent, tagHint: string) {

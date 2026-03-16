@@ -285,7 +285,7 @@ async function scan() {
             .filter((group) => group.length > 1);
 
         groups.value = mapped;
-        showAlert("success", mapped.length > 0 ? `Found ${mapped.length} duplicate group(s)` : 'No duplicates found');
+        showAlert("success", mapped.length > 0 ? `Found ${mapped.length} duplicate group(s)` : "No duplicates found");
     } finally {
         if (currentScanId === scanRequestId)
             scanning.value = false;
@@ -563,7 +563,7 @@ onUnmounted(() => {
                                             </button>
                                         </div>
                                         <div class="w-full truncate text-sm" :title="key.split('/').pop()">
-                                            {{ key.split('/').pop() }}
+                                            {{ key.split("/").pop() }}
                                         </div>
                                     </div>
                                 </div>

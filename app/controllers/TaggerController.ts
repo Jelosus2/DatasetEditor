@@ -10,7 +10,7 @@ import net from "node:net";
 
 @IpcClass()
 export class TaggerController {
-    port: number | null;
+    private port: number | null;
 
     constructor() {
         this.port = null;
@@ -19,7 +19,7 @@ export class TaggerController {
     @IpcHandle("tagger:load_models_config")
     async loadModelsConfiguration() {
         App.logger.info("[Tagger Model Manager] Models configuration loaded successfully");
-        return await App.taggerModels.loadConfiguration();
+        return App.taggerModels.loadConfiguration();
     }
 
     @IpcHandle("tagger:update_models_config")
@@ -114,11 +114,11 @@ export class TaggerController {
             App.tagger.cleanup();
             App.logger.info("[Tagger Manager] Process stopped successfully");
 
-            return { error: false, message: "Process stopped successfully" }
+            return { error: false, message: "Process stopped successfully" };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Tagger Manager] Failed to stop process: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to stop the process, check the logs for more information" }
+            return { error: true, message: "Failed to stop the process, check the logs for more information" };
         }
     }
 
@@ -130,12 +130,12 @@ export class TaggerController {
                 command: "device"
             }, 10000);
 
-            return { error: false, device: response.device }
+            return { error: false, device: response.device };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Tagger Manager] Failed to get the tagger device: ${Utilities.getErrorMessage(error)}`);
             this.port = null;
-            return { error: true, message: "Failed to get the tagger device, check the logs for more information" }
+            return { error: true, message: "Failed to get the tagger device, check the logs for more information" };
         }
     }
 
@@ -186,8 +186,7 @@ export class TaggerController {
     @IpcHandle("tagger:download_model")
     async downloadModel(_event: IpcMainInvokeEvent, modelRepo: string, modelFile: string, tagsFile: string) {
         try {
-            const settings = await App.settings.loadSettings();
-            this.port ??= settings.taggerPort;
+            this.port ??= (await App.settings.loadSettings()).taggerPort;
 
             App.logger.info(`[Tagger Manager] Attempting to download ${modelRepo}...`);
             const response = await APIClient.sendCommandWS<ModelActionWSResponse>(this.port, {
@@ -198,12 +197,12 @@ export class TaggerController {
             });
             App.logger.info(`[Tagger Manager] Downloaded ${modelRepo} successfully`);
 
-            return { error: false, message: "Model downloaded successfully", cacheSizeBytes: response.cache_size_bytes }
+            return { error: false, message: "Model downloaded successfully", cacheSizeBytes: response.cache_size_bytes };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Tagger Manager] Failed to download ${modelRepo}: ${Utilities.getErrorMessage(error)}`);
             this.port = null;
-            return { error: true, message: "Failed to download the model, check the logs for more information" }
+            return { error: true, message: "Failed to download the model, check the logs for more information" };
         }
     }
 
@@ -218,12 +217,12 @@ export class TaggerController {
                 models
             });
 
-            return { error: false, status: response.status, cacheSizeBytes: response.cache_size_bytes }
+            return { error: false, status: response.status, cacheSizeBytes: response.cache_size_bytes };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Tagger Manager] Failed to check the status of the models: ${Utilities.getErrorMessage(error)}`);
             this.port = null;
-            return { error: true, message: "Failed to get the status of the models, check the logs for more information" }
+            return { error: true, message: "Failed to get the status of the models, check the logs for more information" };
         }
     }
 
@@ -240,12 +239,12 @@ export class TaggerController {
             App.logger.info(`[Tagger Manager] Deleted ${modelRepo} successfully`);
 
             const message = response.success ? "Model deleted successfully" : "Model wasn't downloaded";
-            return { error: false, success: response.success, message, cacheSizeBytes: response.cache_size_bytes }
+            return { error: false, success: response.success, message, cacheSizeBytes: response.cache_size_bytes };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Tagger Manager] Failed to delete ${modelRepo}: ${Utilities.getErrorMessage(error)}`);
             this.port = null;
-            return { error: true, message: "Failed to delete the model, check the logs for more information" }
+            return { error: true, message: "Failed to delete the model, check the logs for more information" };
         }
     }
 
@@ -273,6 +272,6 @@ export class TaggerController {
                 return port;
         }
 
-        throw new Error(`No available port found starting from ${startPort}`);
+        throw new Error(`No available port found starting from ${startPort} after ${maxAttempts} attempts`);
     }
 }

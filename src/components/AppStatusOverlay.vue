@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useAppStatus } from '@/composables/useAppStatus';
+import { useAppStatus } from "@/composables/useAppStatus";
 
 const { active, title, message } = useAppStatus();
 </script>

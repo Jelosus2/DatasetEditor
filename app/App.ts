@@ -34,7 +34,7 @@ export class App {
         return !(await fs.pathExists(uninstallerPath));
     }
 
-    static async loadModules(debugFlag: boolean) {
+    private static async loadModules(debugFlag: boolean) {
         this.paths = new PathsBuilder(await this.getInstallScope());
         this.window = new WindowManager(debugFlag);
         this.settings = new SettingsManager();
@@ -68,7 +68,7 @@ export class App {
         }
     }
 
-    static async onAppReady(settings: Settings) {
+    private static async onAppReady(settings: Settings) {
         try {
             await this.window.createMainWindow();
 
@@ -85,13 +85,12 @@ export class App {
         }
     }
 
-    static onWindowAllClosed = () => {
+    private static onWindowAllClosed = () => {
         this.tagger.cleanup();
-        if (process.platform !== "darwin")
-            app.quit();
+        app.quit();
     }
 
-    static onActivate = async () => {
+    private static onActivate = async () => {
         if (!this.window.hasMainWindow())
             await this.window.createMainWindow();
     }
@@ -107,15 +106,15 @@ export class App {
     }
 
     static async showMessageBox(options: Electron.MessageBoxOptions) {
-        return await dialog.showMessageBox(this.window.mainWindow!, options);
+        return dialog.showMessageBox(this.window.mainWindow!, options);
     }
 
     static async showOpenDialog(options: Electron.OpenDialogOptions) {
-        return await dialog.showOpenDialog(this.window.mainWindow!, options);
+        return dialog.showOpenDialog(this.window.mainWindow!, options);
     }
 
     static async showSaveDialog(options: Electron.SaveDialogOptions) {
-        return await dialog.showSaveDialog(this.window.mainWindow!, options);
+        return dialog.showSaveDialog(this.window.mainWindow!, options);
     }
 
     static async importTagsCsvFromDialog() {
@@ -133,16 +132,16 @@ export class App {
 
             const filePath = result.filePaths[0];
             if (!filePath)
-                return { error: false, canceled: true }
+                return { error: false, canceled: true };
 
             await this.database.loadCsv(filePath, /* resetTable = */ true);
 
             this.logger.info("[Database Manager] Successfully inserted tags into the database");
-            return { error: false }
+            return { error: false };
         } catch (error) {
             console.error(error);
             this.logger.error(`[Database Manager] Failed to insert tags into database: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to insert tags, check the logs for more information" }
+            return { error: true, message: "Failed to insert tags, check the logs for more information" };
         }
     }
 

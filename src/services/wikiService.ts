@@ -25,8 +25,6 @@ export class WikiService {
     private alert = useAlert();
     private utilitiesService = new UtilitiesService();
 
-    constructor() {}
-
     async fetchWiki(tag: string) {
         const result = await this.ipc.invoke("danbooru:fetch_wiki", tag);
 

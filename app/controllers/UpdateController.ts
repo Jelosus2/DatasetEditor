@@ -4,7 +4,6 @@ import { App } from "../App.js";
 
 @IpcClass()
 export class UpdateController {
-    constructor() {}
 
     @IpcHandle("update:check")
     async checkForUpdates() {
@@ -14,7 +13,7 @@ export class UpdateController {
             const result = await App.updater.checkForUpdates();
             if (result === null) {
                 App.logger.warning("[Updater] Updater not available");
-                return { error: true, message: "Updater not available" }
+                return { error: true, message: "Updater not available" };
             }
 
             const isUpdateAvailable = result.isUpdateAvailable;
@@ -24,11 +23,11 @@ export class UpdateController {
             else
                 App.logger.info(`[Updater] Found a new version update: ${result.updateInfo.version}`);
 
-            return { error: false, isUpdateAvailable }
+            return { error: false, isUpdateAvailable };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Updater] Error while checking for updates: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to check for updates, check the logs for more information" }
+            return { error: true, message: "Failed to check for updates, check the logs for more information" };
         }
     }
 
@@ -39,11 +38,11 @@ export class UpdateController {
             await App.updater.downloadUpdate();
             App.logger.info("[Updater] Update downloaded successfully");
 
-            return { error: false }
+            return { error: false };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Updater] Error while downloading the update: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to download the update, check the logs for more information" }
+            return { error: true, message: "Failed to download the update, check the logs for more information" };
         }
     }
 

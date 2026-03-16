@@ -8,8 +8,6 @@ export class TagGroupsService {
     private ipc = useIpcRenderer([]);
     private alert = useAlert();
 
-    constructor() {}
-
     private getRawTagGroups(tagGroups: TagGroups) {
         const rawMap = toRaw(tagGroups);
         const cleanMap: TagGroups = new Map();

@@ -13,7 +13,6 @@ import url from "node:url";
 
 @IpcClass()
 export class ImageController {
-    constructor() {}
 
     @IpcHandle("image:set_background")
     async setBackgroundColor(_event: IpcMainInvokeEvent, images: string[], color: string) {
@@ -27,7 +26,7 @@ export class ImageController {
 
                 await fs.rename(tempPath, imagePath);
 
-                return { status: "fulfilled" }
+                return { status: "fulfilled" };
             } catch (error) {
                 console.error(error);
                 await fs.remove(tempPath).catch(() => {});
@@ -122,16 +121,16 @@ export class ImageController {
             return {
                 width: metadata.width ?? 0,
                 height: metadata.height ?? 0
-            }
+            };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Image Manager] Error reading metadata for ${imagePath}: ${Utilities.getErrorMessage(error)}`);
-            return { width: 0, height: 0 }
+            return { width: 0, height: 0 };
         }
     }
 
     @IpcHandle("image:find_duplicates")
-    async findDuplicates(_event: IpcMainInvokeEvent, imagePaths: string[], method: "dhash" | "phash" = "dhash", threshold: number = 10) {
+    async findDuplicates(_event: IpcMainInvokeEvent, imagePaths: string[], method: "dhash" | "phash" = "dhash", threshold = 10) {
         const total = imagePaths.length;
         if (total === 0)
             return { error: false, groups: [] };

@@ -58,7 +58,7 @@ export class ImageService {
         }
 
         if (!result.error && overwrite)
-            image.filePath = image.filePath.split('?')[0] + `?v=${Date.now()}`;
+            image.filePath = image.filePath.split("?")[0] + `?v=${Date.now()}`;
 
         this.alert.showAlert(result.error ? "error" : "success", result.message!);
         return result.error;

@@ -7,8 +7,6 @@ export class SettingsService {
     private ipc = useIpcRenderer([]);
     private alert = useAlert();
 
-    constructor() {}
-
     async loadSchema() {
         return this.ipc.invoke("settings:get_schema");
     }

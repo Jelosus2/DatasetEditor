@@ -22,7 +22,7 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         tagGroupsRedoStack.value = [];
     }
 
-    function addGroup(name: string, tags: string[], createHistory: boolean = true) {
+    function addGroup(name: string, tags: string[], createHistory = true) {
         if (!name || tagGroups.value.has(name))
             return;
 
@@ -40,7 +40,7 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         triggerUpdate();
     }
 
-    function removeGroup(name: string, createHistory: boolean = true) {
+    function removeGroup(name: string, createHistory = true) {
         const existing = tagGroups.value.get(name);
         if (!existing)
             return;
@@ -57,7 +57,7 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         triggerUpdate();
     }
 
-    function clearGroups(createHistory: boolean = true) {
+    function clearGroups(createHistory = true) {
         if (tagGroups.value.size === 0)
             return;
 
@@ -72,7 +72,7 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         triggerUpdate();
     }
 
-    function addTagsToGroup(group: string, tags: string[], createHistory: boolean = true) {
+    function addTagsToGroup(group: string, tags: string[], createHistory = true) {
         const tagGroup = tagGroups.value.get(group);
         if (!tagGroup || tags.length === 0)
             return;
@@ -95,7 +95,7 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         triggerUpdate();
     }
 
-    function removeTagsFromGroup(group: string, tags: string[], createHistory: boolean = true) {
+    function removeTagsFromGroup(group: string, tags: string[], createHistory = true) {
         const tagGroup = tagGroups.value.get(group);
         if (!tagGroup || tags.length === 0)
             return;
@@ -118,7 +118,7 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         triggerUpdate();
     }
 
-    function renameGroup(oldName: string, newName: string, createHistory: boolean = true) {
+    function renameGroup(oldName: string, newName: string, createHistory = true) {
         const tags = tagGroups.value.get(oldName);
         if (!tags)
             return;
@@ -228,15 +228,15 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
     }
 
     async function areTagGroupsSaved() {
-        return await tagGroupsService.compareTagGroups(tagGroups.value);
+        return tagGroupsService.compareTagGroups(tagGroups.value);
     }
 
     async function importTagGroups() {
-        return await tagGroupsService.importTagGroups();
+        return tagGroupsService.importTagGroups();
     }
 
     async function exportTagGroups(tagGroups: TagGroups) {
-        return await tagGroupsService.exportTagGroups(tagGroups);
+        await tagGroupsService.exportTagGroups(tagGroups);
     }
 
     return {
@@ -257,5 +257,5 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         areTagGroupsSaved,
         importTagGroups,
         exportTagGroups
-    }
+    };
 });

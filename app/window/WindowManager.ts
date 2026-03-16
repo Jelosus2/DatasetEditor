@@ -8,7 +8,7 @@ import { App } from "../App.js";
 import { ipcMain, BrowserWindow } from "electron";
 
 export class WindowManager {
-    readonly debugFlag: boolean;
+    private readonly debugFlag: boolean;
     mainWindow: BrowserWindow | null;
     private isForceClosing = false;
     private closeInProgress = false;
@@ -50,7 +50,7 @@ export class WindowManager {
         this.setupWindowEventHandlers();
     }
 
-    setupWindowEventHandlers() {
+    private setupWindowEventHandlers() {
         ipcMain.removeListener("app:close_response", this.handleCloseResponse);
         ipcMain.on("app:close_response", this.handleCloseResponse);
 

@@ -14,7 +14,7 @@ export function useTagDisplay(
 ) {
     const datasetStore = useDatasetStore();
 
-    const displayedTags = computed<Set<string>>(() => {
+    const displayedTags = computed(() => {
         void datasetStore.dataVersion;
 
         const rawDataset = toRaw(datasetStore.dataset);
@@ -50,7 +50,7 @@ export function useTagDisplay(
         return output;
     });
 
-    const displayedGlobalTags = computed<Set<string>>(() => {
+    const displayedGlobalTags = computed(() => {
         void datasetStore.dataVersion;
 
         const rawGlobalTags = toRaw(datasetStore.globalTags);
@@ -100,7 +100,7 @@ export function useTagDisplay(
         return output;
     });
 
-    const filteredImages = computed<Set<string>>(() => {
+    const filteredImages = computed(() => {
         void datasetStore.dataVersion;
 
         const rawDataset = toRaw(datasetStore.dataset);

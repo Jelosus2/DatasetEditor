@@ -12,14 +12,14 @@ const dataRootScopeMap: Record<string, string> = {
     portable: process.resourcesPath,
     machine: app.getPath("userData"),
     user: app.getPath("userData")
-}
+};
 
 const taggerRootScopeMap: Record<string, string> = {
     dev: app.getAppPath(),
     portable: process.resourcesPath,
     machine: path.join(process.env.ProgramData ?? "", "dataset-editor"),
     user: app.getPath("userData")
-}
+};
 
 export class PathsBuilder {
     readonly dataPath: string;
@@ -69,7 +69,7 @@ export class PathsBuilder {
         this.appIconPath = installScope !== "dev" ? path.join(this.distPath, "doro.ico") : path.join(this.publicPath, "doro.ico");
         this.preloadFilePath = path.join(__dirname, "..", "preload.js");
         this.indexFilePath = path.join(this.distPath, "index.html");
-        this.defaultHuggingFacePath = this.getHuggingFaceCachePath();
+        this.defaultHuggingFacePath = this.getDefaultHuggingFaceCachePath();
     }
 
     async readTagsCsv(csvPath: string, batchSize: number, onBatchComplete: (batch: TagBatch[], progress: number, error?: unknown) => void) {
@@ -154,7 +154,7 @@ export class PathsBuilder {
         return path.dirname(url.fileURLToPath(fileURL));
     }
 
-    private getHuggingFaceCachePath() {
+    private getDefaultHuggingFaceCachePath() {
         if (process.env.HF_HUB_CACHE)
             return process.env.HF_HUB_CACHE;
         if (process.env.HF_HOME)

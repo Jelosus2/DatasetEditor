@@ -7,10 +7,10 @@ import Database from "better-sqlite3";
 import fs from "fs-extra";
 
 export class TagDatabase {
-    readonly BATCH_SIZE = 2000;
-    database: ReturnType<typeof Database>;
+    private readonly BATCH_SIZE = 2000;
+    private readonly database: ReturnType<typeof Database>;
 
-    constructor(database: ReturnType<typeof Database>) {
+    private constructor(database: ReturnType<typeof Database>) {
         this.database = database;
     }
 

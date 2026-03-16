@@ -6,7 +6,6 @@ import fs from "fs-extra";
 import _ from "lodash";
 
 export class TaggerModelManager {
-    constructor() {}
 
     private getDefaultModelNames() {
         return [

@@ -8,8 +8,6 @@ export class DatasetService {
     private ipc = useIpcRenderer([]);
     private alert = useAlert();
 
-    constructor() {}
-
     private getPersistableDataset(dataset: Dataset) {
         const rawMap = toRaw(dataset);
         const cleanMap: DatasetPersistable = new Map();
@@ -26,7 +24,7 @@ export class DatasetService {
         return cleanMap;
     }
 
-    async loadDataset(isAllSaved: boolean, reloadDataset: boolean = false) {
+    async loadDataset(isAllSaved: boolean, reloadDataset = false) {
         const result = await this.ipc.invoke("dataset:load", isAllSaved, reloadDataset);
 
         if (result.error) {

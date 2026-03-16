@@ -9,7 +9,6 @@ import fs from "fs-extra";
 
 @IpcClass()
 export class SettingsController {
-    constructor() {}
 
     @IpcHandle("settings:get_schema")
     getSchema() {
@@ -19,7 +18,7 @@ export class SettingsController {
     @IpcHandle("settings:load")
     async load() {
         App.logger.info("[Settings Manager] Settings loaded successfully");
-        return await App.settings.loadSettings();
+        return App.settings.loadSettings();
     }
 
     @IpcHandle("settings:update")
@@ -28,11 +27,11 @@ export class SettingsController {
             const settings = await App.settings.updatePartial(partial);
 
             App.logger.info("[Settings Manager] Settings updated successfully");
-            return { error: false, settings }
+            return { error: false, settings };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Settings Manager] Failed to update settings: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to update settings, check the logs for more information" }
+            return { error: true, message: "Failed to update settings, check the logs for more information" };
         }
     }
 
@@ -91,7 +90,7 @@ export class SettingsController {
             console.error(error);
             App.logger.error(`[Settings Manager] Unknown error checking directory permissions: ${Utilities.getErrorMessage(error)}`);
 
-            return { ok: false, message: "Unknown error, check the logs for more information" }
+            return { ok: false, message: "Unknown error, check the logs for more information" };
         }
     }
 }

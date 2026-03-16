@@ -12,7 +12,7 @@ export class UpdateManager {
         this.registerListeners();
     }
 
-    registerListeners() {
+    private registerListeners() {
         autoUpdater.on("update-available", () => {
             App.window.ipcSend("app:update_available");
         });
@@ -27,12 +27,12 @@ export class UpdateManager {
 
         autoUpdater.on("error", (error) => {
             App.window.ipcSend("app:update_error");
-            App.logger.error(`[Updater] Update error: ${Utilities.getErrorMessage(error)}`)
+            App.logger.error(`[Updater] Update error: ${Utilities.getErrorMessage(error)}`);
         });
     }
 
     async checkForUpdates() {
-        return await autoUpdater.checkForUpdates();
+        return autoUpdater.checkForUpdates();
     }
 
     async downloadUpdate() {

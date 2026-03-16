@@ -38,5 +38,5 @@ export function useResizablePane(containerRef: Ref<HTMLElement | null>, initialW
     return {
         containerWidth,
         startResize
-    }
+    };
 }
