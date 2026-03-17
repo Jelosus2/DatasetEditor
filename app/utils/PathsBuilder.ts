@@ -59,7 +59,7 @@ export class PathsBuilder {
         this.databasePath = path.join(this.tagAutocompletionsPath, "tags.db");
         this.settingsPath = path.join(this.dataPath, "settings.json");
         this.bundledTagAutocompletionFilePath = installScope === "dev"
-            ? path.join(this.dataPath, "TagAutocompletions", "danbooru.csv")
+            ? path.join(dataRoot, "build", "danbooru.csv")
             : path.join(process.resourcesPath, "seed-data", "danbooru.csv");
         this.tagGroupsFilePath = path.join(this.tagGroupsPath, "tag_groups.json");
         this.taggerScriptPath = path.join(this.taggerPath, "main.py");

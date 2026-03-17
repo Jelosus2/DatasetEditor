@@ -9,16 +9,13 @@
   "scripts": {
     "dev": "vite",
     "electron": "pnpm build:electron && electron .",
-    "e-dev": "set NODE_ENV=debug&& run-p dev electron",
-    "e-prod": "run-p dev electron",
     "build": "run-p type-check \"build-only {@}\" --",
     "build:electron": "tsc -p tsconfig.electron.json && tsc -p tsconfig.preload.json",
-    "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
-    "format": "prettier --write src/",
-    "package:win": "vite build && pnpm build:electron && electron-builder build --win",
+    "package:win": "vite build && pnpm build:electron && electron-builder build --win --publish never",
+    "package:linux": "vite build && pnpm build:electron && electron-builder build --linux --publish never",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {

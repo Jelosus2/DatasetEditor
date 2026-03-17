@@ -17,10 +17,10 @@ extraResources:
       - "!**/embedded_python/*"
       - "!**/__pycache__/*"
 
-  - from: "Data/TagAutocompletions/danbooru.csv"
+  - from: "build/danbooru.csv"
     to: "seed-data/danbooru.csv"
 win:
-  artifactName: "Dataset-Editor-${version}.${ext}"
+  artifactName: "Dataset-Editor-${version}-${os}-${arch}.${ext}"
   icon: "public/doro.ico"
   target:
     - "nsis"
@@ -31,7 +31,7 @@ win:
       filter:
         - "**/*"
 linux:
-  artifactName: "Dataset-Editor-${version}.${ext}"
+  artifactName: "Dataset-Editor-${version}-${arch}.${ext}"
   icon: "build/doro.png"
   category: "Utility"
   asarUnpack:
@@ -43,7 +43,7 @@ linux:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-  artifactName: "Dataset-Editor-Setup-${version}.${ext}"
+  artifactName: "Dataset-Editor-Setup-${version}-${arch}.${ext}"
   installerIcon: "build/yes_doro.ico"
   uninstallerIcon: "build/no_doro.ico"
   include: "build/installer.nsh"

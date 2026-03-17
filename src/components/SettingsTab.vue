@@ -150,7 +150,7 @@ onMounted(() => {
                                                 Restart required
                                             </span>
                                         </div>
-                                        <div v-if="field.description" class="text-sm text-base-content/70">
+                                        <div v-if="field.description" class="text-sm text-base-content/70 mt-0.5">
                                             {{ field.description }}
                                         </div>
                                     </div>

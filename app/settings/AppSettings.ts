@@ -10,9 +10,23 @@ export class AppSettings {
         section: "Appearance",
         label: "Show Tag Count",
         type: "boolean",
+        description: "Next to each global tag, display the total number of images using it.",
         defaultValue: false
     })
     showTagCount = false;
+
+    @Setting({
+        section: "Appearance",
+        label: "Theme",
+        type: "select",
+        description: "The question is: Do you like to burn your eyes or not?",
+        options: [
+            { label: "Dark", value: "dark" },
+            { label: "Light", value: "light" }
+        ],
+        defaultValue: "dark"
+    })
+    theme = "dark";
 
     @Setting({
         section: "Interface",
@@ -25,6 +39,7 @@ export class AppSettings {
     @Setting({
         section: "Interface",
         label: "Show Caption Diff List",
+        description: "Shows a list of tags the autotagger didn't detect for an image.",
         type: "boolean",
         defaultValue: true
     })
@@ -34,26 +49,16 @@ export class AppSettings {
         section: "Interface",
         label: "Show Tag Groups",
         type: "boolean",
+        description: "Show the tag groups section in the Dataset tab.",
         defaultValue: true
     })
     showTagGroups = true;
 
     @Setting({
-        section: "Appearance",
-        label: "Theme",
-        type: "select",
-        options: [
-            { label: "Dark", value: "dark" },
-            { label: "Light", value: "light" }
-        ],
-        defaultValue: "dark"
-    })
-    theme = "dark";
-
-    @Setting({
         section: "General",
         label: "Autocomplete",
         type: "boolean",
+        description: "Enable/disable tag autocompletion in text fields.",
         defaultValue: true
     })
     autocomplete = true;
@@ -62,7 +67,7 @@ export class AppSettings {
         section: "General",
         label: "Load tags CSV",
         type: "action",
-        description: "Import tags from a CSV file into the tags Database.",
+        description: "Import tags from a CSV file into the tags database.",
         actionId: "loadTagsCsv"
     })
     loadTagsCsvAction = true;
@@ -71,6 +76,7 @@ export class AppSettings {
         section: "Autotagger",
         label: "Ignored tags",
         type: "string[]",
+        description: "Comma-separated list of tags for the autotagger to ignore.",
         inputType: "textarea",
         defaultValue: []
     })
@@ -80,6 +86,7 @@ export class AppSettings {
         section: "Autotagger",
         label: "HuggingFace cache",
         type: "directory",
+        description: "Directory where the tagging models will be downloaded.",
         defaultValue: ""
     })
     huggingFaceCacheDirectory = "";
@@ -88,6 +95,7 @@ export class AppSettings {
         section: "Autotagger",
         label: "Service port",
         type: "number",
+        description: "The port number where the tagger service will listen.",
         defaultValue: 3067
     })
     taggerPort = 3067;
@@ -96,6 +104,7 @@ export class AppSettings {
         section: "General",
         label: "Load dataset subdirectories",
         type: "boolean",
+        description: "Recursively load images and captions, starting at the selected folder.",
         defaultValue: false
     })
     recursiveDatasetLoad = false;
@@ -120,6 +129,7 @@ export class AppSettings {
         section: "General",
         label: "Enable hardware acceleration",
         type: "boolean",
+        description: "Makes the application run smoother by decoding the images in the GPU.",
         requiresRestart: true,
         defaultValue: true
     })

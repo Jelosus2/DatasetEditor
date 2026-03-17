@@ -134,7 +134,10 @@ const groupsWithMatches = computed(() => {
 
 const isDraggable = computed(() => editMode.value === "individual" && hasSingleSelection.value);
 
-const tagEditorMainWidth = computed(() => 70 - tagGroupWidth.value);
+const tagEditorMainWidth = computed(() =>
+    settingsStore.showTagGroups ? 70 - tagGroupWidth.value : 100
+);
+
 const showTopSection = computed(() =>
     editMode.value === "mass" ? true : settingsStore.showDiffSection
 );
@@ -706,11 +709,12 @@ function addTagToImageFilter(tag: string) {
         </div>
     </div>
     <div
+        v-if="settingsStore.showTagGroups"
         class="divider m-0 divider-horizontal cursor-ew-resize not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
         @mousedown.prevent="resizeTagGroupWidth"
     ></div>
-    <div class="flex h-full min-h-0 flex-col pt-1 pr-1" :style="{ width: tagGroupWidth + '%' }">
-        <div v-if="settingsStore.showTagGroups" class="flex min-h-0 flex-1 flex-col gap-2 overflow-auto pb-1">
+    <div v-if="settingsStore.showTagGroups" class="flex h-full min-h-0 flex-col pt-1 pr-1" :style="{ width: tagGroupWidth + '%' }">
+        <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-auto pb-1">
             <div class="flex flex-col gap-2">
                 <div class="flex items-center gap-2">
                     <label class="input z-2 w-full outline-none!">

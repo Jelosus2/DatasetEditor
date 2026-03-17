@@ -16,7 +16,6 @@ coverage
 *.local
 Data
 tagger/venv
-tagger/dependencies_installed
 tagger/__pycache__
 embedded_python
 dist_app
