@@ -1,92 +1,145 @@
 # Dataset Editor
 
-> Load a folder full of images, tweak or auto-generate their tags, then save everything back—complete with undo/redo, tag-group presets, and a built-in Python autotagger.
+> Load a folder full of images, tweak or auto-generate their tags, then save everything back, complete with undo/redo, tag-group presets, and a built-in Python autotagger.
 
 ![Dataset View](.github/images/dataset_view.png)
 
-## 🚀 Download & Installation
+## Download & Installation
 
-1. Head to the **[Releases](https://github.com/Jelosus2/DatasetEditor/releases)** page and grab the installer or the zip.
-2. Run the installer or extract the zip.
+Head to the **[Releases](https://github.com/Jelosus2/DatasetEditor/releases)** page and download the build that fits your platform:
 
-## 🛠 Building & Packaging
+- **Windows `.exe`**: Installer build.
+- **Windows `.zip`**: Portable build.
+- **Linux `.AppImage`**: Portable Linux build.
+- **Linux `.deb`**: Debian/Ubuntu-based package.
+- **Linux `.rpm`**: Fedora/RHEL-based package.
 
-You’ll need:
-- **Node.js ≥ 20** (download it [here](https://nodejs.org/en/download)) and **pnpm** (or npm).
-- Embedded version of a compatible python version inside the root directory named `embedded_python`
-  - You have to add pip with [get-pip.py](https://bootstrap.pypa.io/get-pip.py)
-  - You also have to uncomment the `import site` line in the pth file.
-  - (Optional) To test the tagger in development copy the `embedded_python` directory inside the `tagger` directory.
-- (Optional) Add a csv file for autocompletions named `danbooru.csv` in `Data/TagAutocompletions` and load the csv into the database.
+For Windows, run the installer or extract the zip.  
+For Linux, use the package format that best matches your distribution, or use the AppImage if you want a portable build.
+
+## Building & Packaging
+
+### Requirements
+
+You will need:
+
+- **Node.js 22 or newer**
+- **pnpm 10 or newer**
+- For **Windows packaging**: a prepared `embedded_python` directory in the repository root
+
+If you are preparing the embedded Python bundle yourself:
+
+- add `pip` with [get-pip.py](https://bootstrap.pypa.io/get-pip.py)
+- uncomment the `import site` line in the `.pth` file
+
+If you want to test the autotagger in development on Windows, also copy the `embedded_python` directory into `tagger/embedded_python`.
+
+### Install dependencies
 
 ```bash
-# Install dependencies
 pnpm install
+```
 
-# Start the app in dev mode
-pnpm e-dev
+### Run in development
 
-# Create a production package
+Use two terminals:
+
+```bash
+# Terminal 1: start the Vite dev server
+pnpm dev
+
+# Terminal 2: launch Electron
+pnpm electron
+```
+
+### Build the app
+
+```bash
+pnpm build
+pnpm build:electron
+```
+
+### Package for Windows
+
+```bash
 pnpm package:win
 ```
 
-## ✨ Features
+### Package for Linux
 
-- Visual dataset browser  
-- Autocomplete tag editor  
-- Bult-in autotagger 
-- Bulk tag operations + undo/redo  
-- Tag-group presets with import/export to JSON file 
-- Add background color to PNG images
-- Search in Danboorus wiki
-- Dark/light themes
-- Auto-updates (Installer Only)
+On Debian/Ubuntu-based systems, install `rpm` first:
 
-## 📸 Feature Spotlights
+```bash
+sudo apt-get update
+sudo apt-get install -y rpm
+```
+
+Then package the app:
+
+```bash
+pnpm package:linux
+```
+
+## Features
+
+- Visual dataset browser
+- Autocomplete tag editor
+- Built-in autotagger with model management
+- Bulk tag operations with undo/redo
+- Tag-group presets with JSON import/export
+- Duplicate image finder
+- Rename files tool
+- Bucket crop tool and background color tool
+- Danbooru wiki search
+- Dark and light themes
+- Auto-updates for packaged releases
+
+## Feature Spotlights
 
 ### Visual Dataset Browser
-![Smooth Scrolling](.github/images/smooth_scrolling.gif) 
+<video src=".github/videos/smooth_scrolling.mp4" autoplay loop muted playsinline></video>
 
 Browse hundreds of images smoothly thanks to virtual scrolling.
 
 ### Smart Tag Autocomplete
-![Autocompletion](.github/images/autocompletion.gif)
+<video src=".github/videos/autocompletion.mp4" autoplay loop muted playsinline></video>
 
-Blazing fast autocompletions thanks to the power of SQLite.
+Fast tag autocompletion powered by SQLite.
 
 ### Bulk Tag Ops + Undo/Redo
-![Bulk ops](.github/images/bulk_ops.gif)
+<video src=".github/videos/bulk_ops.mp4" autoplay loop muted playsinline></video>
 
-Messed up the tags of your dataset? Fear not, you can easily fix them using bulk tag operations and with the help of undo/redo actions
+Messed up the tags of your dataset? You can fix them with bulk tag operations and undo/redo actions.
 
 ### Built-in Python Autotagger
-![Autotagging](.github/images/autotagging.gif)
+<video src=".github/videos/autotagging.mp4" autoplay loop muted playsinline></video>
 
-Easily autotag your images in a few click, dependency installation and model downloading is fully automated.
+Autotag your images in a few clicks. Dependency installation and model downloading are handled from inside the app.
 
 ### Tag Groups
-![Tag groups](.github/images/tag_groups.gif)
+<video src=".github/videos/tag_groups.mp4" autoplay loop muted playsinline></video>
 
-Create reusable tag groups for hair styles, eye colors, characters... Everything you need. Export them as JSON to share them with other people.
+Create reusable tag groups for hair styles, eye colors, characters, and more. Export them as JSON to share them with other people.
 
 ### Background Color For Transparent Images
-![Background Change](.github/images/background_change.gif)
+<video src=".github/videos/background_change.mp4" autoplay loop muted playsinline></video>
 
-Tired of having to use an external tool or website to add a background color to your transparent images? Now you can do it within the app!
+Add a background color to transparent images without leaving the app.
 
 ### Browse Danbooru Wiki
-![Wiki Search](.github/images/wiki_search.gif)
+<video src=".github/videos/wiki_search.mp4" autoplay loop muted playsinline></video>
 
-Ever wondered what a tag represents? You can now find out from the comfort of the app.
+Need to know what a tag represents? Search the Danbooru wiki directly from the app. And now you can even select the rating to display the example posts!
 
-### Seamless Updates (Installer Only)
-The update service checks GitHub for new releases every launch (if the setting is enabled) and notifies you in the navbar. Just click download and install it when you’re ready.
+### Seamless Updates
 
-## 🤝 Contributing
+The update service checks GitHub for new releases when the setting is enabled and notifies you from inside the app when an update is available.
 
-PRs are welcome! Please be sure it meets the standards of the code, and keep your commits tidy.
+## Contributing
 
-## 📄 License
+PRs are welcome. Please make sure your changes meet the project's standards and keep your commits tidy.
+
+## License
 
 MIT License
 
@@ -110,9 +163,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-## 🙏 Credits
-* **FallenIncursio** - Sponsor
-* **Kojimbo** - Tested the program and gave feedback.
-* **Squibeel** - Tested the program and gave feedback.
-* **Starrypon** - Tested the program and gave feedback.
-* **Anzhc** - Gave feedback.
+## Credits
+
+- **FallenIncursio** - Sponsor
+- **Kojimbo** - Tested the program and gave feedback.
+- **Squibeel** - Tested the program and gave feedback.
+- **Starrypon** - Tested the program and gave feedback.
+- **Anzhc** - Gave feedback.

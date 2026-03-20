@@ -1,6 +1,6 @@
 {
   "name": "dataset-editor",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "dist_app/main.js",
   "description": "A dataset editor",

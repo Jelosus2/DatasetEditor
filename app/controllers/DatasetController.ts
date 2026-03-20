@@ -305,7 +305,7 @@ export class DatasetController {
         }
 
         for (const file of files) {
-            const tags = await this.loadImageTags(directoryPath, file.filename);
+            const tags = await this.loadImageTags(file.parentPath, file.filename);
 
             let mtimeMs: number;
             try { mtimeMs = (await fs.stat(file.filePath)).mtimeMs } catch { mtimeMs = Date.now() }
