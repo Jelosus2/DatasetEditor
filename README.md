@@ -97,37 +97,37 @@ pnpm package:linux
 ## Feature Spotlights
 
 ### Visual Dataset Browser
-<video src=".github/videos/smooth_scrolling.mp4" autoplay loop muted playsinline></video>
+![Smooth Scrolling](.github/videos/smooth_scrolling.gif)
 
 Browse hundreds of images smoothly thanks to virtual scrolling.
 
 ### Smart Tag Autocomplete
-<video src=".github/videos/autocompletion.mp4" autoplay loop muted playsinline></video>
+![Autocompletion](.github/videos/autocompletion.gif)
 
 Fast tag autocompletion powered by SQLite.
 
 ### Bulk Tag Ops + Undo/Redo
-<video src=".github/videos/bulk_ops.mp4" autoplay loop muted playsinline></video>
+![Smooth Scrolling](.github/videos/bulk_ops.gif)
 
 Messed up the tags of your dataset? You can fix them with bulk tag operations and undo/redo actions.
 
 ### Built-in Python Autotagger
-<video src=".github/videos/autotagging.mp4" autoplay loop muted playsinline></video>
+![Autotagging](.github/videos/autotagging.gif)
 
 Autotag your images in a few clicks. Dependency installation and model downloading are handled from inside the app.
 
 ### Tag Groups
-<video src=".github/videos/tag_groups.mp4" autoplay loop muted playsinline></video>
+![Tag groups](.github/videos/tag_groups.gif)
 
 Create reusable tag groups for hair styles, eye colors, characters, and more. Export them as JSON to share them with other people.
 
 ### Background Color For Transparent Images
-<video src=".github/videos/background_change.mp4" autoplay loop muted playsinline></video>
+![Background Change](.github/videos/background_change.gif)
 
 Add a background color to transparent images without leaving the app.
 
 ### Browse Danbooru Wiki
-<video src=".github/videos/wiki_search.mp4" autoplay loop muted playsinline></video>
+![Wiki Search](.github/videos/wiki_search.gif)
 
 Need to know what a tag represents? Search the Danbooru wiki directly from the app. And now you can even select the rating to display the example posts!
 
