@@ -1,22 +1,25 @@
-import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import type { LogEntry } from "@/types/log";
 
-export interface LogEntry {
-  timestamp: Date;
-  type: 'info' | 'warning' | 'error';
-  message: string;
-}
+import { UtilitiesService } from "@/services/utilitiesService";
+import { defineStore } from "pinia";
+import { ref } from "vue";
 
-export const useLogStore = defineStore('logs', () => {
-  const logs = ref<LogEntry[]>([]);
+export const useLogStore = defineStore("logs", () => {
+    const logs = ref<LogEntry[]>([]);
 
-  function addLog(type: LogEntry['type'], message: string) {
-    logs.value.push({ timestamp: new Date(), type, message });
-  }
+    const utilitiesService = new UtilitiesService();
 
-  function clearLogs() {
-    logs.value = [];
-  }
+    function addLog(type: LogEntry["type"], message: LogEntry["message"]) {
+        logs.value.push({ timestamp: new Date(), type, message });
+    }
 
-  return { logs, addLog, clearLogs };
+    function clearLogs() {
+        logs.value = [];
+    }
+
+    function openUrl(url: string) {
+        utilitiesService.openUrlInBrowser(url);
+    }
+
+    return { logs, addLog, clearLogs, openUrl };
 });

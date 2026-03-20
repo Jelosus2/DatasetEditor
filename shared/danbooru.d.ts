@@ -1,0 +1,12 @@
+export type DanbooruWikiPage = {
+    body: string;
+}
+
+export type DanbooruPostPreview = {
+    id: number;
+    mediaType: "image" | "video";
+    previewUrl: string;
+    postUrl: string;
+}
+
+export type Rating = "none" | "general" | "sensitive " | "questionable" | "explicit";

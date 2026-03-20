@@ -1,52 +1,59 @@
-import type { Image } from '@/stores/datasetStore';
-import { useIpcRenderer } from '@/composables/useIpcRenderer';
-import { useLogStore } from '@/stores/logStore';
+import type { Dataset, DatasetPersistable } from "../../shared/dataset";
 
-export function sortTags(tags: Iterable<string>): string[] {
-  const arr = [...tags];
-  if (arr.length <= 1) return arr;
-  const [first, ...rest] = arr;
-  rest.sort((a, b) => a.localeCompare(b));
-  return [first, ...rest];
-}
+import { useIpcRenderer } from "@/composables/useIpcRenderer";
+import { useAlert } from "@/composables/useAlert";
+import { toRaw } from "vue";
 
 export class DatasetService {
-  private ipc = useIpcRenderer([]);
-  private logStore = useLogStore();
+    private ipc = useIpcRenderer([]);
+    private alert = useAlert();
 
-  async loadDataset(isAllSaved: boolean, directory?: string | null, recursive = false, sortOnLoad = false) {
-    this.logStore.addLog('info', 'Requesting dataset load');
-    const result = await this.ipc.invoke<{
-      images: Map<string, Image>
-      globalTags: Map<string, Set<string>>
-      directoryPath: string
-    } | null>('load_dataset', isAllSaved, directory, recursive, sortOnLoad);
-    if (result && result.images.size > 0) this.logStore.addLog('info', 'Dataset loaded');
-    else if (result && result.images.size === 0) this.logStore.addLog('info', 'Attempted to load dataset but no images were found')
-    else this.logStore.addLog('info', 'Dataset not loaded');
-    return result;
-  }
+    private getPersistableDataset(dataset: Dataset) {
+        const rawMap = toRaw(dataset);
+        const cleanMap: DatasetPersistable = new Map();
 
-  async saveDataset(dataset: Record<string, { path: string; tags: string[] }>, sort = false) {
-    return this.ipc.invoke('save_dataset', dataset, sort);
-  }
+        for (const [imageName, properties] of rawMap.entries()) {
+            const rawProperties = toRaw(properties);
 
-  async compareDatasetChanges(images: Array<Array<string | { tags: string[]; path: string }>>) {
-    return this.ipc.invoke<boolean>('compare_dataset_changes', images);
-  }
+            cleanMap.set(imageName, {
+                path: rawProperties.path,
+                tags: toRaw(rawProperties.tags)
+            });
+        }
 
-  imagesToObject(images: Map<string, Image>, sort = false) {
-    return [...images].map(([img, props]) => [
-      img,
-      { tags: sort ? sortTags(props.tags) : [...props.tags], path: props.path }
-    ]);
-  }
-
-  datasetToSaveFormat(images: Map<string, Image>, sort = false) {
-    const obj: Record<string, { path: string; tags: string[] }> = {};
-    for (const [image, props] of images.entries()) {
-      obj[image] = { path: props.path, tags: sort ? sortTags(props.tags) : [...props.tags] }
+        return cleanMap;
     }
-    return obj;
-  }
+
+    async loadDataset(isAllSaved: boolean, reloadDataset = false) {
+        const result = await this.ipc.invoke("dataset:load", isAllSaved, reloadDataset);
+
+        if (result.error) {
+            this.alert.showAlert("error", result.message!);
+            return null;
+        }
+
+        if (result.canceled) {
+            this.alert.showAlert("info", "Dataset load was canceled");
+            return null;
+        }
+
+        return result;
+    }
+
+    async saveDataset(dataset: Dataset) {
+        const persistableDataset = this.getPersistableDataset(dataset);
+        const result = await this.ipc.invoke("dataset:save", persistableDataset);
+
+        if (result.error) {
+            this.alert.showAlert("error", result.message!);
+            return;
+        }
+
+        this.alert.showAlert("success", "Dataset saved successfully");
+    }
+
+    async compareDatasets(dataset: Dataset) {
+        const persistableDataset = this.getPersistableDataset(dataset);
+        return this.ipc.invoke("dataset:compare", persistableDataset);
+    }
 }

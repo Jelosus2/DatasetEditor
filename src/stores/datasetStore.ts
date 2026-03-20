@@ -1,306 +1,733 @@
-import { defineStore } from 'pinia';
-import { ref } from 'vue';
-import { DatasetService } from '@/services/datasetService';
-import { useSettingsStore } from '@/stores/settingsStore';
+import type { Dataset, GlobalTags, RenameMapping } from "../../shared/dataset";
+import type { DatasetChangeRecord, TagDiffs } from "@/types/dataset-store";
 
-interface DatasetChangeRecord {
-  type: 'add_tag' | 'remove_tag' | 'add_global_tag' | 'remove_global_tag' | 'replace_tag';
-  images?: Set<string>;
-  tags: Set<string>;
-  tagPosition?: number;
-  previousState?: Map<string, Set<string>>;
-  originalTag?: string;
-  newTag?: string;
-}
+import { DatasetService } from "@/services/datasetService";
+import { useAlert } from "@/composables/useAlert";
+import { defineStore } from "pinia";
+import { ref, toRaw } from "vue";
 
-export interface Image {
-  tags: Set<string>;
-  path: string;
-  filePath: string;
-}
+export const useDatasetStore = defineStore("dataset", () => {
+    const dataset = ref<Dataset>(new Map());
+    const globalTags = ref<GlobalTags>(new Map());
+    const tagDiff = ref<TagDiffs>(new Map());
 
-interface TagDiff {
-  tagger: Set<string>;
-  original: Set<string>;
-}
+    const dataVersion = ref(0);
 
-export const useDatasetStore = defineStore('dataset', () => {
-  const images = ref<Map<string, Image>>(new Map());
-  const globalTags = ref<Map<string, Set<string>>>(new Map());
-  const tagDiff = ref<Map<string, TagDiff>>(new Map());
-  const datasetUndoStack = ref<DatasetChangeRecord[]>([]);
-  const datasetRedoStack = ref<DatasetChangeRecord[]>([]);
-  const directory = ref('');
-  const sortMode = ref('none');
-  const onChange = ref<(() => void)[]>([]);
-  const datasetService = new DatasetService();
-  const settingsStore = useSettingsStore();
+    const datasetUndoStack = ref<DatasetChangeRecord[]>([]);
+    const datasetRedoStack = ref<DatasetChangeRecord[]>([]);
+    const sortMode = ref<"none" | "alphabetical">("none");
+    const selectedImages = ref<Set<string>>(new Set());
+    const lastSelectedIndex = ref(0);
+    const rangeAnchorIndex = ref(0);
 
-  function setImageTags(image: string, newTags: Set<string>) {
-    const current = images.value.get(image)!.tags;
-    for (const tag of current) {
-      if (!newTags.has(tag)) {
-        const imagesWithTag = globalTags.value.get(tag);
-        imagesWithTag?.delete(image);
-        if (imagesWithTag?.size === 0) globalTags.value.delete(tag);
-      }
+    const datasetService = new DatasetService();
+    const alert = useAlert();
+
+    function triggerUpdate() {
+        dataVersion.value++;
     }
 
-    for (const tag of newTags) {
-      if (!globalTags.value.has(tag)) {
-        globalTags.value.set(tag, new Set([image]));
-      } else {
-        globalTags.value.get(tag)!.add(image);
-      }
+    function recordHistory(record: DatasetChangeRecord) {
+        datasetUndoStack.value.push(record);
+        datasetRedoStack.value = [];
     }
 
-    images.value.get(image)!.tags = new Set(newTags);
-  }
+    function addTagsToImages(imageKeys: Iterable<string>, tags: Set<string>, position = -1, createHistory = true) {
+        const tagsArray = Array.from(tags);
+        const imagesSet = new Set(imageKeys);
 
-  function addTagsToImages(imgs: Iterable<string>, tags: Set<string>, position = -1, previousState?: Map<string, Set<string>>) {
-    for (const image of imgs) {
-      const base = previousState?.get(image) ?? images.value.get(image)!.tags;
-      const tagArray = [...base];
-      if (position === -1) {
-        images.value.get(image)!.tags = new Set([...tagArray, ...tags]);
-      } else {
-        const copy = [...tagArray];
-        copy.splice(position - 1, 0, ...tags);
-        images.value.get(image)!.tags = new Set(copy);
-      }
+        if (imagesSet.size === 0 || tagsArray.length === 0)
+            return;
 
-      for (const tag of tags) {
-        if (!globalTags.value.has(tag)) {
-          globalTags.value.set(tag, new Set([image]));
+        const changedImages = new Set<string>();
+
+        const rawDataset = toRaw(dataset.value);
+        const rawGlobalTags = toRaw(globalTags.value);
+        const rawTagDiff = toRaw(tagDiff.value);
+
+        for (const imageKey of imagesSet) {
+            const imageData = rawDataset.get(imageKey);
+            if (!imageData)
+                continue;
+
+            const existingTagSet = imageData.tags;
+            const missingTags = tagsArray.filter((tag) => !existingTagSet.has(tag));
+            if (position === -1 && missingTags.length === 0)
+                continue;
+
+            changedImages.add(imageKey);
+
+            const currentTagsArray = [...existingTagSet];
+            let newTagsList: string[];
+
+            if (position === -1) {
+                newTagsList = [...currentTagsArray];
+
+                for (const tag of missingTags) {
+                    insertTagAtIndex(
+                        imageKey,
+                        tag,
+                        newTagsList.length,
+                        newTagsList,
+                        existingTagSet,
+                        rawGlobalTags,
+                        rawTagDiff
+                    );
+                }
+            } else {
+                const filteredCurrent = currentTagsArray.filter((tag) => !tagsArray.includes(tag));
+                const actualPosition = Math.min(position - 1, filteredCurrent.length);
+
+                tagsArray.forEach((tag, offset) => {
+                    insertTagAtIndex(
+                        imageKey,
+                        tag,
+                        actualPosition + offset,
+                        filteredCurrent,
+                        existingTagSet,
+                        rawGlobalTags,
+                        rawTagDiff
+                    );
+                });
+
+                newTagsList = filteredCurrent;
+            }
+
+            imageData.tags = new Set(newTagsList);
+        }
+
+        if (changedImages.size === 0)
+            return;
+
+        if (createHistory) {
+            recordHistory({
+                type: "add_tag",
+                images: changedImages,
+                tags: new Set(tagsArray),
+                tagPosition: position
+            });
+        }
+
+        triggerUpdate();
+    }
+
+    function removeTagsFromImages(imageKeys: Iterable<string>, tags: Set<string>, createHistory = true) {
+        const imagesSet = new Set(imageKeys);
+        if (imagesSet.size === 0 || tags.size === 0)
+            return;
+
+        const changedImages = new Set<string>();
+        const removedPositions = new Map<string, Map<string, number>>();
+
+        const rawDataset = toRaw(dataset.value);
+        const rawGlobalTags = toRaw(globalTags.value);
+        const rawTagDiff = toRaw(tagDiff.value);
+
+        for (const imageKey of imagesSet) {
+            const imageData = rawDataset.get(imageKey);
+            if (!imageData)
+                continue;
+
+            const currentTags = [...imageData.tags];
+            const positions = new Map<string, number>();
+
+            let hasAnyTag = false;
+            for (const tag of tags) {
+                if (imageData.tags.has(tag))
+                    hasAnyTag = true;
+
+                const index = currentTags.indexOf(tag);
+                if (index !== -1)
+                    positions.set(tag, index);
+            }
+
+            if (!hasAnyTag)
+                continue;
+            if (positions.size > 0)
+                removedPositions.set(imageKey, positions);
+
+            changedImages.add(imageKey);
+
+            for (const tag of tags) {
+                if (imageData.tags.has(tag)) {
+                    imageData.tags.delete(tag);
+
+                    removeTagMetadata(imageKey, tag, rawGlobalTags, rawTagDiff);
+                }
+            }
+        }
+
+        if (changedImages.size === 0)
+            return;
+
+        if (createHistory) {
+            recordHistory({
+                type: "remove_tag",
+                images: changedImages,
+                tags: new Set(tags),
+                tagPositions: removedPositions
+            });
+        }
+
+        triggerUpdate();
+    }
+
+    function normalizeTags(input: string | Iterable<string>): string[] {
+        const list = typeof input === "string" ? [input] : Array.from(input);
+
+        return Array.from(new Set(
+            list.map((tag) => tag.trim()).filter(Boolean)
+        ));
+    }
+
+    function replaceTagForImages(
+        imageKeys: Iterable<string>,
+        originalTagsInput: string | Iterable<string>,
+        newTagsInput: string | Iterable<string>,
+        createHistory = true
+    ) {
+        const originalTags = normalizeTags(originalTagsInput);
+        const newTags = normalizeTags(newTagsInput);
+
+        if (originalTags.length === 0 || newTags.length === 0)
+            return;
+
+        const originalSet = new Set(originalTags);
+        const imagesSet = new Set(imageKeys);
+        if (imagesSet.size === 0)
+            return;
+
+        const changedImages = new Set<string>();
+        const replaceBefore = new Map<string, string[]>();
+
+        const rawDataset = toRaw(dataset.value);
+        const rawGlobalTags = toRaw(globalTags.value);
+        const rawTagDiff = toRaw(tagDiff.value);
+
+        for (const imageKey of imagesSet) {
+            const imageData = rawDataset.get(imageKey);
+            if (!imageData)
+                continue;
+
+            const previousTags = new Set(imageData.tags);
+            const tagsList = [...imageData.tags];
+
+            const sourceIndexes = tagsList
+                .map((tag, index) => originalSet.has(tag) ? index : -1)
+                .filter((index) => index !== -1);
+
+            if (sourceIndexes.length === 0)
+                continue;
+
+            const insertAt = Math.min(...sourceIndexes);
+            const withoutSources = tagsList.filter((tag) => !originalSet.has(tag));
+            const withoutTargets = withoutSources.filter((tag) => !newTags.includes(tag));
+            withoutTargets.splice(Math.min(insertAt, withoutTargets.length), 0, ...newTags);
+
+            const nextTags = new Set(withoutTargets);
+            imageData.tags = nextTags;
+            changedImages.add(imageKey);
+            replaceBefore.set(imageKey, tagsList);
+
+            for (const tag of previousTags) {
+                if (!nextTags.has(tag))
+                    removeTagMetadata(imageKey, tag, rawGlobalTags, rawTagDiff);
+            }
+
+            for (const tag of nextTags) {
+                if (!previousTags.has(tag))
+                    addTagMetadata(imageKey, tag, rawGlobalTags, rawTagDiff);
+            }
+        }
+
+        if (changedImages.size === 0)
+            return;
+
+        if (createHistory) {
+            recordHistory({
+                type: "replace_tag",
+                images: changedImages,
+                originalTags: new Set(originalTags),
+                newTags: new Set(newTags),
+                replaceBefore
+            });
+        }
+
+        triggerUpdate();
+    }
+
+    function restoreReplaceSnapshot(snapshot: Map<string, string[]>) {
+        const rawDataset = toRaw(dataset.value);
+        const rawGlobalTags = toRaw(globalTags.value);
+        const rawTagDiff = toRaw(tagDiff.value);
+
+        for (const [imageKey, tagsArr] of snapshot) {
+            const imageData = rawDataset.get(imageKey);
+            if (!imageData)
+                continue;
+
+            const previous = new Set(imageData.tags);
+            const next = new Set(tagsArr);
+
+            imageData.tags = next;
+
+            for (const tag of previous) {
+                if (!next.has(tag))
+                    removeTagMetadata(imageKey, tag, rawGlobalTags, rawTagDiff);
+            }
+
+            for (const tag of next) {
+                if (!previous.has(tag))
+                    addTagMetadata(imageKey, tag, rawGlobalTags, rawTagDiff);
+            }
+        }
+
+        triggerUpdate();
+    }
+
+    function reorderTagInImage(imageKey: string, tag: string, toIndex: number, createHistory = true) {
+        const rawDataset = toRaw(dataset.value);
+        const imageData = rawDataset.get(imageKey);
+        if (!imageData)
+            return;
+
+        const tagsList = [...imageData.tags];
+        const fromIndex = tagsList.indexOf(tag);
+        if (fromIndex === -1)
+            return;
+
+        const insertIndex = Math.max(0, Math.min(toIndex, tagsList.length));
+        if (insertIndex === fromIndex)
+            return;
+
+        tagsList.splice(fromIndex, 1);
+        tagsList.splice(insertIndex, 0, tag);
+        imageData.tags = new Set(tagsList);
+
+        if (createHistory) {
+            recordHistory({
+                type: "reorder_tag",
+                images: new Set([imageKey]),
+                tag,
+                fromIndex,
+                toIndex: insertIndex
+            });
+        }
+
+        triggerUpdate();
+    }
+
+    function restoreTagsWithPositions(tagPositions: Map<string, Map<string, number>>) {
+        const rawDataset = toRaw(dataset.value);
+        const rawGlobalTags = toRaw(globalTags.value);
+        const rawTagDiff = toRaw(tagDiff.value);
+
+        for (const [imageKey, positions] of tagPositions) {
+            const imageData = rawDataset.get(imageKey);
+            if (!imageData)
+                continue;
+
+            const tagsList = [...imageData.tags];
+            const ordered = [...positions.entries()].sort((a, b) => a[1] - b[1]);
+
+            for (const [tag, index] of ordered) {
+                insertTagAtIndex(
+                    imageKey,
+                    tag,
+                    index,
+                    tagsList,
+                    imageData.tags,
+                    rawGlobalTags,
+                    rawTagDiff
+                );
+            }
+
+            imageData.tags = new Set(tagsList);
+        }
+
+        triggerUpdate();
+    }
+
+    function insertTagAtIndex(
+        imageKey: string,
+        tag: string,
+        index: number,
+        tagsList: string[],
+        existingTagSet: Set<string>,
+        rawGlobalTags: GlobalTags,
+        rawTagDiff: TagDiffs
+    ) {
+        const insertAt = Math.min(index, tagsList.length);
+        tagsList.splice(insertAt, 0, tag);
+
+        if (existingTagSet.has(tag))
+            return;
+
+        existingTagSet.add(tag);
+        addTagMetadata(imageKey, tag, rawGlobalTags, rawTagDiff);
+    }
+
+    function addTagMetadata(imageKey: string, tag: string, rawGlobalTags: GlobalTags, rawTagDiff: TagDiffs) {
+        let globalSet = rawGlobalTags.get(tag);
+        if (!globalSet) {
+            globalSet = new Set();
+            rawGlobalTags.set(tag, globalSet);
+        }
+        globalSet.add(imageKey);
+
+        if (rawTagDiff.size > 0) {
+            const diff = rawTagDiff.get(imageKey);
+            if (diff) {
+                if (diff.tagger.has(tag))
+                    diff.tagger.delete(tag);
+                else
+                    diff.original.add(tag);
+            }
+        }
+    }
+
+    function removeTagMetadata(imageKey: string, tag: string, rawGlobalTags: GlobalTags, rawTagDiff: TagDiffs) {
+        removeImageFromGlobalTags(imageKey, tag, rawGlobalTags);
+
+        if (rawTagDiff.size > 0)
+            rawTagDiff.get(imageKey)?.original.delete(tag);
+    }
+
+    function removeImageFromGlobalTags(imageKey: string, tag: string, rawGlobalTags: GlobalTags) {
+        const globalSet = rawGlobalTags.get(tag);
+        if (globalSet) {
+            globalSet.delete(imageKey);
+
+            if (globalSet.size === 0)
+                rawGlobalTags.delete(tag);
+        }
+    }
+
+    function moveImageInGlobalTags(oldKey: string, newKey: string, tags: Iterable<string>, rawGlobalTags: GlobalTags) {
+        for (const tag of tags) {
+            const globalSet = rawGlobalTags.get(tag);
+            if (!globalSet)
+                continue;
+
+            globalSet.delete(oldKey);
+            globalSet.add(newKey);
+        }
+    }
+
+    function undoDatasetAction() {
+        const change = datasetUndoStack.value.pop();
+        if (!change) return;
+
+        switch (change.type) {
+            case "add_tag":
+                removeTagsFromImages(change.images, change.tags!, /* createHistory = */ false);
+                break;
+            case "remove_tag":
+                if (change.tagPositions && change.tagPositions.size > 0)
+                    restoreTagsWithPositions(change.tagPositions);
+                else
+                    addTagsToImages(change.images, change.tags!, -1, /* createHistory = */ false);
+                break;
+            case "replace_tag":
+                if (change.replaceBefore && change.replaceBefore.size > 0)
+                    restoreReplaceSnapshot(change.replaceBefore);
+                break;
+            case "reorder_tag":
+                const imageKey = change.images.values().next().value;
+                if (!imageKey || !change.tag)
+                    break;
+
+                reorderTagInImage(imageKey, change.tag, change.fromIndex!, /* createHistory = */ false);
+                break;
+        }
+
+        datasetRedoStack.value.push(change);
+    }
+
+    function redoDatasetAction() {
+        const change = datasetRedoStack.value.pop();
+        if (!change)
+            return;
+
+        switch (change.type) {
+            case "add_tag":
+                addTagsToImages(change.images, change.tags!, change.tagPosition, /* createHistory = */ false);
+                break;
+            case "remove_tag":
+                removeTagsFromImages(change.images, change.tags!, /* createHistory = */ false);
+                break;
+            case "replace_tag":
+                if (change.originalTags && change.newTags)
+                    replaceTagForImages(change.images, change.originalTags, change.newTags, /* createHistory = */ false);
+                break;
+            case "reorder_tag":
+                const imageKey = change.images.values().next().value;
+                if (!imageKey || !change.tag)
+                    break;
+
+                reorderTagInImage(imageKey, change.tag, change.toIndex!, /* createHistory = */ false);
+                break;
+        }
+
+        datasetUndoStack.value.push(change);
+    }
+
+    function removeImages(imageKeys: Iterable<string>) {
+        const rawDataset = toRaw(dataset.value);
+        const rawGlobalTags = toRaw(globalTags.value);
+        const rawTagDiff = toRaw(tagDiff.value);
+        let changed = false;
+
+        for (const imageKey of imageKeys) {
+            const imageData = rawDataset.get(imageKey);
+            if (!imageData)
+                continue;
+
+            changed = true;
+
+            for (const tag of imageData.tags)
+                removeImageFromGlobalTags(imageKey, tag, rawGlobalTags);
+
+            rawDataset.delete(imageKey);
+            rawTagDiff.delete(imageKey);
+        }
+
+        if (changed)
+            triggerUpdate();
+    }
+
+    function removeImage(imageKey: string) {
+        removeImages([imageKey]);
+    }
+
+    function renameImages(mappings: RenameMapping[]) {
+        if (mappings.length === 0)
+            return;
+
+        const rawDataset = toRaw(dataset.value);
+        const rawGlobalTags = toRaw(globalTags.value);
+        let changed = false;
+
+        for (const { from, to, mtime } of mappings) {
+            const oldKey = normalizePath(from);
+            const newPath = normalizePath(to);
+            const existing = rawDataset.get(oldKey);
+
+            if (!existing)
+                continue;
+            changed = true;
+
+            const newKey = newPath;
+            const tagsCopy = new Set(existing.tags);
+
+            moveImageInGlobalTags(oldKey, newKey, tagsCopy, rawGlobalTags);
+
+            const filePath = `${toFileUrl(newPath)}?v=${mtime}`;
+            rawDataset.delete(oldKey);
+            rawDataset.set(newKey, { tags: tagsCopy, path: newPath, filePath });
+        }
+
+        if (changed)
+            triggerUpdate();
+    }
+
+    function setTagDiffFromResults(results: Map<string, string[]>) {
+        const rawDataset = toRaw(dataset.value);
+        const nextDiff: TagDiffs = new Map();
+
+        for (const [name, tags] of results) {
+            const imageData = rawDataset.get(name);
+            if (!imageData)
+                continue;
+
+            const currentTags = imageData.tags;
+            const taggerOnly = new Set<string>();
+            const originalOnly = new Set<string>();
+
+            for (const tag of tags) {
+                if (!currentTags.has(tag))
+                    taggerOnly.add(tag);
+            }
+
+            for (const tag of currentTags) {
+                if (!tags.includes(tag))
+                    originalOnly.add(tag);
+            }
+
+            if (taggerOnly.size > 0 || originalOnly.size > 0) {
+                nextDiff.set(name, {
+                    tagger: taggerOnly,
+                    original: originalOnly
+                });
+            }
+        }
+
+        tagDiff.value = nextDiff;
+        triggerUpdate();
+    }
+
+    function normalizePath(path: string) {
+        return path.replace(/\\|\\\\/g, "/");
+    }
+
+    function toFileUrl(path: string) {
+        const norm = normalizePath(path);
+        if (/^[A-Za-z]:\//.test(norm))
+            return "file:///" + norm;
+
+        return "file://" + norm;
+    }
+
+    function toggleSelection(
+        imageKey: string,
+        event: MouseEvent,
+        imageKeys: string[],
+        filteredImages: Set<string>,
+        isFiltering: boolean
+    ) {
+        const index = imageKeys.indexOf(imageKey);
+        if (index === -1)
+            return;
+
+        const newSelection = new Set(selectedImages.value);
+
+        if (event.shiftKey) {
+            const start = Math.min(rangeAnchorIndex.value, index);
+            const end = Math.max(rangeAnchorIndex.value, index);
+
+            newSelection.clear();
+
+            for (let i = start; i <= end; i++) {
+                const key = imageKeys[i];
+                if (!isFiltering || filteredImages.has(key))
+                    newSelection.add(key);
+            }
+        } else if (event.ctrlKey) {
+            if (newSelection.has(imageKey)) {
+                if (newSelection.size > 1)
+                    newSelection.delete(imageKey);
+            } else {
+                newSelection.add(imageKey);
+            }
+
+            rangeAnchorIndex.value = index;
         } else {
-          globalTags.value.get(tag)!.add(image);
+            newSelection.clear();
+            newSelection.add(imageKey);
+            rangeAnchorIndex.value = index;
         }
-      }
+
+        lastSelectedIndex.value = index;
+        selectedImages.value = newSelection;
     }
-  }
 
-  function removeTagsFromImages(imgs: Iterable<string>, tags: Set<string>) {
-    for (const image of imgs) {
-      for (const tag of tags) {
-        images.value.get(image)?.tags.delete(tag);
-        const imagesWithTag = globalTags.value.get(tag);
-        imagesWithTag?.delete(image);
-        if (imagesWithTag?.size === 0) globalTags.value.delete(tag);
-      }
-    }
-  }
-
-  function replaceTagForImages(imgs: Iterable<string>, originalTag: string, newTag: string) {
-    for (const image of imgs) {
-      const imageWithTags = images.value.get(image)!;
-      const tagsCopy = [...imageWithTags.tags];
-      const tagIndex = tagsCopy.indexOf(originalTag);
-      if (tagIndex === -1) continue;
-
-      tagsCopy.splice(tagIndex, 1);
-      const existingIndex = tagsCopy.indexOf(newTag);
-      if (existingIndex !== -1) {
-        tagsCopy.splice(existingIndex, 1);
-        if (existingIndex < tagIndex) {
-          tagsCopy.splice(tagIndex - 1, 0, newTag);
-        } else {
-          tagsCopy.splice(tagIndex, 0, newTag);
+    function clearSelection(imageKeys: string[]) {
+        if (imageKeys.length === 0) {
+            selectedImages.value = new Set();
+            lastSelectedIndex.value = 0;
+            rangeAnchorIndex.value = 0;
+            return;
         }
-      } else {
-        tagsCopy.splice(tagIndex, 0, newTag);
-      }
-      imageWithTags.tags = new Set(tagsCopy);
 
-      const originalImages = globalTags.value.get(originalTag);
-      originalImages?.delete(image);
-      if (originalImages?.size === 0) globalTags.value.delete(originalTag);
-
-      if (!globalTags.value.has(newTag)) {
-        globalTags.value.set(newTag, new Set([image]));
-      } else {
-        globalTags.value.get(newTag)!.add(image);
-      }
+        selectedImages.value = new Set([imageKeys[0]]);
+        lastSelectedIndex.value = 0;
+        rangeAnchorIndex.value = 0;
     }
-  }
 
-  function pushDatasetChange(change: DatasetChangeRecord) {
-    datasetUndoStack.value.push(change);
-    datasetRedoStack.value = [];
-  }
+    function setSingleSelection(imageKey: string, visibleKeys: string[]) {
+        selectedImages.value = new Set([imageKey]);
 
-  function undoDatasetAction() {
-    const change = datasetUndoStack.value.pop();
-    if (!change) return;
-
-    switch (change.type) {
-      case 'add_tag':
-        for (const [image, previousTags] of change.previousState!.entries()) {
-          setImageTags(image, previousTags);
+        const index = visibleKeys.indexOf(imageKey);
+        if (index !== -1) {
+            lastSelectedIndex.value = index;
+            rangeAnchorIndex.value = index;
         }
-        break;
-      case 'add_global_tag':
-        removeTagsFromImages(images.value.keys(), change.tags);
-        break;
-      case 'remove_tag':
-        for (const [image, previousTags] of change.previousState!.entries()) {
-          setImageTags(image, previousTags);
+    }
+
+    function selectAllVisible(visibleKeys: string[]) {
+        if (visibleKeys.length === 0) {
+            resetSelectionState();
+            return;
         }
-        break;
-      case 'remove_global_tag':
-        for (const [image, previousTags] of change.previousState!.entries()) {
-          setImageTags(image, previousTags);
+
+        selectedImages.value = new Set(visibleKeys);
+
+        const clamped = Math.min(lastSelectedIndex.value, visibleKeys.length - 1);
+        lastSelectedIndex.value = clamped;
+        rangeAnchorIndex.value = clamped;
+    }
+
+    function resetSelectionState() {
+        selectedImages.value = new Set();
+        lastSelectedIndex.value = 0;
+        rangeAnchorIndex.value = 0;
+    }
+
+    async function loadDataset(reload = false) {
+        const _isDatasetSaved = await isDatasetSaved();
+
+        const result = await datasetService.loadDataset(_isDatasetSaved, reload);
+        if (!result)
+            return;
+
+        dataset.value = result.dataset!;
+        globalTags.value = result.globalTags!;
+        tagDiff.value = new Map();
+
+        resetSelectionState();
+
+        if (!reload)
+            resetDatasetStatus();
+
+        alert.showAlert("success", "Dataset loaded successfully");
+
+        triggerUpdate();
+    }
+
+    async function saveDataset() {
+        if (dataset.value.size === 0) {
+            alert.showAlert("warning", "The dataset has not been loaded yet");
+            return;
         }
-        break;
-      case 'replace_tag':
-        for (const [image, previousTags] of change.previousState!.entries()) {
-          setImageTags(image, previousTags);
-        }
-        break;
+
+        await datasetService.saveDataset(dataset.value);
     }
 
-    datasetRedoStack.value.push(change);
-    onChange.value.forEach((fn) => fn());
-  }
-
-  function redoDatasetAction() {
-    const change = datasetRedoStack.value.pop();
-    if (!change) return;
-
-    switch (change.type) {
-      case 'add_tag':
-        addTagsToImages(change.images!, change.tags, change.tagPosition, change.previousState);
-        break;
-      case 'add_global_tag':
-        addTagsToImages(images.value.keys(), change.tags, change.tagPosition);
-        break;
-      case 'remove_tag':
-        removeTagsFromImages(change.images!, change.tags);
-        break;
-      case 'remove_global_tag':
-        removeTagsFromImages(change.images!, change.tags);
-        break;
-      case 'replace_tag':
-        replaceTagForImages(change.images!, change.originalTag!, change.newTag!);
-        break;
+    async function isDatasetSaved() {
+        return datasetService.compareDatasets(dataset.value);
     }
 
-    datasetUndoStack.value.push(change);
-    onChange.value.forEach((fn) => fn());
-  }
-
-  function resetDatasetStatus() {
-    datasetUndoStack.value = [];
-    datasetRedoStack.value = [];
-  }
-
-  function removeImage(image: string) {
-    const img = images.value.get(image);
-    if (!img) return;
-
-    for (const tag of img.tags) {
-      const set = globalTags.value.get(tag);
-      set?.delete(image);
-      if (set && set.size === 0) globalTags.value.delete(tag);
+    function resetDatasetStatus() {
+        datasetUndoStack.value = [];
+        datasetRedoStack.value = [];
     }
 
-    images.value.delete(image);
-    tagDiff.value.delete(image);
-    onChange.value.forEach((fn) => fn());
-  }
-
-  function removeImages(imgs: Iterable<string>) {
-    for (const image of imgs) removeImage(image);
-  }
-
-  function normalizePath(p: string) {
-    return p.replace(/\\|\\\\/g, '/');
-  }
-
-  function toFileUrl(p: string) {
-    const norm = normalizePath(p);
-    if (/^[A-Za-z]:\//.test(norm)) return 'file:///' + norm;
-    return 'file://' + norm;
-  }
-
-  function renameImages(mappings: { from: string; to: string; mtime?: number }[]) {
-    if (!mappings?.length) return;
-    for (const { from, to, mtime } of mappings) {
-      const oldKey = normalizePath(from);
-      const newPath = normalizePath(to);
-      const existing = images.value.get(oldKey);
-      if (!existing) continue;
-
-      const newKey = newPath;
-      const tagsCopy = new Set(existing.tags);
-
-      for (const tag of tagsCopy) {
-        const s = globalTags.value.get(tag);
-        if (s) {
-          s.delete(oldKey);
-          s.add(newKey);
-        }
-      }
-
-      const filePath = `${toFileUrl(newPath)}?v=${typeof mtime === 'number' ? mtime : Date.now()}`;
-      images.value.delete(oldKey);
-      images.value.set(newKey, { tags: tagsCopy, path: newPath, filePath });
-    }
-    onChange.value.forEach((fn) => fn());
-  }
-
-  async function loadDataset(reload = false) {
-    const _isDatasetSaved = await isDatasetSaved();
-
-    const dataset = await datasetService.loadDataset(
-      _isDatasetSaved,
-      reload ? directory.value : null,
-      settingsStore.recursiveDatasetLoad,
-      settingsStore.sortImagesAlphabetically,
-    );
-
-    if (!dataset) return false;
-
-    images.value = dataset.images;
-    globalTags.value = dataset.globalTags;
-    directory.value = dataset.directoryPath;
-    resetDatasetStatus();
-
-    return true;
-  }
-
-  async function saveDataset() {
-    if (images.value.size === 0) {
-      throw new Error('The dataset has not been loaded yet');
-    }
-
-    const shouldSort = sortMode.value === 'alphabetical';
-    const datasetObj = datasetService.datasetToSaveFormat(images.value, shouldSort);
-    await datasetService.saveDataset(datasetObj, shouldSort);
-  }
-
-  async function isDatasetSaved() {
-    const shouldSort = sortMode.value === 'alphabetical';
-    return datasetService.compareDatasetChanges(
-      datasetService.imagesToObject(images.value, shouldSort)
-    );
-  }
-
-  return {
-    images,
-    globalTags,
-    directory,
-    sortMode,
-    tagDiff,
-    onChange,
-    removeImage,
-    removeImages,
-    renameImages,
-    pushDatasetChange,
-    undoDatasetAction,
-    redoDatasetAction,
-    resetDatasetStatus,
-    loadDataset,
-    saveDataset,
-    isDatasetSaved
-  };
+    return {
+        dataset,
+        globalTags,
+        sortMode,
+        tagDiff,
+        dataVersion,
+        addTagsToImages,
+        removeTagsFromImages,
+        replaceTagForImages,
+        reorderTagInImage,
+        removeImage,
+        removeImages,
+        renameImages,
+        setTagDiffFromResults,
+        undoDatasetAction,
+        redoDatasetAction,
+        resetDatasetStatus,
+        selectedImages,
+        lastSelectedIndex,
+        toggleSelection,
+        clearSelection,
+        setSingleSelection,
+        selectAllVisible,
+        resetSelectionState,
+        loadDataset,
+        saveDataset,
+        isDatasetSaved
+    };
 });

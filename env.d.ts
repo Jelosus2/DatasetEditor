@@ -1,23 +1,44 @@
 /// <reference types="vite/client" />
+import type { IpcInvokeMap, IpcOnMap } from "./shared/ipc-types";
 
-import type { openWikiLink } from "@/services/wikiService";
-
-export interface ipcElectronAPI {
-  send: <T>(channel: string, ...args: T[]) => void;
-  receive: <T>(channel: string, callback: (...args: T[]) => void) => void;
-  unsubscribe: (channel: string) => void;
-  invoke: <T>(channel: string, ...args: T[]) => Promise<unknown>;
+interface ipcElectronAPI {
+    invoke: <K extends keyof IpcInvokeMap>(
+        channel: K,
+        ...args: IpcInvokeMap[K]["args"]
+    ) => Promise<IpcInvokeMap[K]["result"]>;
+    send: (channel: string, ...args: unknown[]) => void;
+    on: <K extends keyof IpcOnMap>(
+        channel: K,
+        listener: (...args: IpcOnMap[K]["args"]) => void
+    ) => () => void;
 }
 
 declare global {
-  interface Window {
-    ipcRenderer: ipcElectronAPI;
-    openWikiLink: typeof openWikiLink;
-    __imageUpdatedListenerAdded: boolean;
-  }
+    interface KeyboardLayoutMap {
+        get(key: string): string | undefined;
+        has(key: string): boolean;
+        entries(): IterableIterator<[string, string]>;
+        keys(): IterableIterator<string>;
+        values(): IterableIterator<string>;
+        forEach(callback: (value: string, key: string, map: KeyboardLayoutMap) => void): void;
+        readonly size: number;
+    }
+
+    interface Keyboard {
+        getLayoutMap(): Promise<KeyboardLayoutMap>;
+    }
+
+    interface Navigator {
+        readonly keyboard: Keyboard;
+    }
+
+    interface Window {
+        ipcRenderer: ipcElectronAPI;
+        openTagWikiInBrowser: (event: MouseEvent, href: string) => void;
+    }
 }
 
 declare module '*.json' {
-  const value: unknown;
-  export default value;
+    const value: unknown;
+    export default value;
 }

@@ -1,0 +1,15 @@
+{
+  "extends": "@tsconfig/node22",
+  "include": ["app/**/*", "shared/**/*"],
+  "compilerOptions": {
+    "module": "nodenext",
+    "target": "es2023",
+    "rootDir": "app",
+    "outDir": "dist_app",
+    "types": ["node", "electron"],
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}

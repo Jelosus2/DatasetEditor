@@ -1,38 +1,52 @@
-import { onMounted, onUnmounted } from 'vue';
+import type { ShortcutConfig, ShortcutOptions } from "@/types/shortcut";
 
-export interface ShortcutConfig {
-  key: string;
-  ctrl?: boolean;
-  shift?: boolean;
-  alt?: boolean;
-  handler: (event: KeyboardEvent) => void | Promise<void>;
-  preventDefault?: boolean;
-}
+import { useSettingsStore } from "@/stores/settingsStore";
+import { onMounted, onUnmounted, onActivated, onDeactivated } from "vue";
 
-export function useKeyboardShortcuts(shortcuts: ShortcutConfig[]) {
-  const handleKeydown = async (event: KeyboardEvent) => {
-    if (event.repeat) return;
+export function useKeyboardShortcuts(shortcuts: ShortcutConfig[] | (() => ShortcutConfig[]), options: ShortcutOptions = {}) {
+    const settingsStore = useSettingsStore();
+    const isEnabled = options.isEnabled ?? (() => true);
+    let subscribed = false;
 
-    for (const shortcut of shortcuts) {
-      const ctrlMatch = shortcut.ctrl ? event.ctrlKey : !event.ctrlKey;
-      const shiftMatch = shortcut.shift ? event.shiftKey : !event.shiftKey;
-      const altMatch = shortcut.alt ? event.altKey : !event.altKey;
+    const handleKeydown = async (event: KeyboardEvent) => {
+        if (!isEnabled()) return;
+        if (event.repeat) return;
 
-      if (event.key === shortcut.key && ctrlMatch && shiftMatch && altMatch) {
-        if (shortcut.preventDefault) {
-          event.preventDefault();
+        const list = typeof shortcuts === "function" ? shortcuts() : shortcuts;
+
+        for (const shortcut of list) {
+            const settingKey = settingsStore.shortcutKeys.find(key => settingsStore.getSetting(key) === shortcut.combo);
+            if (settingKey && settingsStore.shortcutConflicts.has(settingKey))
+                continue;
+
+            if (settingsStore.matchesShortcut(shortcut.combo, event)) {
+                if (shortcut.preventDefault)
+                    event.preventDefault();
+
+                await shortcut.handler(event);
+                break;
+            }
         }
-        await shortcut.handler(event);
-        break;
-      }
     }
-  }
 
-  onMounted(() => {
-    document.addEventListener('keydown', handleKeydown);
-  });
+    function subscribe() {
+        if (subscribed)
+            return;
 
-  onUnmounted(() => {
-    document.removeEventListener('keydown', handleKeydown);
-  });
+        document.addEventListener("keydown", handleKeydown);
+        subscribed = true;
+    }
+
+    function unsubscribe() {
+        if (!subscribed)
+            return;
+
+        document.removeEventListener("keydown", handleKeydown);
+        subscribed = false;
+    }
+
+    onMounted(subscribe);
+    onActivated(subscribe);
+    onDeactivated(unsubscribe);
+    onUnmounted(unsubscribe);
 }

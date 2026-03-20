@@ -1,45 +1,59 @@
-import { onMounted, onUnmounted } from 'vue';
-import { useLogStore } from '@/stores/logStore';
+import type { IpcInvokeMap, IpcOnMap } from "../../shared/ipc-types";
+import type { IpcListener } from "@/types/ipc";
 
-export interface IpcListener {
-  channel: string;
-  handler: (...args: unknown[]) => void;
-}
+import { useLogStore } from "@/stores/logStore";
+import { onMounted, onUnmounted, onActivated, onDeactivated } from "vue";
 
-let subscribedToLogs = false;
+let logUnsubscribe: (() => void) | null = null;
 
 export function useIpcRenderer(listeners: IpcListener[]) {
-  const logStore = useLogStore();
+    const logStore = useLogStore();
+    const unsubscribes: Array<() => void> = [];
+    let subscribed = false;
 
-  onMounted(() => {
-    listeners.forEach(({ channel, handler }) => {
-      window.ipcRenderer.receive(channel, handler);
-    });
-    if (!subscribedToLogs) {
-      window.ipcRenderer.receive('app-log', (entry: { type: 'info' | 'warning' | 'error'; message: string }) => {
-        logStore.addLog(entry.type, entry.message);
-      });
-      subscribedToLogs = true;
+    function subscribeAll() {
+        if (subscribed)
+            return;
+        subscribed = true;
+
+        listeners.forEach((listener) => {
+            const unsubscribe = window.ipcRenderer.on(
+                listener.channel,
+                listener.handler as (...args: IpcOnMap[keyof IpcOnMap]["args"]) => void
+            );
+
+            if (typeof unsubscribe === "function")
+                unsubscribes.push(unsubscribe);
+        });
+
+        if (!logUnsubscribe) {
+            logUnsubscribe = window.ipcRenderer.on("app:log", (entry) => {
+                logStore.addLog(entry.type, entry.message);
+            });
+        }
     }
-  });
 
-  onUnmounted(() => {
-    listeners.forEach(({ channel }) => {
-      window.ipcRenderer.unsubscribe(channel);
-    });
-    if (subscribedToLogs) {
-      window.ipcRenderer.unsubscribe('app-log');
-      subscribedToLogs = false;
+    function unsubscribeAll() {
+        if (!subscribed)
+            return;
+        subscribed = false;
+
+        unsubscribes.forEach((fn) => fn());
+        unsubscribes.length = 0;
     }
-  });
 
-  const invoke = async <T>(channel: string, ...args: unknown[]): Promise<T> => {
-    return window.ipcRenderer.invoke(channel, ...args) as T;
-  }
+    onMounted(subscribeAll);
+    onActivated(subscribeAll);
+    onDeactivated(unsubscribeAll);
+    onUnmounted(unsubscribeAll);
 
-  const send = (channel: string, ...args: unknown[]) => {
-    window.ipcRenderer.send(channel, ...args);
-  }
+    const invoke = async <K extends keyof IpcInvokeMap>(channel: K, ...args: IpcInvokeMap[K]["args"]): Promise<IpcInvokeMap[K]["result"]> => {
+        return window.ipcRenderer.invoke(channel, ...args);
+    };
 
-  return { invoke, send };
+    const send = (channel: string, ...args: unknown[]) => {
+        window.ipcRenderer.send(channel, ...args);
+    }
+
+    return { invoke, send };
 }

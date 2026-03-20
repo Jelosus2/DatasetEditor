@@ -1,30 +1,62 @@
-import type { Settings } from '@/stores/settingsStore';
-import { useIpcRenderer } from '@/composables/useIpcRenderer';
-import { useLogStore } from '@/stores/logStore';
+import type { Settings } from "../../shared/settings-schema";
+
+import { useIpcRenderer } from "@/composables/useIpcRenderer";
+import { useAlert } from "@/composables/useAlert";
 
 export class SettingsService {
-  private ipc = useIpcRenderer([]);
-  private logStore = useLogStore();
+    private ipc = useIpcRenderer([]);
+    private alert = useAlert();
 
-  async loadSettings() {
-    this.logStore.addLog('info', 'Loading settings');
-    const res = await this.ipc.invoke<Settings | null>('load_settings');
-    this.logStore.addLog('info', 'Settings loaded');
-    return res;
-  }
+    async loadSchema() {
+        return this.ipc.invoke("settings:get_schema");
+    }
 
-  async saveSettings(settings: Settings) {
-    return this.ipc.invoke('save_settings', settings);
-  }
+    async loadSettings() {
+        return this.ipc.invoke("settings:load");
+    }
 
-  async compareSettingsChanges(settings: Settings) {
-    return this.ipc.invoke<boolean>('compare_settings_changes', settings);
-  }
+    async updateSettings(partial: Partial<Settings>) {
+        const result = await this.ipc.invoke("settings:update", partial);
 
-  async changeAutocompleteFile() {
-    this.logStore.addLog('info', 'Changing autocomplete file');
-    const res = await this.ipc.invoke<string | null>('change_autotag_file');
-    this.logStore.addLog('info', 'Autocomplete file changed');
-    return res;
-  }
+        if (result.error) {
+            this.alert.showAlert("error", result.message!);
+            return null;
+        }
+
+        this.alert.showAlert("success", "Settings saved successfully");
+
+        return result.settings!;
+    }
+
+    async compareSettings(settings: Settings) {
+        return this.ipc.invoke("settings:compare", settings);
+    }
+
+    private async runAction(actionId: string) {
+        return this.ipc.invoke("settings:action", actionId);
+    }
+
+    async importTagsFromCsv() {
+        const result = await this.runAction("loadTagsCsv");
+
+        if (result.error) {
+            this.alert.showAlert("error", result.message!);
+            return;
+        }
+
+        if (result.canceled)
+            this.alert.showAlert("info", "Tag import from CSV was canceled");
+    }
+
+    async restartApp() {
+        return this.ipc.invoke("utilities:restart_app");
+    }
+
+    async pickDirectory() {
+        return this.ipc.invoke("settings:pick_directory");
+    }
+
+    async validateDirectory(path: string) {
+        return this.ipc.invoke("settings:validate_directory", path);
+    }
 }
