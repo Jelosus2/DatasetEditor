@@ -112,7 +112,12 @@ export class DatasetController {
 
     @IpcHandle("dataset:trash")
     async trashDatasetPairs(_event: IpcMainInvokeEvent, filePaths: string[]) {
-        const results = await Utilities.processMap(filePaths, async (filePath) => {
+        const results: Array<
+            | { status: "fulfilled"; filePath: string }
+            | { status: "rejected"; reason: unknown; path: string }
+        > = [];
+
+        for (const filePath of filePaths) {
             try {
                 if (await fs.pathExists(filePath))
                     await shell.trashItem(filePath);
@@ -124,12 +129,12 @@ export class DatasetController {
                 if (await fs.pathExists(txtPath))
                     await shell.trashItem(txtPath);
 
-                return { status: "fulfilled", filePath };
+                results.push({ status: "fulfilled", filePath });
             } catch (error) {
                 console.error(error);
-                return { status: "rejected", reason: error, path: path.dirname(filePath) };
+                results.push({ status: "rejected", reason: error, path: path.dirname(filePath) });
             }
-        });
+        }
 
         const successes = results.filter((result) => result.status === "fulfilled");
         const errors = results.filter((result) => result.status === "rejected");
@@ -564,3 +569,4 @@ export class DatasetController {
         this.originalDataset = updated;
     }
 }
+
