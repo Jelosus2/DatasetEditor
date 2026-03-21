@@ -35,11 +35,6 @@ export class SettingsController {
         }
     }
 
-    @IpcHandle("settings:compare")
-    compare(_event: IpcMainInvokeEvent, settings: Settings) {
-        return App.settings.compare(settings);
-    }
-
     @IpcHandle("settings:action")
     async action(_event: IpcMainInvokeEvent, actionId: string) {
         if (actionId === "loadTagsCsv")

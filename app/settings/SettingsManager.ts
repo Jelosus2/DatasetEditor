@@ -69,13 +69,6 @@ export class SettingsManager {
         return settings;
     }
 
-    compare(settings: Settings): boolean {
-        if (!this.originalSettings)
-            return true;
-
-        return _.isEqual(this.originalSettings, settings);
-    }
-
     async initializeWithDefaults(isDarkThemeDefault: boolean) {
         if (await fs.pathExists(App.paths.settingsPath))
             return;

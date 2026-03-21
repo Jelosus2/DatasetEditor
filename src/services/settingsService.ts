@@ -28,10 +28,6 @@ export class SettingsService {
         return result.settings!;
     }
 
-    async compareSettings(settings: Settings) {
-        return this.ipc.invoke("settings:compare", settings);
-    }
-
     private async runAction(actionId: string) {
         return this.ipc.invoke("settings:action", actionId);
     }

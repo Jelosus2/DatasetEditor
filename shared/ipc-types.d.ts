@@ -108,10 +108,6 @@ export type IpcInvokeMap = {
             settings?: Settings;
         }
     }
-    "settings:compare": {
-        args: [settings: Settings];
-        result: boolean;
-    }
     "settings:action": {
         args: [actionId: string];
         result: {

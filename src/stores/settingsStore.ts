@@ -365,7 +365,7 @@ export const useSettingsStore = defineStore("settings", () => {
     }
 
     async function areSettingsSaved() {
-        return settingsService.compareSettings(buildSettings());
+        return !hasChanges.value;
     }
 
     function dismissRestartPrompt() {
