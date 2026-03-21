@@ -245,7 +245,7 @@ onBeforeUnmount(() => {
     <ul
         v-if="showDropdown"
         :class="[
-            'absolute left-0 z-40 max-h-60 w-full overflow-y-auto rounded-box border border-base-content/20 py-1 text-sm dark:bg-[#1e1f2c] shadow-lg',
+            'absolute left-0 z-40 max-h-60 w-full overflow-y-auto rounded-box border border-base-content/20 py-1 text-sm bg-white dark:bg-[#1e1f2c] shadow-lg',
             dropdownBelow ? 'top-full mt-1' : 'bottom-full mb-1'
         ]"
     >
@@ -253,7 +253,7 @@ onBeforeUnmount(() => {
             v-for="(completion, index) in completions"
             :key="`${completion.tag}-${index}`"
             :ref="(element) => setCompletionRef(element as HTMLLIElement | null)"
-            class="cursor-pointer px-2 py-1.5 transition-colors dark:hover:bg-[#292a3b]"
+            class="cursor-pointer px-2 py-1.5 transition-colors hover:bg-[#e6f2ff] dark:hover:bg-[#292a3b]"
             :class="{
                 'dark:bg-[#292a3b]': index === selectedIndex,
                 'text-[#0a95d9]': completion.type === 0,

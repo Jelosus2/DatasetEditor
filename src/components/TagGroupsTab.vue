@@ -204,7 +204,7 @@ function filterMatchesAny(name: string, parts: string[]) {
                         <div
                             v-for="tag in tags"
                             :key="tag"
-                            class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
+                            class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-red-300 dark:hover:bg-rose-900 dark:bg-gray-700"
                             @click="removeTag(tag, name)"
                         >
                             {{ tag }}
@@ -303,7 +303,7 @@ function filterMatchesAny(name: string, parts: string[]) {
                                 v-for="tag in selectedGroupTags"
                                 v-memo="[tag]"
                                 :key="tag"
-                                class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
+                                class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-red-300 dark:hover:bg-rose-900 dark:bg-gray-700"
                                 @click="removeTag(tag)"
                             >
                                 {{ tag }}

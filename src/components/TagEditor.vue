@@ -510,7 +510,7 @@ function addTagToImageFilter(tag: string) {
                             <div
                                 v-for="tag in displayedOriginalDiffTags"
                                 :key="tag"
-                                class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-rose-900"
+                                class="h-fit w-fit bg-red-300 px-1.5 hover:cursor-pointer dark:bg-rose-900"
                                 @click="removeTag(tag, selectedImageKey!)"
                                 @contextmenu.prevent="openTagContextMenu($event, tag)"
                             >
@@ -582,7 +582,7 @@ function addTagToImageFilter(tag: string) {
                                 class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-gray-700 flex items-center"
                                 :class="{
                                     'dark:bg-warning/50': (isFiltering && filterTagsSet.has(tag.toLowerCase())) || highlightSet.has(tag),
-                                    'hover:bg-rose-900': !draggingTag
+                                    'hover:bg-red-300 dark:hover:bg-rose-900': !draggingTag
                                 }"
                                 @contextmenu.stop.prevent="openTagContextMenu($event, tag)"
                                 @dragover.stop.prevent="setDropIndex($event, tag, index)"
@@ -684,7 +684,7 @@ function addTagToImageFilter(tag: string) {
                         <div
                             v-for="tag in displayedGlobalTagsList"
                             :key="tag"
-                            class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-rose-900 dark:bg-gray-700"
+                            class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-red-300 dark:hover:bg-rose-900 dark:bg-gray-700"
                             @click="removeGlobalTag(tag)"
                             @contextmenu.prevent="openTagContextMenu($event, tag)"
                         >
@@ -773,7 +773,7 @@ function addTagToImageFilter(tag: string) {
                                     :key="tag"
                                     class="h-fit w-fit px-1.5 hover:cursor-pointer"
                                     :class="{
-                                        'bg-rose-900': displayedTags.has(tag),
+                                        'bg-red-300 dark:bg-rose-900': displayedTags.has(tag),
                                         'bg-[#a6d9e2] dark:bg-gray-700': !displayedTags.has(tag),
                                     }"
                                     @click="addOrRemoveTag(tag)"
