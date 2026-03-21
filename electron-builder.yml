@@ -1,5 +1,6 @@
 appId: "com.jelosus1.dataset-editor"
 productName: "Dataset Editor"
+beforePack: "./build/beforePack.mjs"
 directories:
   output: "dist_electron/${os}"
 files:

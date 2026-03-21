@@ -2,7 +2,14 @@
 !include "WinMessages.nsh"
 !include "FileFunc.nsh"
 
+!macro customHeader
+    ShowInstDetails show
+    ShowUninstDetails show
+!macroend
+
 !macro customInstall
+    DetailPrint "Starting installation..."
+
     Var /GLOBAL SourceTaggerDir
     Var /GLOBAL TargetTaggerDir
 
@@ -29,12 +36,12 @@
         Goto next_tagger_dir
 
     check_embedded_python:
-        ${IfNot} ${FileExists} "$TargetTaggerDir\embedded_python\*.*"
-            DetailPrint "Copying embedded_python for first install"
-            Push "$SourceTaggerDir\embedded_python"
-            Push "$TargetTaggerDir\embedded_python"
-            Call CopyDirRecursive
-        ${EndIf}
+        DetailPrint "Refreshing embedded_python bundle files"
+        SetOverwrite on
+        Push "$SourceTaggerDir\embedded_python"
+        Push "$TargetTaggerDir\embedded_python"
+        Call CopyDirRecursive
+        SetOverwrite ifnewer
     next_tagger_dir:
         FindNext $R0 $R1
         Goto loop_tagger_dirs
@@ -81,6 +88,8 @@
 !macroend
 
 !macro customUnInstall
+    DetailPrint "Starting uninstall..."
+
     ${IfNot} ${isUpdated}
         IfSilent UninstallDone
 
