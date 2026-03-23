@@ -590,6 +590,12 @@ onMounted(async () => {
                     </button>
                 </div>
                 <div class="mt-4 flex flex-col gap-3" @keyup.enter="saveAddModelModal">
+                    <div class="alert alert-warning text-sm">
+                        <span>
+                            Custom models are not guaranteed to be fully compatible. Some models may require different
+                            preprocessing, thresholds, or output formats and can produce poor results or fail to tag.
+                        </span>
+                    </div>
                     <div class="flex flex-col gap-1">
                         <label class="opacity-80">Repository Id</label>
                         <input
