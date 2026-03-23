@@ -10,11 +10,16 @@ export type DatasetChangeRecord = {
     originalTags?: Set<string>;
     newTags?: Set<string>;
     replaceBefore?: Map<string, string[]>;
-    fromIndex?: number;
-    toIndex?: number;
+    reorderPositions?: Map<string, ReorderPositions>;
 }
 
 export type TagDiff = {
     tagger: Set<string>;
     original: Set<string>;
+}
+
+
+export type ReorderPositions = {
+    fromIndex: number;
+    toIndex: number;
 }

@@ -49,8 +49,11 @@ export function useTagOperations() {
         datasetStore.replaceTagForImages(images, originalTag, newTags);
     }
 
-    function reorderTag(imageId: string, tag: string, toIndex: number) {
-        datasetStore.reorderTagInImage(imageId, tag, toIndex);
+    function reorderTag(images: Set<string>, tag: string, toIndex: number) {
+        if (!tag || images.size === 0)
+            return;
+
+        datasetStore.reorderTagInImages(images, tag, toIndex);
     }
 
     return {

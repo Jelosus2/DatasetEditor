@@ -12,6 +12,7 @@ import { ref, shallowRef, computed, toRaw } from "vue";
 import CopyIcon from "@/assets/icons/copy.svg";
 import SortArrowIcon from "@/assets/icons/sort-arrow.svg";
 import HandleIcon from "@/assets/icons/handle.svg";
+import StarIcon from "@/assets/icons/star.svg";
 
 const props = defineProps<{
     selectedImages: Set<string>;
@@ -49,7 +50,8 @@ const tagContextMenu = ref({
     open: false,
     tag: "",
     x: 0,
-    y: 0
+    y: 0,
+    source: "other" as "editor" | "diff" | "global" | "group" | "other"
 });
 
 const highlightRegexes = computed(() =>
@@ -161,6 +163,14 @@ const displayedOriginalDiffTags = computed(() => {
     const diff = datasetStore.tagDiff.get(selectedImageKey.value);
     return sortDiffTags(diff?.original);
 });
+
+const canSetAsTrigger = computed(() =>
+    tagContextMenu.value.source === "editor" &&
+    editMode.value === "individual" &&
+    props.selectedImages.size > 0
+);
+
+const triggerTag = computed(() => displayedTagsList.value[0] ?? null);
 
 const datasetStore = useDatasetStore();
 const tagGroupsStore = useTagGroupsStore();
@@ -329,6 +339,11 @@ function replaceTag(mode: "selected" | "all") {
     replaceTargetInput.value = "";
 }
 
+function setTagAsTrigger(tag: string) {
+    tagOperations.reorderTag(new Set(props.selectedImages), tag, 0);
+    closeTagContextMenu();
+}
+
 function onTagListDragOver(event: DragEvent) {
     if (!isDraggable.value)
         return;
@@ -386,7 +401,7 @@ function onTagDrop() {
     if (!isDraggable.value || !draggingTag.value || !selectedImageKey.value || dropIndex.value === null)
         return;
 
-    tagOperations.reorderTag(selectedImageKey.value, draggingTag.value, dropIndex.value);
+    tagOperations.reorderTag(new Set([selectedImageKey.value]), draggingTag.value, dropIndex.value);
     draggingTag.value = null;
     dropIndex.value = null;
 }
@@ -412,9 +427,9 @@ function sortDiffTags(tags?: Set<string>) {
     return list;
 }
 
-function openTagContextMenu(event: MouseEvent, tag: string) {
+function openTagContextMenu(event: MouseEvent, tag: string, source: "editor" | "diff" | "global" | "group" | "other" = "other") {
     const MENU_WIDTH = 220;
-    const MENU_HEIGHT = 84;
+    const MENU_HEIGHT = canSetAsTrigger.value ? 120 : 84;
     const PADDING = 8;
 
     let x = event.clientX;
@@ -429,7 +444,8 @@ function openTagContextMenu(event: MouseEvent, tag: string) {
         open: true,
         tag,
         x: Math.max(PADDING, x),
-        y: Math.max(PADDING, y)
+        y: Math.max(PADDING, y),
+        source
     };
 }
 
@@ -489,7 +505,7 @@ function addTagToImageFilter(tag: string) {
                                 :key="tag"
                                 class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-gray-700"
                                 @click="addTag(tag, selectedImageKey!)"
-                                @contextmenu.prevent="openTagContextMenu($event, tag)"
+                                @contextmenu.prevent="openTagContextMenu($event, tag, 'diff')"
                             >
                                 {{ tag }}
                             </div>
@@ -512,7 +528,7 @@ function addTagToImageFilter(tag: string) {
                                 :key="tag"
                                 class="h-fit w-fit bg-red-300 px-1.5 hover:cursor-pointer dark:bg-rose-900"
                                 @click="removeTag(tag, selectedImageKey!)"
-                                @contextmenu.prevent="openTagContextMenu($event, tag)"
+                                @contextmenu.prevent="openTagContextMenu($event, tag, 'diff')"
                             >
                                 {{ tag }}
                             </div>
@@ -579,12 +595,13 @@ function addTagToImageFilter(tag: string) {
                                 {{ draggingTag }}
                             </div>
                             <div
-                                class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-gray-700 flex items-center"
+                                class="relative h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-gray-700 flex items-center"
                                 :class="{
                                     'dark:bg-warning/50': (isFiltering && filterTagsSet.has(tag.toLowerCase())) || highlightSet.has(tag),
-                                    'hover:bg-red-300 dark:hover:bg-rose-900': !draggingTag
+                                    'hover:bg-red-300 dark:hover:bg-rose-900': !draggingTag,
+
                                 }"
-                                @contextmenu.stop.prevent="openTagContextMenu($event, tag)"
+                                @contextmenu.stop.prevent="openTagContextMenu($event, tag, 'editor')"
                                 @dragover.stop.prevent="setDropIndex($event, tag, index)"
                                 @drop.stop.prevent="onTagDrop"
                                 @click="removeTag(tag)"
@@ -601,6 +618,11 @@ function addTagToImageFilter(tag: string) {
                                     <HandleIcon />
                                 </span>
                                 <span>{{ tag }}</span>
+                                <StarIcon
+                                    v-if="triggerTag === tag"
+                                    class="pointer-events-none absolute -top-1.5 -right-2 h-4 w-4 text-amber-600 dark:text-amber-300"
+                                    title="Trigger"
+                                />
                             </div>
                         </template>
                         <div
@@ -686,7 +708,7 @@ function addTagToImageFilter(tag: string) {
                             :key="tag"
                             class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-red-300 dark:hover:bg-rose-900 dark:bg-gray-700"
                             @click="removeGlobalTag(tag)"
-                            @contextmenu.prevent="openTagContextMenu($event, tag)"
+                            @contextmenu.prevent="openTagContextMenu($event, tag, 'global')"
                         >
                             {{ settingsStore.showTagCount ? tag + " | " + datasetStore.globalTags.get(tag)!.size : tag }}
                         </div>
@@ -777,7 +799,7 @@ function addTagToImageFilter(tag: string) {
                                         'bg-[#a6d9e2] dark:bg-gray-700': !displayedTags.has(tag),
                                     }"
                                     @click="addOrRemoveTag(tag)"
-                                    @contextmenu.prevent="openTagContextMenu($event, tag)"
+                                    @contextmenu.prevent="openTagContextMenu($event, tag, 'group')"
                                 >
                                     {{ tag }}
                                 </div>
@@ -801,6 +823,13 @@ function addTagToImageFilter(tag: string) {
             }"
             @mousedown.stop
         >
+            <button
+                v-if="canSetAsTrigger"
+                class="btn btn-ghost btn-sm w-full justify-start"
+                @click="setTagAsTrigger(tagContextMenu.tag)"
+            >
+                Set as Trigger (First position)
+            </button>
             <button
                 class="btn btn-ghost btn-sm w-full justify-start"
                 @click="searchTagInWiki(tagContextMenu.tag)"

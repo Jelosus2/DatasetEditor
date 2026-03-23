@@ -1,5 +1,5 @@
 import type { Dataset, GlobalTags, RenameMapping } from "../../shared/dataset";
-import type { DatasetChangeRecord, TagDiffs } from "@/types/dataset-store";
+import type { DatasetChangeRecord, TagDiffs, ReorderPositions } from "@/types/dataset-store";
 
 import { DatasetService } from "@/services/datasetService";
 import { useAlert } from "@/composables/useAlert";
@@ -285,36 +285,54 @@ export const useDatasetStore = defineStore("dataset", () => {
         triggerUpdate();
     }
 
-    function reorderTagInImage(imageKey: string, tag: string, toIndex: number, createHistory = true) {
+    function reorderTagInImages(imageKeys: Iterable<string>, tag: string, toIndex: number, createHistory = true) {
         const rawDataset = toRaw(dataset.value);
-        const imageData = rawDataset.get(imageKey);
-        if (!imageData)
-            return;
+        const images = new Set(imageKeys);
+        const changedImages = new Set<string>();
+        const reorderPositions = new Map<string, ReorderPositions>();
 
-        const tagsList = [...imageData.tags];
-        const fromIndex = tagsList.indexOf(tag);
-        if (fromIndex === -1)
-            return;
+        for (const imageKey of images) {
+            const imageData = rawDataset.get(imageKey);
+            if (!imageData)
+                continue;
 
-        const insertIndex = Math.max(0, Math.min(toIndex, tagsList.length));
-        if (insertIndex === fromIndex)
-            return;
+            const tagsList = [...imageData.tags];
+            const fromIndex = tagsList.indexOf(tag);
+            if (fromIndex === -1)
+                continue;
 
-        tagsList.splice(fromIndex, 1);
-        tagsList.splice(insertIndex, 0, tag);
-        imageData.tags = new Set(tagsList);
+            const insertIndex = Math.max(0, Math.min(toIndex, tagsList.length - 1));
+            if (insertIndex === fromIndex)
+                continue;
 
-        if (createHistory) {
-            recordHistory({
-                type: "reorder_tag",
-                images: new Set([imageKey]),
-                tag,
+            tagsList.splice(fromIndex, 1);
+            tagsList.splice(insertIndex, 0, tag);
+
+            imageData.tags = new Set(tagsList);
+            changedImages.add(imageKey);
+            reorderPositions.set(imageKey, {
                 fromIndex,
                 toIndex: insertIndex
             });
         }
 
+        if (changedImages.size === 0)
+            return;
+
+        if (createHistory) {
+            recordHistory({
+                type: "reorder_tag",
+                images: changedImages,
+                tag,
+                reorderPositions
+            });
+        }
+
         triggerUpdate();
+    }
+
+    function reorderTagInImage(imageKey: string, tag: string, toIndex: number, createHistory = true) {
+        reorderTagInImages([imageKey], tag, toIndex, createHistory);
     }
 
     function restoreTagsWithPositions(tagPositions: Map<string, Map<string, number>>) {
@@ -433,11 +451,11 @@ export const useDatasetStore = defineStore("dataset", () => {
                     restoreReplaceSnapshot(change.replaceBefore);
                 break;
             case "reorder_tag":
-                const imageKey = change.images.values().next().value;
-                if (!imageKey || !change.tag)
+                if (!change.tag || !change.reorderPositions || change.reorderPositions.size === 0)
                     break;
 
-                reorderTagInImage(imageKey, change.tag, change.fromIndex!, /* createHistory = */ false);
+                for (const [imageKey, positions] of change.reorderPositions)
+                    reorderTagInImage(imageKey, change.tag, positions.fromIndex, /* createHistory = */ false);
                 break;
         }
 
@@ -461,11 +479,11 @@ export const useDatasetStore = defineStore("dataset", () => {
                     replaceTagForImages(change.images, change.originalTags, change.newTags, /* createHistory = */ false);
                 break;
             case "reorder_tag":
-                const imageKey = change.images.values().next().value;
-                if (!imageKey || !change.tag)
+                if (!change.tag || !change.reorderPositions || change.reorderPositions.size === 0)
                     break;
 
-                reorderTagInImage(imageKey, change.tag, change.toIndex!, /* createHistory = */ false);
+                for (const [imageKey, positions] of change.reorderPositions)
+                    reorderTagInImage(imageKey, change.tag, positions.toIndex, /* createHistory = */ false);
                 break;
         }
 
@@ -711,6 +729,7 @@ export const useDatasetStore = defineStore("dataset", () => {
         addTagsToImages,
         removeTagsFromImages,
         replaceTagForImages,
+        reorderTagInImages,
         reorderTagInImage,
         removeImage,
         removeImages,
