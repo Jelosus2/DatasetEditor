@@ -584,6 +584,34 @@ export const useDatasetStore = defineStore("dataset", () => {
         triggerUpdate();
     }
 
+    function buildDatasetForSave() {
+        const persistable: Dataset = new Map();
+        const rawDataset = toRaw(dataset.value);
+
+        for (const [imageKey, properties] of rawDataset) {
+            const tagsList = [...properties.tags];
+
+            if (sortMode.value === "alphabetical" && tagsList.length > 1) {
+                const [trigger, ...rest] = tagsList;
+
+                const keyed = rest.map((tag) => [tag, tag.toLocaleLowerCase()]);
+                keyed.sort((a, b) => a[1].localeCompare(b[1]));
+
+                persistable.set(imageKey, {
+                    ...properties,
+                    tags: new Set([trigger, ...keyed.map(([tag]) => tag)])
+                });
+            } else {
+                persistable.set(imageKey, {
+                    ...properties,
+                    tags: new Set(tagsList)
+                });
+            }
+        }
+
+        return persistable;
+    }
+
     function normalizePath(path: string) {
         return path.replace(/\\|\\\\/g, "/");
     }
@@ -708,7 +736,7 @@ export const useDatasetStore = defineStore("dataset", () => {
             return;
         }
 
-        await datasetService.saveDataset(dataset.value);
+        await datasetService.saveDataset(buildDatasetForSave());
     }
 
     async function isDatasetSaved() {
