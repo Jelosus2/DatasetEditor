@@ -25,3 +25,9 @@ export type TaggerWSPayloadModel = {
     general_threshold: number;
     character_threshold: number;
 }
+
+export type StyleCompareItem = {
+    file: string;
+    fit_score: number;
+    companion_score: number;
+}

@@ -1,9 +1,11 @@
+import type { StyleCompareWSResponse } from "../types/tagger.js";
 import type { TaggerWSPayload } from "../../shared/tagger.js";
 
 import { App } from "../App.js";
 
 export class APIClient {
-    private static websocket: WebSocket | null = null;
+    private static taggerWebsocket: WebSocket | null = null;
+    private static styleCompareWebsocket: WebSocket | null = null;
 
     static async get<T>(url: string): Promise<[T, boolean, number]> {
         const response = await fetch(url);
@@ -15,16 +17,16 @@ export class APIClient {
     static runTaggingWS(port: number, payload: TaggerWSPayload): Promise<Map<string, string[]>> {
         return new Promise((resolve, reject) => {
             const accumulator = new Map<string, Set<string>>();
-            this.websocket = new WebSocket(`ws://localhost:${port}`);
+            this.taggerWebsocket = new WebSocket(`ws://localhost:${port}`);
 
-            this.websocket.onopen = () => {
-                this.websocket?.send(JSON.stringify({
+            this.taggerWebsocket.onopen = () => {
+                this.taggerWebsocket?.send(JSON.stringify({
                     command: "tag",
                     ...payload
                 }));
             }
 
-            this.websocket.onmessage = (event) => {
+            this.taggerWebsocket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
 
                 if (data.type === "result") {
@@ -44,27 +46,80 @@ export class APIClient {
                         results.set(file, Array.from(tags));
 
                     resolve(results);
-                    this.closeWSConnectionSafely(this.websocket);
+                    this.closeWSConnectionSafely(this.taggerWebsocket);
+                    this.taggerWebsocket = null;
                 }
             }
 
-            this.websocket.onerror = (error) => {
-                this.websocket!.onerror = null;
-                this.websocket!.onmessage = null;
+            this.taggerWebsocket.onerror = (error) => {
+                this.taggerWebsocket!.onerror = null;
+                this.taggerWebsocket!.onmessage = null;
 
                 reject(error);
-                this.closeWSConnectionSafely(this.websocket);
+                this.closeWSConnectionSafely(this.taggerWebsocket);
+                this.taggerWebsocket = null;
             }
 
-            this.websocket.onclose = () => {
+            this.taggerWebsocket.onclose = () => {
                 reject(new Error("Tagging was aborted"));
+                this.taggerWebsocket = null;
             }
         });
     }
 
     static cancelTagging() {
-        this.closeWSConnectionSafely(this.websocket);
-        this.websocket = null;
+        this.closeWSConnectionSafely(this.taggerWebsocket);
+        this.taggerWebsocket = null;
+    }
+
+    static runStyleCompareWS(port: number, images: string[]): Promise<StyleCompareWSResponse> {
+        return new Promise((resolve, reject) => {
+            this.styleCompareWebsocket = new WebSocket(`ws://localhost:${port}`);
+
+            this.styleCompareWebsocket.onopen = () => {
+                this.styleCompareWebsocket?.send(JSON.stringify({
+                    command: "compare_style",
+                    images
+                }));
+            }
+
+            this.styleCompareWebsocket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.type === "progress")
+                    return;
+
+                if (data.error) {
+                    reject(new Error(`${data.error}: ${data.details || "No details"}`));
+                    this.closeWSConnectionSafely(this.styleCompareWebsocket);
+                    this.styleCompareWebsocket = null;
+                    return;
+                }
+
+                resolve(data);
+                this.closeWSConnectionSafely(this.styleCompareWebsocket);
+                this.styleCompareWebsocket = null;
+            }
+
+            this.styleCompareWebsocket.onerror = (error) => {
+                this.styleCompareWebsocket!.onerror = null;
+                this.styleCompareWebsocket!.onmessage = null;
+
+                reject(error);
+                this.closeWSConnectionSafely(this.styleCompareWebsocket);
+                this.styleCompareWebsocket = null;
+            }
+
+            this.styleCompareWebsocket.onclose = () => {
+                reject(new Error("Style comparison was aborted"));
+                this.styleCompareWebsocket = null;
+            }
+        });
+    }
+
+    static cancelStyleCompare() {
+        this.closeWSConnectionSafely(this.styleCompareWebsocket);
+        this.styleCompareWebsocket = null;
     }
 
     static sendCommandWS<T>(port: number, payload: unknown, timeout?: number): Promise<T> {
@@ -84,7 +139,7 @@ export class APIClient {
 
                 const data = JSON.parse(event.data);
                 if (data.error)
-                    reject(`${data.error}: ${data.details || "No details"}`);
+                    reject(new Error(`${data.error}: ${data.details || "No details"}`));
 
                 resolve(data);
                 this.closeWSConnectionSafely(websocket);

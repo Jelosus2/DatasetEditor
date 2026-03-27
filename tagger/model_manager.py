@@ -8,17 +8,18 @@ class HFProgress(tqdm):
         kwargs.pop("name", None)
         super().__init__(*args, **kwargs)
 
-def download_model(model_repo: str, model_file: str, tags_file: str):
+def download_model(model_repo: str, model_file: str, tags_file: str | None = None):
     print(f"Downloading {model_repo}...")
 
     hf_hub_download(model_repo, model_file, tqdm_class=HFProgress)
-    hf_hub_download(model_repo, tags_file, tqdm_class=HFProgress)
+    if tags_file is not None:
+        hf_hub_download(model_repo, tags_file, tqdm_class=HFProgress)
 
     print (f"Downloaded {model_repo} successfully")
 
-def is_model_downloaded(model_repo: str, model_file: str, tags_file: str) -> bool:
+def is_model_downloaded(model_repo: str, model_file: str, tags_file: str | None = None) -> bool:
     model, tags = get_model_file_paths(model_repo, model_file, tags_file)
-    return model != None and tags != None
+    return model is not None and (tags_file is None or tags is not None)
     
 def get_models_status(models: dict) -> dict[str, bool]:
     return { model: is_model_downloaded(model, properties.get("modelFile", ""), properties.get("tagsFile", "")) for model, properties in models.items() }
@@ -54,10 +55,13 @@ def delete_model(model_repo: str):
     print(f"Deleted {model_repo} successfully")
     return True
 
-def get_model_file_paths(model_repo: str, model_filename: str, tags_filename: str):
+def get_model_file_paths(model_repo: str, model_filename: str, tags_filename: str | None = None):
     try:
         model_path = try_to_load_from_cache(model_repo, model_filename)
-        csv_path = try_to_load_from_cache(model_repo, tags_filename)
+        csv_path = None
+
+        if tags_filename is not None:
+            csv_path = try_to_load_from_cache(model_repo, tags_filename)
 
         return model_path, csv_path
     except Exception:

@@ -1,3 +1,5 @@
+import type { StyleCompareItem } from "../../shared/tagger.js";
+
 export type DeviceWSResponse = {
     device: string;
 }
@@ -14,4 +16,9 @@ export type DeleteModelWSResponse = {
 
 export type ModelActionWSResponse = {
     cache_size_bytes: number;
+}
+
+export type StyleCompareWSResponse = {
+    folder_cohesion: number;
+    results: StyleCompareItem[];
 }

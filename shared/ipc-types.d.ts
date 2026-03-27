@@ -1,5 +1,5 @@
 import type { Dataset, DatasetPersistable, DatasetRenameOptions, RenameProgressPayload, RenameMapping, RenamePreviewItem, GlobalTags } from "./dataset";
-import type { TaggerModelsStatus, TaggerModelConfiguration, TaggerWSPayload } from "./tagger";
+import type { TaggerModelsStatus, TaggerModelConfiguration, TaggerWSPayload, StyleCompareItem } from "./tagger";
 import type { AppCloseRequestPayload, AppCloseResponsePayload } from "./app-close";
 import type { DanbooruWikiPage, DanbooruPostPreview, Rating } from "./danbooru";
 import type { SettingsDefinition, Settings } from "./settings-schema";
@@ -250,6 +250,19 @@ export type IpcInvokeMap = {
         }
     }
     "tagger:stop_tagging": {
+        args: [];
+        result: void;
+    }
+    "tagger:compare_style": {
+        args: [images: string[]];
+        result: {
+            error: boolean;
+            message?: string;
+            folderCohesion?: number;
+            results?: StyleCompareItem[];
+        }
+    }
+    "tagger:stop_style_compare": {
         args: [];
         result: void;
     }

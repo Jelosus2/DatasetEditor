@@ -6,6 +6,7 @@ try:
     from utils import ws_safe_send, ws_error_payload
     from model_manager import download_model, get_info_payload, delete_model, get_model_action_payload
     from tagger import tag_images
+    from style_comparator import compare_style
     import websockets
     import torch
 except Exception as e:
@@ -20,6 +21,10 @@ async def process_image_stream(websocket: websockets.ServerConnection, data):
     disable_character_threshold: bool = data.get("disable_character_threshold", False)
 
     await tag_images(websocket, images, tagger_models, remove_underscores, disable_character_threshold, tags_ignored)
+
+async def process_style_compare(websocket: websockets.ServerConnection, data):
+    images: list[str] = data.get("images", [])
+    await compare_style(websocket, images)
 
 async def handle_model_download(model: str, model_file: str, tags_file: str, websocket: websockets.ServerConnection):
     try:
@@ -47,6 +52,8 @@ async def handler(websocket: websockets.ServerConnection):
             try:
                 if command == "tag":
                     await process_image_stream(websocket, data)
+                elif command == "compare_style":
+                    await process_style_compare(websocket, data)
                 elif command == "device":
                     device = "GPU" if torch.cuda.is_available() else "CPU"
                     await ws_safe_send(websocket, { "device": device })
@@ -70,7 +77,7 @@ async def handler(websocket: websockets.ServerConnection):
             except websockets.exceptions.ConnectionClosed:
                 raise
             except Exception as e:
-                print(f"Command failed ({command})")
+                print(f"Command failed ({command}) with error: {e}")
                 await ws_safe_send(websocket, ws_error_payload("Command failed", str(e)))
             
     except websockets.exceptions.ConnectionClosed:

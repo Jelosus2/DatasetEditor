@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { TaggerModelsStatus, TaggerModelConfigurationProperties } from "../../shared/tagger";
+import type { TaggerModelsStatus, TaggerModelConfigurationProperties, StyleCompareItem } from "../../shared/tagger";
 
 import AutotaggerConsole from "@/components/AutotaggerConsole.vue";
 import ConfirmationAlert from "@/components/ConfirmationAlert.vue";
 
+import { useDatasetStore } from "@/stores/datasetStore";
 import { TaggerService } from "@/services/taggerService";
 import { useAlert } from "@/composables/useAlert";
 import { ref, computed, onMounted } from "vue";
@@ -14,6 +15,10 @@ import RemoveIcon from "@/assets/icons/x.svg";
 import EditIcon from "@/assets/icons/edit.svg";
 import AddIcon from "@/assets/icons/plus.svg";
 import CaretDownIcon from "@/assets/icons/caret-down.svg";
+
+const STYLE_COMPARE_ROW_HEIGHT = 56;
+const STYLE_COMPARE_BUFFER = 8;
+const STYLE_COMPARE_WARNING_SEEN_KEY = "style-compare-kaloscope-warning-seen";
 
 const selectedModels = ref<Set<string>>(new Set());
 const consoleRef = ref<InstanceType<typeof AutotaggerConsole> | null>(null);
@@ -44,8 +49,17 @@ const removeUnderscores = ref(true);
 const removeRedundantTags = ref(true);
 const disableCharacterThreshold = ref(false);
 const isTagging = ref(false);
+const isComparingStyle = ref(false);
+const isStyleCompareResultsModalOpen = ref(false);
+const styleCompareFolderCohesion = ref<number | null>(null);
+const styleCompareResults = ref<StyleCompareItem[]>([]);
+const styleCompareListRef = ref<HTMLElement | null>(null);
+const styleCompareScrollTop = ref(0);
+const isStyleCompareDownloadWarningOpen = ref(false);
 const selectedDependencyAction = ref<"install" | "uninstall">("install");
 const isUninstallDependenciesModalOpen = ref(false);
+
+const datasetStore = useDatasetStore();
 
 const modelNames = computed(() => Array.from(models.value.keys()));
 
@@ -119,6 +133,64 @@ const dependencyButtonLabel = computed(() => {
         : "Uninstall Dependencies";
 });
 
+const hasStyleCompareResults = computed(() => styleCompareResults.value.length > 0);
+const mostLikelyStyleOutlier = computed(() => styleCompareResults.value[0] ?? null);
+
+const bestStyleFit = computed(() => {
+    const { length } = styleCompareResults.value;
+    return length > 0 ? styleCompareResults.value[length - 1] : null;
+});
+
+const selectedStyleCompareFile = ref("");
+
+const selectedStyleCompareItem = computed(() =>
+    styleCompareResults.value.find((item) => item.file === selectedStyleCompareFile.value)
+    ?? styleCompareResults.value[0]
+    ?? null
+);
+
+const selectedStyleComparePreview = computed(() => {
+    const file = selectedStyleCompareItem.value?.file;
+    if (!file)
+        return null;
+
+    return datasetStore.dataset.get(file)?.filePath ?? null;
+});
+
+const styleCompareDisplayResults = computed(() =>
+    styleCompareResults.value.map((result, index) => ({
+        ...result,
+        rank: index + 1,
+        fileName: getFileName(result.file),
+        flag:
+            index === 0
+                ? "outlier"
+                : index === styleCompareResults.value.length - 1
+                    ? "best-fit"
+                    : null
+    }))
+);
+
+const visibleStyleCompareCount = computed(() => {
+    const container = styleCompareListRef.value;
+    if (!container)
+        return 12;
+
+    return Math.ceil(container.clientHeight / STYLE_COMPARE_ROW_HEIGHT);
+});
+
+const styleCompareVirtualState = computed(() => {
+    const allItems = styleCompareDisplayResults.value;
+    const startIndex = Math.max(0, Math.floor(styleCompareScrollTop.value / STYLE_COMPARE_ROW_HEIGHT) - STYLE_COMPARE_BUFFER);
+    const endIndex = Math.min(allItems.length, startIndex + visibleStyleCompareCount.value + STYLE_COMPARE_BUFFER * 2);
+
+    return {
+        items: allItems.slice(startIndex, endIndex),
+        topPadding: startIndex * STYLE_COMPARE_ROW_HEIGHT,
+        bottomPadding: Math.max(0, (allItems.length - endIndex) * STYLE_COMPARE_ROW_HEIGHT)
+    };
+});
+
 const { showAlert } = useAlert();
 const taggerService = new TaggerService();
 
@@ -174,6 +246,17 @@ function formatBytes(bytes: number) {
     }
 
     return `${bytes.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function formatPercentage(value: number | null | undefined) {
+    if (value == null)
+        return "-";
+
+    return `${(value * 100).toFixed(2)}%`;
+}
+
+function getFileName(filePath: string) {
+    return filePath.split(/[\\/]/).pop() || filePath;
 }
 
 function openAddModelModal() {
@@ -348,6 +431,42 @@ async function runSelectedDependencyAction() {
     openUninstallDependenciesModal();
 }
 
+function openStyleCompareResultsModal() {
+    if (!hasStyleCompareResults.value)
+        return;
+
+    selectedStyleCompareFile.value = styleCompareResults.value[0]?.file ?? "";
+    styleCompareScrollTop.value = 0;
+    isStyleCompareResultsModalOpen.value = true;
+}
+
+function closeStyleCompareResultsModal() {
+    isStyleCompareResultsModalOpen.value = false;
+}
+
+function onStyleCompareScroll(event: Event) {
+    const element = event.target as HTMLElement;
+    styleCompareScrollTop.value = element.scrollTop;
+}
+
+function hasSeenStyleCompareWarning() {
+    return localStorage.getItem(STYLE_COMPARE_WARNING_SEEN_KEY) === "1";
+}
+
+function markStyleCompareWarningAsSeen() {
+    localStorage.setItem(STYLE_COMPARE_WARNING_SEEN_KEY, "1");
+}
+
+function closeStyleCompareDownloadWarning() {
+    isStyleCompareDownloadWarningOpen.value = false;
+}
+
+async function confirmStyleCompareDownloadWarning() {
+    markStyleCompareWarningAsSeen();
+    closeStyleCompareDownloadWarning();
+    await compareDatasetStyle();
+}
+
 async function startService() {
     isServiceStarting.value = true;
     const error = await taggerService.startService();
@@ -403,6 +522,32 @@ async function autoTagImages(mode: "autotag" | "diff") {
 
 async function stopTagger() {
     await taggerService.stopTagger();
+}
+
+async function compareDatasetStyle() {
+    if (!hasSeenStyleCompareWarning()) {
+        isStyleCompareDownloadWarningOpen.value = true;
+        return;
+    }
+
+    isComparingStyle.value = true;
+
+    try {
+        const result = await taggerService.compareStyle();
+        if (!result)
+            return;
+
+        styleCompareFolderCohesion.value = result.folderCohesion;
+        styleCompareResults.value = result.results;
+        selectedStyleCompareFile.value = result.results[0]?.file ?? "";
+        openStyleCompareResultsModal();
+    } finally {
+        isComparingStyle.value = false;
+    }
+}
+
+async function stopStyleComparison() {
+    await taggerService.stopStyleCompare();
 }
 
 onMounted(async () => {
@@ -471,12 +616,12 @@ onMounted(async () => {
                 </div>
             </aside>
             <div class="flex min-h-0 flex-1 flex-col p-4">
-                <div class="h-full w-full">
+                <div class="min-h-0 flex-1">
                     <AutotaggerConsole ref="consoleRef" @resize="resizeTerminal" />
                 </div>
-                <div class="flex gap-6 pt-6">
-                    <div class="flex flex-col justify-between">
-                        <div class="flex gap-4">
+                <div class="grid gap-4 pt-6 xl:grid-cols-[auto_auto_1fr]">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex flex-wrap gap-3">
                             <div class="join">
                                 <button
                                     class="btn btn-outline join-item"
@@ -540,11 +685,10 @@ onMounted(async () => {
                             <span class="text-base text-base-content/90">Autotagger Device: {{ device }}</span>
                         </div>
                     </div>
-                    <div class="divider m-0 divider-horizontal before:bg-base-content/30 after:bg-base-content/30"></div>
-                    <div class="flex items-center gap-4">
+                    <div class="flex min-w-[320px] flex-wrap items-center gap-3 xl:border-l xl:border-base-content/20 xl:pl-4">
                         <button
                             class="btn btn-outline"
-                            :disabled="shouldDisableTagButtons"
+                            :disabled="shouldDisableTagButtons || isComparingStyle"
                             :class="{
                                 'btn-error': isTagging
                             }"
@@ -554,28 +698,50 @@ onMounted(async () => {
                         </button>
                         <button
                             class="btn btn-outline"
-                            :disabled="shouldDisableTagButtons || isTagging"
+                            :disabled="shouldDisableTagButtons || isTagging || isComparingStyle"
                             @click="autoTagImages('diff')"
                         >
                             Load Diff
                         </button>
                     </div>
-                    <div class="flex flex-col">
-                        <div class="flex gap-4">
-                            <div class="flex items-center gap-2 pt-2">
-                                <input v-model="removeUnderscores" type="checkbox" class="checkbox checkbox-sm" />
-                                <span>Remove underscores</span>
+                    <div class="flex min-w-105 flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                        <div class="flex flex-col gap-2">
+                            <div class="flex flex-wrap gap-x-4 gap-y-2">
+                                <div class="flex items-center gap-2">
+                                    <input v-model="removeUnderscores" type="checkbox" class="checkbox checkbox-sm" />
+                                    <span>Remove underscores</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input v-model="disableCharacterThreshold" type="checkbox" class="checkbox checkbox-sm" />
+                                    <span>Disable character threshold</span>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-2 pt-2">
-                                <input v-model="disableCharacterThreshold" type="checkbox" class="checkbox checkbox-sm" />
-                                <span>Disable character threshold</span>
+                            <div class="flex flex-wrap gap-x-4 gap-y-2">
+                                <div class="flex items-center gap-2">
+                                    <input v-model="removeRedundantTags" type="checkbox" class="checkbox checkbox-sm" />
+                                    <span>Remove redundant tags</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="flex gap-4">
-                            <div class="flex items-center gap-2 pt-2">
-                                <input v-model="removeRedundantTags" type="checkbox" class="checkbox checkbox-sm" />
-                                <span>Remove redundant tags</span>
-                            </div>
+                        <div class="flex flex-wrap gap-3 xl:shrink-0">
+                            <button
+                                class="btn btn-outline"
+                                :disabled="shouldDisableTagButtons || isTagging"
+                                :class="{
+                                    'btn-error': isComparingStyle,
+                                    'btn-secondary': !isComparingStyle
+                                }"
+                                @click="isComparingStyle ? stopStyleComparison() : compareDatasetStyle()"
+                            >
+                                {{ isComparingStyle ? "Stop Comparison" : "Compare Dataset Style" }}
+                            </button>
+                            <button
+                                class="btn btn-outline btn-info"
+                                :disabled="!hasStyleCompareResults || isComparingStyle"
+                                @click="openStyleCompareResultsModal"
+                            >
+                                Comparison Results
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -742,6 +908,159 @@ onMounted(async () => {
             <div class="modal-backdrop" @click="closeEditModelModal"></div>
         </div>
     </div>
+    <div class="modal z-50" :class="{ 'modal-open': isStyleCompareResultsModalOpen }">
+        <div class="modal-box w-11/12 max-w-6xl">
+            <div class="flex items-center justify-between border-b-2 pb-2 dark:border-base-content/10">
+                <div>
+                    <div class="text-lg font-semibold">Dataset Style Comparison</div>
+                    <div class="text-sm text-base-content/60">
+                        Ranked from least similar to most similar to the dataset's overall style.
+                    </div>
+                </div>
+                <label class="cursor-pointer" @click="closeStyleCompareResultsModal">✕</label>
+            </div>
+            <div v-if="hasStyleCompareResults" class="mt-4 flex h-[70vh] flex-col gap-4">
+                <div class="grid gap-3 md:grid-cols-3">
+                    <div class="rounded-box border border-base-content/20 bg-base-200/40 p-3">
+                        <div class="text-sm text-base-content/60">Folder Cohesion</div>
+                        <div class="mt-1 text-xl font-semibold text-info">
+                            {{ formatPercentage(styleCompareFolderCohesion) }}
+                        </div>
+                    </div>
+                    <div class="rounded-box border border-base-content/20 bg-base-200/40 p-3">
+                        <div class="text-sm text-base-content/60">Most Likely Outlier</div>
+                        <div class="mt-1 truncate font-semibold" :title="mostLikelyStyleOutlier?.file || ''">
+                            {{ mostLikelyStyleOutlier ? getFileName(mostLikelyStyleOutlier.file) : "-" }}
+                        </div>
+                        <div class="mt-1 text-sm text-base-content/60">
+                            Fit: {{ formatPercentage(mostLikelyStyleOutlier?.fit_score) }}
+                        </div>
+                    </div>
+                    <div class="rounded-box border border-base-content/20 bg-base-200/40 p-3">
+                        <div class="text-sm text-base-content/60">Best Fit</div>
+                        <div class="mt-1 truncate font-semibold" :title="bestStyleFit?.file || ''">
+                            {{ bestStyleFit ? getFileName(bestStyleFit.file) : "-" }}
+                        </div>
+                        <div class="mt-1 text-sm text-base-content/60">
+                            Fit: {{ formatPercentage(bestStyleFit?.fit_score) }}
+                        </div>
+                    </div>
+                </div>
+                <details class="collapse collapse-arrow rounded-box border border-base-content/20 bg-base-200/30">
+                    <summary class="collapse-title min-h-0 py-3 font-semibold">
+                        How to interpret the results
+                    </summary>
+                    <div class="collapse-content text-base-content/75">
+                        <ul class="list-disc space-y-1 pl-5">
+                            <li><span class="font-medium">Folder Cohesion</span>: overall style consistency of the dataset. Higher means the dataset is more visually uniform.</li>
+                            <li><span class="font-medium">Fit Score</span>: how close an image is to the dataset's average style. Lower values are more likely to be outliers.</li>
+                            <li><span class="font-medium">Companion Score</span>: similarity to the image's closest match in the dataset. Lower values mean the image does not resemble the rest of the dataset strongly.</li>
+                            <li>An image is more likely to be a true outlier when both its <span class="font-medium">Fit Score</span> and <span class="font-medium">Companion Score</span> are low.</li>
+                        </ul>
+                    </div>
+                </details>
+                <div class="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.2fr)_320px]">
+                    <div
+                        ref="styleCompareListRef"
+                        class="min-h-0 flex-1 overflow-auto rounded-box border border-base-content/20"
+                        @scroll="onStyleCompareScroll"
+                    >
+                        <div class="sticky top-0 z-10 grid grid-cols-[56px_minmax(0,1fr)_96px_110px_84px] gap-3 border-b border-base-content/10 bg-base-100 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-base-content/60">
+                            <div>Rank</div>
+                            <div>Image</div>
+                            <div>Fit</div>
+                            <div>Companion</div>
+                            <div>Flag</div>
+                        </div>
+                        <div :style="{ height: `${styleCompareVirtualState.topPadding}px` }"></div>
+                        <div
+                            v-for="result in styleCompareVirtualState.items"
+                            :key="result.file"
+                            class="grid cursor-pointer grid-cols-[56px_minmax(0,1fr)_96px_110px_84px] items-center gap-3 border-b border-base-content/10 px-4 py-3"
+                            :class="{ 'bg-primary/10': selectedStyleCompareFile === result.file }"
+                            :style="{ minHeight: `${STYLE_COMPARE_ROW_HEIGHT}px` }"
+                            @click="selectedStyleCompareFile = result.file"
+                        >
+                            <div class="tabular-nums text-sm">
+                                {{ result.rank }}
+                            </div>
+                            <div class="min-w-0 flex flex-col justify-center">
+                                <div class="truncate font-medium leading-5" :title="result.file">
+                                    {{ result.fileName }}
+                                </div>
+                                <div class="truncate text-xs text-base-content/60 leading-4" :title="result.file">
+                                    {{ result.file }}
+                                </div>
+                            </div>
+                            <div class="tabular-nums text-sm">
+                                {{ formatPercentage(result.fit_score) }}
+                            </div>
+                            <div class="tabular-nums text-sm">
+                                {{ formatPercentage(result.companion_score) }}
+                            </div>
+                            <div>
+                                <span v-if="result.flag === 'outlier'" class="badge badge-error badge-outline">Outlier</span>
+                                <span v-else-if="result.flag === 'best-fit'" class="badge badge-success badge-outline">Best Fit</span>
+                                <span v-else class="text-base-content/40">-</span>
+                            </div>
+                        </div>
+                        <div :style="{ height: `${styleCompareVirtualState.bottomPadding}px` }"></div>
+                    </div>
+                    <div class="flex min-h-0 flex-col gap-3 rounded-box border border-base-content/20 bg-base-200/20 p-3">
+                        <div class="text-sm font-semibold">Selected Image</div>
+                        <div class="overflow-hidden rounded-box border border-base-content/20 bg-base-200">
+                            <img
+                                v-if="selectedStyleComparePreview"
+                                :src="selectedStyleComparePreview"
+                                :alt="selectedStyleCompareItem?.file || ''"
+                                class="h-72 w-full object-contain"
+                                loading="lazy"
+                                decoding="async"
+                            />
+                            <div
+                                v-else
+                                class="flex h-72 items-center justify-center text-sm text-base-content/50"
+                            >
+                                Preview unavailable
+                            </div>
+                        </div>
+                        <div v-if="selectedStyleCompareItem" class="space-y-2 text-sm">
+                            <div>
+                                <div class="text-sm text-base-content/60">File</div>
+                                <div class="truncate font-medium" :title="selectedStyleCompareItem.file">
+                                    {{ getFileName(selectedStyleCompareItem.file) }}
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-sm text-base-content/60">Path</div>
+                                <div class="break-all text-sm text-base-content/70">
+                                    {{ selectedStyleCompareItem.file }}
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 pt-2">
+                                <div class="rounded-box border border-base-content/20 bg-base-100/40 p-3">
+                                    <div class="text-sm text-base-content/60">Fit Score</div>
+                                    <div class="mt-1 font-semibold tabular-nums">
+                                        {{ formatPercentage(selectedStyleCompareItem.fit_score) }}
+                                    </div>
+                                </div>
+                                <div class="rounded-box border border-base-content/20 bg-base-100/40 p-3">
+                                    <div class="text-sm text-base-content/60">Companion Score</div>
+                                    <div class="mt-1 font-semibold tabular-nums">
+                                        {{ formatPercentage(selectedStyleCompareItem.companion_score) }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div v-else class="py-10 text-center text-base-content/60">
+                No style comparison results available yet.
+            </div>
+        </div>
+        <div class="modal-backdrop" @click="closeStyleCompareResultsModal"></div>
+    </div>
     <ConfirmationAlert
         :open="isRemoveModelModalOpen"
         title="Model deletion"
@@ -768,5 +1087,14 @@ onMounted(async () => {
         @confirm="uninstallDependencies"
         @cancel="closeUninstallDependenciesModal"
         @update:open="(value) => !value && closeUninstallDependenciesModal()"
+    />
+    <ConfirmationAlert
+        :open="isStyleCompareDownloadWarningOpen"
+        title="Style comparison model download"
+        message="The first dataset style comparison will download the Kaloscope 2.0 model if it is not already cached. This may take a while depending on your connection and the operation cannot be canceled. Do you want to continue?"
+        confirm-text="Continue"
+        @confirm="confirmStyleCompareDownloadWarning"
+        @cancel="closeStyleCompareDownloadWarning"
+        @update:open="(value) => !value && closeStyleCompareDownloadWarning()"
     />
 </template>

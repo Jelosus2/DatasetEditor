@@ -232,4 +232,33 @@ export class TaggerService {
     async stopTagger() {
         return this.ipc.invoke("tagger:stop_tagging");
     }
+
+    async compareStyle() {
+        const images = Array.from(this.datasetStore.dataset.values(), (properties) => properties.path);
+        if (images.length < 3) {
+            this.alert.showAlert("warning", "Need at least three images to compare style");
+            return null;
+        }
+
+        const result = await this.ipc.invoke("tagger:compare_style", images);
+
+        if (result.error) {
+            this.alert.showAlert("error", result.message!);
+            return null;
+        }
+
+        if (!result.error && result.message) {
+            this.alert.showAlert("success", result.message);
+            return null;
+        }
+
+        return {
+            folderCohesion: result.folderCohesion!,
+            results: result.results!
+        };
+    }
+
+    async stopStyleCompare() {
+        return this.ipc.invoke("tagger:stop_style_compare");
+    }
 }

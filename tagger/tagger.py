@@ -19,8 +19,8 @@ class LabelData:
 
 
 class ModelInputSpec:
-    def __init__(self, name: str, target_size: int, layout: str, output_name: str):
-        self.name = name
+    def __init__(self, input_name: str, target_size: int, layout: str, output_name: str):
+        self.input_name = input_name
         self.target_size = target_size
         self.layout = layout
         self.output_name = output_name
@@ -51,7 +51,7 @@ async def tag_images(websocket: websockets.ServerConnection, images: list[str], 
                 try:
                     with Image.open(image_path) as img:
                         processed_image = prepare_image(img, input_spec)
-                        preds = model.run([input_spec.output_name], { input_spec.name: processed_image })[0]
+                        preds = model.run([input_spec.output_name], { input_spec.input_name: processed_image })[0]
 
                         processed_tags = process_predictions(preds, tag_data, general_threshold, character_threshold, remove_underscores, tags_ignored, disable_character_threshold)
                         
@@ -83,7 +83,7 @@ async def tag_images(websocket: websockets.ServerConnection, images: list[str], 
 
 def load_model(model_repo: str, model_filename: str, tags_filename: str) -> tuple[ort.InferenceSession, LabelData, ModelInputSpec]:
     model_path, csv_path = get_model_file_paths(model_repo, model_filename, tags_filename)
-    if model_path == None or csv_path == None:
+    if model_path is None or csv_path is None:
         print(f"There are files missing for the {model_repo} model, delete it and redownload")
         raise RuntimeError(f"Missing model files for {model_repo}")
 
@@ -147,7 +147,7 @@ def load_model(model_repo: str, model_filename: str, tags_filename: str) -> tupl
             available = [(output.name, output.shape) for output in model.get_outputs()]
             raise ValueError(f"No model output matches tags csv rows ({expected_tags}) for {model_repo}. Available outputs: {available}")
         
-        input_spec = ModelInputSpec(name=input_meta.name, target_size=target_size, layout=layout, output_name=matched_output.name)
+        input_spec = ModelInputSpec(input_name=input_meta.name, target_size=target_size, layout=layout, output_name=matched_output.name)
 
         print(f"Loaded {model_repo} with input shape {input_shape} -> layout={layout}, target_size={target_size}, output={matched_output.name}")
     except Exception as e:

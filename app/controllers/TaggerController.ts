@@ -178,6 +178,35 @@ export class TaggerController {
         APIClient.cancelTagging();
     }
 
+    @IpcHandle("tagger:compare_style")
+    async compareStyle(_event: IpcMainInvokeEvent, images: string[]) {
+        try {
+            this.port ??= (await App.settings.loadSettings()).taggerPort;
+
+            const response = await APIClient.runStyleCompareWS(this.port, images);
+
+            App.logger.info(`[Tagger Manager] Successfully compared style for ${response.results.length} images`);
+            return { error: false, folderCohesion: response.folder_cohesion, results: response.results };
+        } catch (error) {
+            this.port = null;
+
+            const errorMessage = Utilities.getErrorMessage(error);
+            if (errorMessage === "Style comparison was aborted") {
+                App.logger.info("[Tagger Manager] Stopped the style comparison process");
+                return { error: false, message: errorMessage };
+            }
+
+            console.error(error);
+            App.logger.error(`[Tagger Manager] Error while comparing image style: ${errorMessage}`);
+            return { error: true, message: "Error while comparing image style, check the logs for more information" };
+        }
+    }
+
+    @IpcHandle("tagger:stop_style_compare")
+    stopStyleCompare() {
+        APIClient.cancelStyleCompare();
+    }
+
     @IpcHandle("tagger:resize_terminal")
     resizeTerminal(_event: IpcMainInvokeEvent, columns: number, rows: number) {
         App.tagger.resizeTerminal(columns, rows);
