@@ -347,7 +347,7 @@ export type IpcOnMap = {
         args: [line: string];
     }
     "tagger:service_stopped": {
-        args: [];
+        args: [erroredOut: boolean];
     }
     "dataset:rename-progress": {
         args: [payload: RenameProgressPayload];

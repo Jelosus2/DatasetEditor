@@ -101,6 +101,15 @@ export class AppSettings {
     taggerPort = 3067;
 
     @Setting({
+        section: "Autotagger",
+        label: "Repair Autotagger",
+        type: "action",
+        description: "Restore a fresh copy of the bundled autotagger files. You will need to install the autotagger dependencies again afterwards.",
+        actionId: "repairAutotagger"
+    })
+    repairAutotaggerAction = true;
+
+    @Setting({
         section: "General",
         label: "Load dataset subdirectories",
         type: "boolean",

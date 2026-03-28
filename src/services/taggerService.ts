@@ -32,7 +32,10 @@ export class TaggerService {
             },
             {
                 channel: "tagger:service_stopped",
-                handler: () => {
+                handler: (erroredOut) => {
+                    if (erroredOut)
+                        this.alert.showAlert("error", "The tagger service crashed due to an error, check the logs for more information");
+
                     this.isServiceRunning = false;
                     this.onServiceStopped?.();
                 }

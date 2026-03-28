@@ -391,6 +391,10 @@ export const useSettingsStore = defineStore("settings", () => {
         await settingsService.importTagsFromCsv();
     }
 
+    async function repairTagger() {
+        await settingsService.repairTagger();
+    }
+
     async function pickDirectory() {
         return settingsService.pickDirectory();
     }
@@ -438,6 +442,7 @@ export const useSettingsStore = defineStore("settings", () => {
         areSettingsSaved,
         loadTheme,
         importTagsFromCsv,
+        repairTagger,
         pickDirectory,
         validateDirectory
     };

@@ -22,6 +22,7 @@ const taggerRootScopeMap: Record<string, string> = {
 };
 
 export class PathsBuilder {
+    private readonly installScope: string;
     readonly dataPath: string;
     readonly tagGroupsPath: string;
     readonly tagAutocompletionsPath: string;
@@ -35,6 +36,7 @@ export class PathsBuilder {
     readonly tagGroupsFilePath: string;
     readonly taggerScriptPath: string;
     readonly taggerModelsConfigPath: string;
+    readonly bundledTaggerPath: string;
     readonly distPath: string;
     readonly publicPath: string;
     readonly appIconPath: string;
@@ -47,6 +49,7 @@ export class PathsBuilder {
         const dataRoot = dataRootScopeMap[installScope];
         const taggerRoot = taggerRootScopeMap[installScope];
 
+        this.installScope = installScope;
         this.dataPath = path.join(dataRoot, "Data");
         this.tagGroupsPath = path.join(this.dataPath, "TagGroups");
         this.tagAutocompletionsPath = path.join(this.dataPath, "TagAutocompletions");
@@ -64,6 +67,7 @@ export class PathsBuilder {
         this.tagGroupsFilePath = path.join(this.tagGroupsPath, "tag_groups.json");
         this.taggerScriptPath = path.join(this.taggerPath, "main.py");
         this.taggerModelsConfigPath = path.join(this.dataPath, "models_config.json");
+        this.bundledTaggerPath = path.join(process.resourcesPath, "tagger");
         this.distPath = path.join(__dirname, "..", "..", "dist");
         this.publicPath = path.join(__dirname, "..", "..", "public");
         this.appIconPath = installScope !== "dev" ? path.join(this.distPath, "doro.ico") : path.join(this.publicPath, "doro.ico");
@@ -129,16 +133,15 @@ export class PathsBuilder {
         }
     }
 
-    async ensureBundleTaggerIsSynced(isDevelopment: boolean) {
-        if (isDevelopment || process.platform === "win32")
+    async ensureBundleTaggerIsSynced() {
+        if (this.installScope === "dev" || process.platform === "win32")
             return;
 
-        const bundledTaggerPath = path.join(process.resourcesPath, "tagger");
-        const bundledVersionPath = path.join(bundledTaggerPath, "bundle-version");
+        const bundledVersionPath = path.join(this.bundledTaggerPath, "bundle-version");
         const installedVersionPath = path.join(this.taggerPath, "bundle-version");
 
-        if (!await fs.pathExists(bundledTaggerPath))
-            throw new Error(`Bundled tagger folder was not found at ${bundledTaggerPath}`);
+        if (!await fs.pathExists(this.bundledTaggerPath))
+            throw new Error(`Bundled tagger folder was not found at ${this.bundledTaggerPath}`);
 
         const bundledVersion = await this.readTaggerBundleVersion(bundledVersionPath);
         const installedVersion = await this.readTaggerBundleVersion(installedVersionPath);
@@ -147,7 +150,18 @@ export class PathsBuilder {
             return;
 
         await fs.ensureDir(this.taggerPath);
-        await fs.copy(bundledTaggerPath, this.taggerPath);
+        await fs.copy(this.bundledTaggerPath, this.taggerPath);
+    }
+
+    async repairTagger() {
+        if (this.installScope === "dev" || this.installScope === "portable")
+            throw new Error("Autotagger repair is not available for this installation type");
+        if (!await fs.pathExists(this.bundledTaggerPath))
+            throw new Error(`Bundled tagger folder was not found at ${this.bundledTaggerPath}`);
+
+        await fs.remove(this.taggerPath);
+        await fs.ensureDir(this.taggerPath);
+        await fs.copy(this.bundledTaggerPath, this.taggerPath, { overwrite: true });
     }
 
     private __dirname(fileURL: string): string {

@@ -46,10 +46,7 @@
         FindNext $R0 $R1
         Goto loop_tagger_dirs
     done_tagger_dirs:
-    FindClose $R0    
-
-    DetailPrint "Removing directory $SourceTaggerDir..."
-    RMDir /r /REBOOTOK "$SourceTaggerDir"
+    FindClose $R0
 
     StrCpy $SourceTaggerDir ""
     StrCpy $TargetTaggerDir ""

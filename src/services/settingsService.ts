@@ -44,6 +44,11 @@ export class SettingsService {
             this.alert.showAlert("info", "Tag import from CSV was canceled");
     }
 
+    async repairTagger() {
+        const result = await this.runAction("repairAutotagger");
+        this.alert.showAlert(result.error ? "error" : "success", result.message!);
+    }
+
     async restartApp() {
         return this.ipc.invoke("utilities:restart_app");
     }

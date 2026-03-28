@@ -10,6 +10,7 @@ import { useAlert } from "@/composables/useAlert";
 import { reactive, ref, computed, watchEffect, watch, onMounted } from "vue";
 
 const activeSection = ref("");
+const isRepairAutotaggerModalOpen = ref(false);
 
 const stringInputs = reactive<Record<string, string>>({});
 
@@ -82,6 +83,28 @@ function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
 
 function closeRestartModal() {
     settingsStore.dismissRestartPrompt();
+}
+
+function openRepairAutotaggerModal() {
+    isRepairAutotaggerModalOpen.value = true;
+}
+
+function closeRepairAutotaggerModal() {
+    isRepairAutotaggerModalOpen.value = false;
+}
+
+async function confirmRepairAutotagger() {
+    closeRepairAutotaggerModal();
+    await settingsStore.repairTagger();
+}
+
+async function handleAction(field: SettingsDefinition) {
+    if (field.actionId === "repairAutotagger") {
+        openRepairAutotaggerModal();
+        return;
+    }
+
+    await settingsOperations.runAction(field);
 }
 
 async function restart() {
@@ -190,7 +213,7 @@ onMounted(() => {
 
                                     <!-- action -->
                                     <div v-else-if="field.type === 'action'">
-                                        <button class="btn btn-outline" @click="settingsOperations.runAction(field)">
+                                        <button class="btn btn-outline" @click="handleAction(field)">
                                             {{ field.label }}
                                         </button>
                                     </div>
@@ -254,5 +277,15 @@ onMounted(() => {
         @cancel="closeRestartModal"
         @confirm="restart"
         @update:open="(value) => !value && closeRestartModal()"
+    />
+    <ConfirmationAlert
+        :open="isRepairAutotaggerModalOpen"
+        title="Repair Autotagger"
+        message="This will delete the installed autotagger folder and restore a fresh bundled copy. You will need to install the autotagger dependencies again afterwards. Do you want to continue?"
+        confirm-text="Repair"
+        confirm-class="btn btn-error btn-outline"
+        @confirm="confirmRepairAutotagger"
+        @cancel="closeRepairAutotaggerModal"
+        @update:open="(value) => !value && closeRepairAutotaggerModal()"
     />
 </template>

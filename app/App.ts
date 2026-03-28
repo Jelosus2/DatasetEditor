@@ -78,7 +78,7 @@ export class App {
             if (settings.autoCheckUpdates && !await this.isPortableInstallation())
                 this.updater.checkForUpdates();
 
-            await this.paths.ensureBundleTaggerIsSynced(this.IS_DEVELOPMENT);
+            await this.paths.ensureBundleTaggerIsSynced();
         } catch (error) {
             console.error(error);
             this.logger.error(`[App] Error during initialization: ${Utilities.getErrorMessage(error)}`);
@@ -145,7 +145,23 @@ export class App {
         }
     }
 
-    static async getInstallScope() {
+    static async repairTagger() {
+        try {
+            App.logger.info("[Settings Manager] Attempting to shutdown autotagger service and begin repairing autotagger...");
+
+            App.tagger.cleanup();
+            await App.paths.repairTagger();
+
+            App.logger.info("[Settings Manager] Autotagger repaired successfully");
+            return { error: false, message: "Autotagger repaired successfully. Install the dependencies again before starting the service." };
+        } catch (error) {
+            console.error(error);
+            this.logger.error(`[Settings Manager] Failed to repair autotagger: ${Utilities.getErrorMessage(error)}`);
+            return { error: true, message: "Failed to repair the autotagger, check the logs for more information" };
+        }
+    }
+
+    private static async getInstallScope() {
         if (this.IS_DEVELOPMENT)
             return "dev";
         if (process.platform !== "win32")

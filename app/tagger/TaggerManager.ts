@@ -63,11 +63,12 @@ export class TaggerManager {
                 if (!isManualKilling && exitCode !== 0)
                     App.logger.error(`[Tagger Manager] Tagger server stopped with code ${exitCode}`);
 
-                App.window.ipcSend("tagger:service_stopped");
+                App.window.ipcSend("tagger:service_stopped", false);
             })
             .catch((error) => {
                 console.error(error);
                 App.logger.error(`[Tagger Manager] Error in tagger server: ${Utilities.getErrorMessage(error)}`);
+                App.window.ipcSend("tagger:service_stopped", true);
             });
     }
 

@@ -39,6 +39,8 @@ export class SettingsController {
     async action(_event: IpcMainInvokeEvent, actionId: string) {
         if (actionId === "loadTagsCsv")
             return App.importTagsCsvFromDialog();
+        if (actionId === "repairAutotagger")
+            return App.repairTagger();
 
         return { error: true, message: `Unknown settings action: ${actionId}` };
     }
