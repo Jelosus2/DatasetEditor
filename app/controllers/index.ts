@@ -7,3 +7,4 @@ export * from "./TaggerController.js"
 export * from "./TagGroupController.js";
 export * from "./UpdateController.js";
 export * from "./UtilitiesController.js";
+export * from "./WhatsNewController.js";

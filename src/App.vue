@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ActiveTab } from "@/types/app";
+import type { WhatsNewEntry } from "../shared/whats-new";
 
 import NavigationBar from "@/components/NavigationBar.vue";
 import DatasetTab from "@/components/DatasetTab.vue";
@@ -14,6 +15,7 @@ import DuplicatesFinderModal from "@/components/DuplicatesFinderModal.vue";
 import RenameFilesModal from "@/components/RenameFilesModal.vue";
 import BgColorChangerModal from "@/components/BgColorChangerModal.vue";
 import CropImageModal from "@/components/CropImageModal.vue";
+import WhatsNewModal from "@/components/WhatsNewModal.vue";
 
 import { useDatasetStore } from "@/stores/datasetStore";
 import { useTagGroupsStore } from "@/stores/tagGroupsStore";
@@ -22,11 +24,19 @@ import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts";
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
 import { useAppStatus } from "@/composables/useAppStatus";
 import { useAlert } from "@/composables/useAlert";
+import { WhatsNewService } from "@/services/whatsNewService";
 import { AppController } from "@/AppController";
 import { ref, onMounted } from "vue";
 
 const arePreviewsEnabled = ref(false);
 const activeTab = ref<ActiveTab>("dataset");
+const isWhatsNewModalOpen = ref(false);
+const whatsNewCurrentVersion = ref("");
+const allWhatsNewEntries = ref<WhatsNewEntry[]>([]);
+const visibleWhatsNewEntries = ref<WhatsNewEntry[]>([]);
+const unseenWhatsNewEntries = ref<WhatsNewEntry[]>([]);
+
+const whatsNewService = new WhatsNewService();
 
 const { message: alertMessage, type: alertType, timestamp: alertTimestamp, showAlert } = useAlert();
 const appStatus = useAppStatus();
@@ -73,9 +83,33 @@ const { send } = useIpcRenderer([
     }
 ]);
 
+function openWhatsNewModal(mode: "all" | "unseen" = "all") {
+    visibleWhatsNewEntries.value = mode === "unseen" && unseenWhatsNewEntries.value.length > 0
+        ? unseenWhatsNewEntries.value
+        : allWhatsNewEntries.value;
+
+    isWhatsNewModalOpen.value = true;
+}
+
+async function closeWhatsNewModal() {
+    isWhatsNewModalOpen.value = false;
+    await whatsNewService.markSeen();
+}
+
 onMounted(async () => {
     await settingsStore.ensureLayoutMap();
     await appController.initialize();
+
+    const payload = await whatsNewService.getWhatsNew();
+    if (!payload)
+        return;
+
+    whatsNewCurrentVersion.value = payload.currentVersion;
+    allWhatsNewEntries.value = payload.entries;
+    unseenWhatsNewEntries.value = payload.unseenEntries;
+
+    if (payload.shouldAutoOpen)
+        openWhatsNewModal("unseen");
 });
 </script>
 
@@ -89,6 +123,7 @@ onMounted(async () => {
             @redo="appController.redoAction()"
             @save="appController.saveChanges()"
             @reload_dataset="appController.reloadDataset()"
+            @open_whats_new="openWhatsNewModal('all')"
         />
         <div class="tabs-border tabs min-h-0 flex-1 overflow-hidden text-base">
             <input type="radio" name="editor_tabs" class="tab" aria-label="Dataset" value="dataset" v-model="activeTab" />
@@ -123,4 +158,10 @@ onMounted(async () => {
     <RenameFilesModal />
     <BgColorChangerModal :selected-images="datasetStore.selectedImages" />
     <CropImageModal :selected-images="datasetStore.selectedImages" />
+    <WhatsNewModal
+        v-if="isWhatsNewModalOpen"
+        :current-version="whatsNewCurrentVersion"
+        :entries="visibleWhatsNewEntries"
+        @close="closeWhatsNewModal"
+    />
 </template>

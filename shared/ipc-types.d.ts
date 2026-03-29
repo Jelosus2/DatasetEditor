@@ -6,6 +6,7 @@ import type { SettingsDefinition, Settings } from "./settings-schema";
 import type { CompletionItem } from "./autocompletion";
 import type { AppStatusPayload } from "./app-status";
 import type { Rect, DuplicateMethod } from "./image";
+import type { WhatsNewPayload } from "./whats-new";
 import type { TagGroups } from "./tag-groups";
 import type { LogType } from "./log";
 
@@ -314,6 +315,21 @@ export type IpcInvokeMap = {
             error: boolean;
             message?: string;
             groups: string[][];
+        }
+    }
+    "whats_new:get": {
+        args: [];
+        result: {
+            error: boolean;
+            message?: string;
+            payload?: WhatsNewPayload;
+        }
+    }
+    "whats_new:mark_seen": {
+        args: [];
+        result: {
+            error: boolean;
+            message?: string;
         }
     }
 }

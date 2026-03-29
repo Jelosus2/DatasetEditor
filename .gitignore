@@ -19,6 +19,7 @@ tagger/venv
 tagger/__pycache__
 embedded_python
 dist_app
+build/release-notes.json
 
 /cypress/videos/
 /cypress/screenshots/

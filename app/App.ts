@@ -1,6 +1,7 @@
 import type { Settings } from "../shared/settings-schema.js";
 
 import { TaggerModelManager } from "./tagger/TaggerModelManager.js";
+import { WhatsNewManager } from "./whats-new/WhatsNewManager.js";
 import { SettingsManager } from "./settings/SettingsManager.js";
 import { UpdateManager } from "./updater/UpdateManager.js";
 import { WindowManager } from "./window/WindowManager.js";
@@ -25,6 +26,7 @@ export class App {
     static logger: Logger;
     static tagger: TaggerManager;
     static taggerModels: TaggerModelManager;
+    static whatsNew: WhatsNewManager;
 
     static async isPortableInstallation() {
         if (process.platform !== "win32")
@@ -41,6 +43,7 @@ export class App {
         this.updater = new UpdateManager();
         this.tagger = new TaggerManager();
         this.taggerModels = new TaggerModelManager();
+        this.whatsNew = new WhatsNewManager();
         IpcRegistrar.registerAll();
     }
 

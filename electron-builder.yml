@@ -20,6 +20,9 @@ extraResources:
 
   - from: "build/danbooru.csv"
     to: "seed-data/danbooru.csv"
+
+  - from: "build/release-notes.json"
+    to: "seed-data/release-notes.json"
 win:
   artifactName: "Dataset-Editor-${version}-${os}-${arch}.${ext}"
   icon: "public/doro.ico"

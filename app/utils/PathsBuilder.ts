@@ -43,6 +43,8 @@ export class PathsBuilder {
     readonly preloadFilePath: string;
     readonly indexFilePath: string;
     readonly defaultHuggingFacePath: string;
+    readonly whatsNewStatePath: string;
+    readonly releaseNotesPath: string;
 
     constructor(installScope: string) {
         const __dirname = this.__dirname(import.meta.url);
@@ -74,6 +76,10 @@ export class PathsBuilder {
         this.preloadFilePath = path.join(__dirname, "..", "preload.js");
         this.indexFilePath = path.join(this.distPath, "index.html");
         this.defaultHuggingFacePath = this.getDefaultHuggingFaceCachePath();
+        this.whatsNewStatePath = path.join(this.dataPath, "whats-new-state.json");
+        this.releaseNotesPath = installScope === "dev"
+            ? path.join(dataRoot, "build", "release-notes.json")
+            : path.join(process.resourcesPath, "seed-data", "release-notes.json");
     }
 
     async readTagsCsv(csvPath: string, batchSize: number, onBatchComplete: (batch: TagBatch[], progress: number, error?: unknown) => void) {

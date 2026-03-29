@@ -14,6 +14,7 @@ import UpdateRestartIcon from "@/assets/icons/update-restart.svg";
 
 const arePreviewsEnabled = defineModel<boolean>({ required: true });
 const emit = defineEmits<{
+    (e: "open_whats_new"): void;
     (e: "load_dataset"): void;
     (e: "reload_dataset"): void;
     (e: "undo"): void;
@@ -160,7 +161,10 @@ onMounted(async () => {
                 </template>
             </button>
         </div>
-        <div class="navbar-end">
+        <div class="navbar-end gap-2">
+            <button class="btn btn-xs btn-info btn-outline" @click="emit('open_whats_new')">
+                What's new?
+            </button>
             <span class="rounded border border-gray-400 px-2 dark:border-base-content/20">
                 Version {{ APP_VERSION }}
             </span>
