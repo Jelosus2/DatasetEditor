@@ -1,0 +1,12 @@
+allowBuilds:
+  '@homebridge/node-pty-prebuilt-multiarch': false
+  better-sqlite3: false
+  electron: true
+  electron-winstaller: true
+  esbuild: false
+  sharp: false
+minimumReleaseAgeExclude:
+  - eslint@10.11.0
+  - '@types/node@24.13.6'
+overrides:
+  '@electron/rebuild@4.2.0>node-abi': 4.35.0

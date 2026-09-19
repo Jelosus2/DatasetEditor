@@ -5,6 +5,7 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "dist_app",
-    "noEmit": false
+    "noEmit": false,
+    "ignoreDeprecations": "6.0"
   }
 }
