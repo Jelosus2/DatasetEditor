@@ -314,7 +314,7 @@ onDeactivated(() => {
                     @grid-metrics="handleGridMetrics"
                 />
             </div>
-            <div class="relative flex flex-1">
+            <div class="relative flex min-h-0 flex-1 overflow-hidden">
                 <div
                     class="divider m-0 divider-horizontal cursor-ew-resize not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"
                     @mousedown.prevent="startResize"
@@ -332,18 +332,18 @@ onDeactivated(() => {
                         />
                     </div>
                 </div>
-                <div class="flex w-[30%] flex-col">
+                <div class="flex min-h-0 w-[30%] flex-col overflow-hidden">
                     <template v-if="selectedImages.size > 0">
                         <div class="w-full truncate px-2 py-1 text-center font-medium">
                             {{ selectedTitle }}
                         </div>
-                        <div class="flex flex-1 items-center justify-center">
+                        <div class="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
                             <img
                                 :src="selectedImage?.filePath"
                                 :title="selectedTitle"
                                 decoding="async"
                                 draggable="false"
-                                class="max-h-full"
+                                class="max-h-full max-w-full object-contain"
                             />
                         </div>
                     </template>
