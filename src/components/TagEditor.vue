@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ExpandCollapseAllButton from "@/components/ExpandCollapseAllButton.vue";
 import AutocompletionInput from "@/components/AutocompletionInput.vue";
 
 import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts";
@@ -750,13 +751,7 @@ function addTagToImageFilter(tag: string) {
                             :dropdown-below="true"
                         />
                     </label>
-                    <button
-                        class="btn btn-outline"
-                        :disabled="tagGroupsStore.tagGroups.size === 0"
-                        @click="selectedTagGroups = new Set()"
-                    >
-                        Collapse All
-                    </button>
+                    <ExpandCollapseAllButton v-model="selectedTagGroups" :item-names="tagGroupNames" />
                 </div>
                 <div class="text-sm uppercase text-base-content/60">Tag Groups</div>
                 <div class="flex flex-col gap-2 overflow-auto">
