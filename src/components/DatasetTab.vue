@@ -149,13 +149,24 @@ function clampZoom(value: number) {
     return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(value.toFixed(2))));
 }
 
-function setModalZoom(next: number) {
-    imageModalZoom.value = clampZoom(next);
+function setModalZoom(next: number, anchor?: { x: number; y: number }) {
+    const previousZoom = imageModalZoom.value;
+    const nextZoom = clampZoom(next);
 
-    if (imageModalZoom.value <= 1) {
+    if (nextZoom === previousZoom)
+        return;
+
+    if (nextZoom <= 1) {
         imageModalPanX.value = 0;
         imageModalPanY.value = 0;
+    } else if (anchor) {
+        const zoomRatio = nextZoom / previousZoom;
+
+        imageModalPanX.value = anchor.x - (anchor.x - imageModalPanX.value) * zoomRatio;
+        imageModalPanY.value = anchor.y - (anchor.y - imageModalPanY.value) * zoomRatio;
     }
+
+    imageModalZoom.value = nextZoom;
 }
 
 function resetModalView() {
@@ -168,8 +179,18 @@ function handleModalWheel(event: WheelEvent) {
     if (!imageModalRef.value?.open || !activeModalImage.value)
         return;
 
+    const viewport = event.currentTarget;
+    if (!(viewport instanceof HTMLElement))
+        return;
+
+    const bounds = viewport.getBoundingClientRect();
+    const anchor = {
+        x: event.clientX - (bounds.left + bounds.width / 2),
+        y: event.clientY - (bounds.top + bounds.height / 2)
+    };
+
     const delta = event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
-    setModalZoom(imageModalZoom.value + delta);
+    setModalZoom(imageModalZoom.value + delta, anchor);
 }
 
 function handleModalZoomKey(event: KeyboardEvent) {
