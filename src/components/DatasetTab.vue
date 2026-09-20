@@ -112,18 +112,43 @@ watch(imageKeys, (newKeys) => {
     }
 }, { immediate: true });
 
-watch(filteredImages, (newSet) => {
-    if (isFiltering.value) {
-        const keptSelection = [...selectedImages.value].filter((imageKey) => newSet.has(imageKey));
+watch(filteredImages, (newSet, oldSet) => {
+    if (!isFiltering.value)
+        return;
 
-        if (keptSelection.length > 0) {
-            setSingleSelection(keptSelection[0]);
-        } else if (newSet.size > 0) {
-            setSingleSelection(newSet.values().next().value!);
-        } else {
-            datasetStore.resetSelectionState();
+    const keptSelection = [...selectedImages.value].filter((imageKey) => newSet.has(imageKey));
+
+    if (keptSelection.length > 0) {
+        setSingleSelection(keptSelection[0]);
+        return;
+    }
+
+    if (newSet.size === 0) {
+        datasetStore.resetSelectionState();
+        return;
+    }
+
+    const currentImageKey = selectedImageKey.value;
+    const previousVisibleKeys = imageKeys.value.filter((imageKey) => oldSet.has(imageKey));
+    const currentIndex = currentImageKey
+        ? previousVisibleKeys.indexOf(currentImageKey)
+        : -1;
+
+    let fallbackImageKey: string | undefined;
+
+    for (let i = currentIndex - 1; i >= 0; i--) {
+        const imageKey = previousVisibleKeys[i];
+
+        if (newSet.has(imageKey)) {
+            fallbackImageKey = imageKey;
+            break;
         }
     }
+
+    fallbackImageKey ??= imageKeys.value.find((imageKey) => newSet.has(imageKey));
+
+    if (fallbackImageKey)
+        setSingleSelection(fallbackImageKey);
 });
 
 watch(filterInput, (val) => {
