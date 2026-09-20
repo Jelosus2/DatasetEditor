@@ -295,14 +295,21 @@ function openContextMenuImageInExplorer() {
 let resizeObserver: ResizeObserver | null = null;
 
 onActivated(() => {
-    if (!containerRef.value)
+    const container = containerRef.value;
+    if (!container)
         return;
 
-    containerWidth.value = containerRef.value.clientWidth;
-    containerHeight.value = containerRef.value.clientHeight;
-    liveScrollTop.value = containerRef.value.scrollTop;
-    virtualScrollTop.value = containerRef.value.scrollTop;
-    lastScrollTop = containerRef.value.scrollTop;
+    const savedScrollTop = liveScrollTop.value;
+
+    containerWidth.value = container.clientWidth;
+    containerHeight.value = container.clientHeight;
+    virtualScrollTop.value = container.scrollTop;
+    container.scrollTop = savedScrollTop;
+
+    const restoredScrollTop = container.scrollTop;
+    liveScrollTop.value = restoredScrollTop;
+    virtualScrollTop.value = restoredScrollTop;
+    lastScrollTop = restoredScrollTop;
     lastScrollTs = performance.now();
 
     if (!resizeObserver) {
@@ -316,26 +323,32 @@ onActivated(() => {
         });
     }
 
-    resizeObserver.observe(containerRef.value);
-    containerRef.value.addEventListener("scroll", onScroll, { passive: true });
+    resizeObserver.observe(container);
+    container.addEventListener("scroll", onScroll, { passive: true });
 });
 
 onDeactivated(() => {
-    if (rafId !== null)
+    if (rafId !== null) {
         cancelAnimationFrame(rafId);
+        rafId = null;
+    }
+
+    if (settleTimer !== null) {
+        clearTimeout(settleTimer);
+        settleTimer = null;
+    }
+
+    virtualScrollTop.value = liveScrollTop.value;
+
     if (resizeObserver)
         resizeObserver.disconnect();
     if (containerRef.value)
         containerRef.value.removeEventListener("scroll", onScroll);
-    if (settleTimer !== null)
-        clearTimeout(settleTimer);
 
     closeImageContextMenu();
     closeTrashImagesModal();
 
     isFastScrolling.value = false;
-    liveScrollTop.value = 0;
-    virtualScrollTop.value = 0;
 });
 </script>
 
