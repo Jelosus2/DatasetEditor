@@ -150,9 +150,11 @@ function scrollToSelected() {
     selectedItem.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
-async function moveSelection(direction: 1 | -1) {
-    if (!hasSuggestions.value)
+async function moveSelection(event: KeyboardEvent, direction: 1 | -1) {
+    if (!showDropdown.value)
         return;
+
+    event.preventDefault();
 
     const length = completions.value.length;
     if (selectedIndex.value < 0)
@@ -224,8 +226,8 @@ onBeforeUnmount(() => {
         @focus="onFocus"
         @blur="onBlur"
         @keyup.enter="onKeyEnter"
-        @keydown.arrow-up.prevent="moveSelection(-1)"
-        @keydown.arrow-down.prevent="moveSelection(1)"
+        @keydown.arrow-up="moveSelection($event, -1)"
+        @keydown.arrow-down="moveSelection($event, 1)"
     />
     <textarea
         v-else
@@ -239,8 +241,8 @@ onBeforeUnmount(() => {
         @focus="onFocus"
         @blur="onBlur"
         @keydown.enter.prevent="onKeyEnter"
-        @keydown.arrow-up.prevent="moveSelection(-1)"
-        @keydown.arrow-down.prevent="moveSelection(1)"
+        @keydown.arrow-up="moveSelection($event, -1)"
+        @keydown.arrow-down="moveSelection($event, 1)"
     ></textarea>
     <ul
         v-if="showDropdown"
