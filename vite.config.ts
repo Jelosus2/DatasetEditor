@@ -17,5 +17,10 @@ export default defineConfig({
             '@': fileURLToPath(new URL('./src', import.meta.url)),
         },
     },
+    build: {
+        rolldownOptions: {
+            external: ["sharp"]
+        }
+    },
     base: './',
 });

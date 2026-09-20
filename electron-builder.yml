@@ -38,7 +38,9 @@ linux:
   artifactName: "Dataset-Editor-${version}-${arch}.${ext}"
   icon: "build/doro.png"
   category: "Utility"
+  syncDesktopName: true
   asarUnpack:
+    - "**/node_modules/sharp/**/*"
     - "**/node_modules/@img/**/*"
   target:
     - "deb"
