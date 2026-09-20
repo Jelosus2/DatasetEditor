@@ -2,13 +2,27 @@ import type { StyleCompareWSResponse } from "../types/tagger.js";
 import type { TaggerWSPayload } from "../../shared/tagger.js";
 
 import { App } from "../App.js";
+import { app } from "electron";
 
 export class APIClient {
     private static taggerWebsocket: WebSocket | null = null;
     private static styleCompareWebsocket: WebSocket | null = null;
 
-    static async get<T>(url: string): Promise<[T, boolean, number]> {
-        const response = await fetch(url);
+    static async get<T>(url: string, headers?: RequestInit["headers"]): Promise<[T, boolean, number]> {
+        const response = await fetch(url, {
+            headers: headers ?? {
+                Accept: "application/json",
+                "User-Agent": `DatasetEditor/${app.getVersion()}`
+            }
+        });
+
+        if (response.headers.get("cf-mitigated") === "challenge")
+            throw new Error(`[Code ${response.status}] Request blocked by a Cloudflare challenge`);
+
+        const contentType = response.headers.get("content-type") ?? "";
+        if (!contentType.includes("json"))
+            throw new Error(`[Code ${response.status}] Expected JSON, received ${contentType || "unknown content"}`);
+
         const data = await response.json() as T;
 
         return [data, response.ok, response.status];
