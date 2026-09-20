@@ -12,11 +12,12 @@ import type { LogType } from "./log";
 
 export type IpcInvokeMap = {
     "dataset:load": {
-        args: [isAllSaved: boolean, reloadDataset: boolean];
+        args: [isAllSaved: boolean, reloadDataset: boolean, lastDirectory: string | null];
         result: {
             error: boolean;
             canceled?: boolean;
             message?: string;
+            directoryPath?: string;
             dataset?: Dataset;
             globalTags?: GlobalTags;
         }

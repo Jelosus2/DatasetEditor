@@ -22,7 +22,10 @@ export const useDatasetStore = defineStore("dataset", () => {
     const lastSelectedIndex = ref(0);
     const rangeAnchorIndex = ref(0);
 
-    const { individualTagSortMode: sortMode } = storeToRefs(uiStateStore);
+    const {
+        individualTagSortMode: sortMode,
+        lastDatasetDirectory
+    } = storeToRefs(uiStateStore);
 
     const datasetService = new DatasetService();
     const alert = useAlert();
@@ -716,9 +719,12 @@ export const useDatasetStore = defineStore("dataset", () => {
     async function loadDataset(reload = false) {
         const _isDatasetSaved = await isDatasetSaved();
 
-        const result = await datasetService.loadDataset(_isDatasetSaved, reload);
+        const result = await datasetService.loadDataset(_isDatasetSaved, reload, lastDatasetDirectory.value);
         if (!result)
             return;
+
+        if (result.directoryPath)
+            lastDatasetDirectory.value = result.directoryPath;
 
         dataset.value = result.dataset!;
         globalTags.value = result.globalTags!;

@@ -24,8 +24,8 @@ export class DatasetService {
         return cleanMap;
     }
 
-    async loadDataset(isAllSaved: boolean, reloadDataset = false) {
-        const result = await this.ipc.invoke("dataset:load", isAllSaved, reloadDataset);
+    async loadDataset(isAllSaved: boolean, reloadDataset = false, lastDirectory: string | null = null) {
+        const result = await this.ipc.invoke("dataset:load", isAllSaved, reloadDataset, lastDirectory);
 
         if (result.error) {
             this.alert.showAlert("error", result.message!);

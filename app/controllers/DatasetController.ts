@@ -23,22 +23,18 @@ export class DatasetController {
     }
 
     @IpcHandle("dataset:load")
-    async loadDataset(_event: IpcMainInvokeEvent, isAllSaved: boolean, reloadDataset = false) {
-        let tmpDirectory: string | null = null;
-
+    async loadDataset(_event: IpcMainInvokeEvent, isAllSaved: boolean, reloadDataset = false, lastDirectory: string | null = null) {
         if (!isAllSaved && !await this.confirmedUnsavedChanges()) {
             App.logger.info("[Dataset Manager] Dataset load was canceled");
             return { error: false, canceled: true };
         }
 
-        if (!reloadDataset) {
-            tmpDirectory = this.loadedDirectory;
-            this.loadedDirectory = null;
-        }
+        const defaultDirectory = this.loadedDirectory ?? lastDirectory;
+        const directoryPath = reloadDataset && this.loadedDirectory
+            ? this.loadedDirectory
+            : await this.selectDirectory(defaultDirectory);
 
-        const directoryPath = this.loadedDirectory ?? await this.selectDirectory();
         if (!directoryPath) {
-            this.loadedDirectory = tmpDirectory;
             App.logger.info("[Dataset Manager] Dataset load was canceled");
             return { error: false, canceled: true };
         }
@@ -56,11 +52,11 @@ export class DatasetController {
             this.loadedDirectory = directoryPath;
 
             App.logger.info("[Dataset Manager] Dataset loaded successfully");
-            return { error: false, dataset, globalTags };
+            return { error: false, directoryPath, dataset, globalTags };
         } catch (error) {
             console.error(error);
             App.logger.error(`[Dataset Manager] Error loading the dataset: ${Utilities.getErrorMessage(error)}`);
-            this.loadedDirectory = tmpDirectory;
+
             return { error: true, message: "Error loading the dataset, check the logs for more information" };
         }
     }
@@ -278,11 +274,24 @@ export class DatasetController {
         return result.response === 0;
     }
 
-    private async selectDirectory() {
+    private async selectDirectory(defaultPath: string | null = null) {
+        let validDefaultPath: string | undefined;
+
+        if (defaultPath) {
+            try {
+                const stats = await fs.stat(defaultPath);
+
+                if (stats.isDirectory())
+                    validDefaultPath = defaultPath;
+            }
+            catch {}
+        }
+
         const result = await App.showOpenDialog({
             title: "Select the dataset directory",
             buttonLabel: "Load Dataset",
-            properties: ["openDirectory"]
+            properties: ["openDirectory"],
+            defaultPath: validDefaultPath
         });
 
         return result.filePaths[0];

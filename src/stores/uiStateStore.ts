@@ -16,6 +16,7 @@ type PersistedUiState = {
     removeUnderscores: boolean;
     removeRedundantTags: boolean;
     disableCharacterThreshold: boolean;
+    lastDatasetDirectory: string | null;
 };
 
 const STORAGE_KEY = "dataset-editor-ui-state";
@@ -29,7 +30,8 @@ const DEFAULT_UI_STATE: PersistedUiState = {
     selectedAutotaggerModels: [],
     removeUnderscores: true,
     removeRedundantTags: true,
-    disableCharacterThreshold: false
+    disableCharacterThreshold: false,
+    lastDatasetDirectory: null
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -54,6 +56,12 @@ function isTagSortOrder(value: unknown): value is TagSortOrder {
 
 function getBoolean(value: unknown, fallback: boolean) {
     return typeof value === "boolean" ? value : fallback;
+}
+
+function getNullableString(value: unknown) {
+    return typeof value === "string" && value.trim().length > 0
+        ? value
+        : null;
 }
 
 function getStringArray(value: unknown) {
@@ -92,7 +100,8 @@ function loadUiState(): PersistedUiState {
             selectedAutotaggerModels: getStringArray(parsed.selectedAutotaggerModels),
             removeUnderscores: getBoolean(parsed.removeUnderscores, DEFAULT_UI_STATE.removeUnderscores),
             removeRedundantTags: getBoolean(parsed.removeRedundantTags, DEFAULT_UI_STATE.removeRedundantTags),
-            disableCharacterThreshold: getBoolean(parsed.disableCharacterThreshold, DEFAULT_UI_STATE.disableCharacterThreshold)
+            disableCharacterThreshold: getBoolean(parsed.disableCharacterThreshold, DEFAULT_UI_STATE.disableCharacterThreshold),
+            lastDatasetDirectory: getNullableString(parsed.lastDatasetDirectory),
         };
     } catch (error) {
         console.error("[UI State] Failed to load persisted UI state:", error);
@@ -112,6 +121,7 @@ export const useUiStateStore = defineStore("uiState", () => {
     const removeUnderscores = ref(initialState.removeUnderscores);
     const removeRedundantTags = ref(initialState.removeRedundantTags);
     const disableCharacterThreshold = ref(initialState.disableCharacterThreshold);
+    const lastDatasetDirectory = ref<string | null>(initialState.lastDatasetDirectory);
 
     function buildPersistedState(): PersistedUiState {
         return {
@@ -123,7 +133,8 @@ export const useUiStateStore = defineStore("uiState", () => {
             selectedAutotaggerModels: [...selectedAutotaggerModels.value],
             removeUnderscores: removeUnderscores.value,
             removeRedundantTags: removeRedundantTags.value,
-            disableCharacterThreshold: disableCharacterThreshold.value
+            disableCharacterThreshold: disableCharacterThreshold.value,
+            lastDatasetDirectory: lastDatasetDirectory.value
         };
     }
 
@@ -152,7 +163,8 @@ export const useUiStateStore = defineStore("uiState", () => {
         [...selectedAutotaggerModels.value],
         removeUnderscores.value,
         removeRedundantTags.value,
-        disableCharacterThreshold.value
+        disableCharacterThreshold.value,
+        lastDatasetDirectory.value
     ], persistUiState, { deep: true });
 
     persistUiState();
@@ -167,6 +179,7 @@ export const useUiStateStore = defineStore("uiState", () => {
         removeUnderscores,
         removeRedundantTags,
         disableCharacterThreshold,
+        lastDatasetDirectory,
         retainAvailableAutotaggerModels
     };
 });
