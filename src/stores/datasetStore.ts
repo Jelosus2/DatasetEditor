@@ -3,10 +3,13 @@ import type { DatasetChangeRecord, TagDiffs, ReorderPositions } from "@/types/da
 
 import { DatasetService } from "@/services/datasetService";
 import { useAlert } from "@/composables/useAlert";
-import { defineStore } from "pinia";
+import { useUiStateStore } from "./uiStateStore";
+import { defineStore, storeToRefs } from "pinia";
 import { ref, toRaw } from "vue";
 
 export const useDatasetStore = defineStore("dataset", () => {
+    const uiStateStore = useUiStateStore();
+
     const dataset = ref<Dataset>(new Map());
     const globalTags = ref<GlobalTags>(new Map());
     const tagDiff = ref<TagDiffs>(new Map());
@@ -15,10 +18,11 @@ export const useDatasetStore = defineStore("dataset", () => {
 
     const datasetUndoStack = ref<DatasetChangeRecord[]>([]);
     const datasetRedoStack = ref<DatasetChangeRecord[]>([]);
-    const sortMode = ref<"none" | "alphabetical">("none");
     const selectedImages = ref<Set<string>>(new Set());
     const lastSelectedIndex = ref(0);
     const rangeAnchorIndex = ref(0);
+
+    const { individualTagSortMode: sortMode } = storeToRefs(uiStateStore);
 
     const datasetService = new DatasetService();
     const alert = useAlert();

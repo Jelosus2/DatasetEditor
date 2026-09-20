@@ -6,18 +6,16 @@ import { useGridNavigation } from "@/composables/useGridNavigation";
 import { useResizablePane } from "@/composables/useResizablePane";
 import { useTagDisplay } from "@/composables/useTagDisplay";
 import { useDatasetStore } from "@/stores/datasetStore";
+import { useUiStateStore } from "@/stores/uiStateStore";
 import { ref, watch, computed, shallowRef, onActivated, onDeactivated } from "vue";
+import { storeToRefs } from "pinia";
 
 const props = defineProps<{
     arePreviewsEnabled: boolean;
 }>();
 
-const filterMode = ref("or");
 const filterInput = ref("");
 const container = shallowRef<HTMLDivElement | null>(null);
-const sortOrder = ref<"asc" | "desc">("asc");
-const globalSortMode = ref<"alphabetical" | "tag_count">("alphabetical");
-const globalSortOrder = ref<"asc" | "desc">("asc");
 const globalTagFilterInput = ref("");
 const previewImage = ref("");
 const activeModalImageKey = ref<string | null>(null);
@@ -28,6 +26,14 @@ const imageModalPanY = ref(0);
 const imageModalRef = shallowRef<HTMLDialogElement | null>(null);
 
 const datasetStore = useDatasetStore();
+const uiStateStore = useUiStateStore();
+
+const {
+    filterMode,
+    massTagSortMode: globalSortMode,
+    individualTagSortOrder: sortOrder,
+    massTagSortOrder: globalSortOrder
+} = storeToRefs(uiStateStore);
 
 const isFiltering = computed(() => !!filterInput.value);
 

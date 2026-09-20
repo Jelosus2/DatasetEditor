@@ -5,9 +5,11 @@ import AutotaggerConsole from "@/components/AutotaggerConsole.vue";
 import ConfirmationAlert from "@/components/ConfirmationAlert.vue";
 
 import { useDatasetStore } from "@/stores/datasetStore";
+import { useUiStateStore } from "@/stores/uiStateStore";
 import { TaggerService } from "@/services/taggerService";
 import { useAlert } from "@/composables/useAlert";
 import { ref, computed, onMounted } from "vue";
+import { storeToRefs } from "pinia";
 
 import DownloadIcon from "@/assets/icons/update-download.svg";
 import DeleteIcon from "@/assets/icons/trash-bin.svg";
@@ -20,7 +22,6 @@ const STYLE_COMPARE_ROW_HEIGHT = 56;
 const STYLE_COMPARE_BUFFER = 8;
 const STYLE_COMPARE_WARNING_SEEN_KEY = "style-compare-kaloscope-warning-seen";
 
-const selectedModels = ref<Set<string>>(new Set());
 const consoleRef = ref<InstanceType<typeof AutotaggerConsole> | null>(null);
 const isInstalling = ref(false);
 const isUninstalling = ref(false);
@@ -45,9 +46,6 @@ const editModelTriedSave = ref(false);
 const isRemoveModelModalOpen = ref(false);
 const isDeleteModelModalOpen = ref(false);
 const modelToBeRemoved = ref("");
-const removeUnderscores = ref(true);
-const removeRedundantTags = ref(true);
-const disableCharacterThreshold = ref(false);
 const isTagging = ref(false);
 const isComparingStyle = ref(false);
 const isStyleCompareResultsModalOpen = ref(false);
@@ -60,6 +58,14 @@ const selectedDependencyAction = ref<"install" | "uninstall">("install");
 const isUninstallDependenciesModalOpen = ref(false);
 
 const datasetStore = useDatasetStore();
+const uiStateStore = useUiStateStore();
+
+const {
+    selectedAutotaggerModels: selectedModels,
+    removeUnderscores,
+    removeRedundantTags,
+    disableCharacterThreshold
+} = storeToRefs(uiStateStore);
 
 const modelNames = computed(() => Array.from(models.value.keys()));
 
@@ -213,7 +219,6 @@ taggerService.onServiceStopped = () => {
     modelsStatus.value = {};
     modelsDownloading.value = new Set();
     modelsDeleting.value = new Set();
-    selectedModels.value = new Set();
 
     isServiceRunning.value = false;
     isServiceStarting.value = false;
@@ -551,7 +556,10 @@ async function stopStyleComparison() {
 }
 
 onMounted(async () => {
-    models.value = await taggerService.getModelsConfiguration();
+    const loadedModels = await taggerService.getModelsConfiguration();
+
+    models.value = loadedModels;
+    uiStateStore.retainAvailableAutotaggerModels(loadedModels.keys());
 });
 </script>
 
