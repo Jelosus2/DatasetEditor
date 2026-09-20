@@ -103,14 +103,21 @@ export class TagDatabase {
 
         const statement = this.database.prepare<[string], TagBatch>(`
             SELECT tag, type, results FROM tags
-            WHERE tag LIKE ?
+            WHERE tag LIKE ? ESCAPE '!'
+            ORDER BY results DESC
             LIMIT 20
         `);
 
-        return statement.all(`${tagHint}%`).map((row) => ({
+        const escapedHint = this.escapeLikePattern(tagHint);
+
+        return statement.all(`%${escapedHint}%`).map((row) => ({
             tag: row.tag,
             type: row.type,
             output: Utilities.formatTagOutput(row.tag, row.results)
         }));
+    }
+
+    private escapeLikePattern(value: string) {
+        return value.replace(/[!%_]/g, "!$&");
     }
 }
