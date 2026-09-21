@@ -1,7 +1,9 @@
+import type { Settings } from "../../shared/settings-schema.js";
+
 import { Setting } from "../decorators/settings.js";
 import { App } from "../App.js";
 
-export class AppSettings {
+export class AppSettings implements Settings {
     constructor() {
         this.huggingFaceCacheDirectory = App.paths.defaultHuggingFacePath;
     }

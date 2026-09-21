@@ -1,4 +1,4 @@
-import type { Settings } from "../../shared/settings-schema";
+import type { Settings, SettingsActionId } from "../../shared/settings-schema";
 
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
 import { useAlert } from "@/composables/useAlert";
@@ -28,7 +28,7 @@ export class SettingsService {
         return result.settings;
     }
 
-    private async runAction(actionId: string) {
+    private async runAction(actionId: SettingsActionId) {
         return this.ipc.invoke("settings:action", actionId);
     }
 

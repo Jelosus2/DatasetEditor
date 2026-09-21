@@ -1,9 +1,9 @@
 import type { Dataset, DatasetPersistable, DatasetRenameOptions, RenameProgressPayload, RenameMapping, RenamePreviewItem, GlobalTags } from "./dataset.js";
 import type { IpcResult, CancelableIpcResult, IpcSelectionResult, IpcValidationResult, StoppableIpcResult, AbortableIpcResult } from "./ipc-result.js";
 import type { TaggerModelsStatus, TaggerModelConfiguration, TaggerWSPayload, StyleCompareItem } from "./tagger.js";
+import type { SettingsDefinition, SettingsActionId, Settings } from "./settings-schema.js";
 import type { AppCloseRequestPayload, AppCloseResponsePayload } from "./app-close.js";
 import type { DanbooruWikiPage, DanbooruPostPreview, Rating } from "./danbooru.js";
-import type { SettingsDefinition, Settings } from "./settings-schema.js";
 import type { CompletionItem } from "./autocompletion.js";
 import type { AppStatusPayload } from "./app-status.js";
 import type { Rect, DuplicateMethod } from "./image.js";
@@ -98,7 +98,7 @@ export type IpcInvokeMap = {
         }>;
     }
     "settings:action": {
-        args: [actionId: string];
+        args: [actionId: SettingsActionId];
         result: CancelableIpcResult<{
             message: string;
         }>;

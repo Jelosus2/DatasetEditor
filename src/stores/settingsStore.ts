@@ -60,9 +60,17 @@ export const useSettingsStore = defineStore("settings", () => {
         return !isEqual(buildSettings(/* snapshot = */ true), lastSaved.value);
     });
 
-    const restartKeys = computed(() =>
-        new Set(schema.value.filter((definition) => definition.requiresRestart).map((definition) => definition.key))
-    );
+    const restartKeys = computed(() => {
+        const keys = new Set<keyof Settings>();
+
+        for (const defition of schema.value) {
+            if (defition.type !== "action" && defition.requiresRestart) {
+                keys.add(defition.key);
+            }
+        }
+
+        return keys;
+    });
 
     const restartRequired = computed(() => {
         if (!lastSaved.value)

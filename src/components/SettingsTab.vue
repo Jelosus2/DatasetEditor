@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SettingsDefinition } from "../../shared/settings-schema";
+import type { ActionSettingDefinition, ShortcutSettingDefinition, StringArraySettingDefinition } from "../../shared/settings-schema";
 
 import AutocompletionInput from "@/components/AutocompletionInput.vue";
 import ConfirmationAlert from "@/components/ConfirmationAlert.vue";
@@ -60,11 +60,11 @@ function scrollToSection(section: string) {
     document.getElementById(slugify(section))?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function commitStringList(definition: SettingsDefinition) {
+function commitStringList(definition: StringArraySettingDefinition) {
     settingsOperations.setValue(definition, stringInputs[definition.key] ?? "");
 }
 
-function recordShortcut(field: SettingsDefinition, event: KeyboardEvent) {
+function recordShortcut(field: ShortcutSettingDefinition, event: KeyboardEvent) {
     if (event.key === "Escape") {
         (event.target as HTMLInputElement).blur();
         return;
@@ -98,7 +98,7 @@ async function confirmRepairAutotagger() {
     await settingsStore.repairTagger();
 }
 
-async function handleAction(field: SettingsDefinition) {
+async function handleAction(field: ActionSettingDefinition) {
     if (field.actionId === "repairAutotagger") {
         openRepairAutotaggerModal();
         return;
@@ -169,7 +169,10 @@ onMounted(() => {
                                     <div>
                                         <div class="font-medium">
                                             {{ field.label }}
-                                            <span v-if="field.requiresRestart" class="badge badge-warning badge-outline ml-2">
+                                            <span
+                                                v-if="field.type !== 'action' && field.requiresRestart"
+                                                class="badge badge-warning badge-outline ml-2"
+                                            >
                                                 Restart required
                                             </span>
                                         </div>

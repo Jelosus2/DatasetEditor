@@ -1,4 +1,4 @@
-import type { AppSettingKey, AppSettingValue, TypedSettingDef } from "../types/settings.js";
+import type { AppSettingKey, AppSettingValue } from "../types/settings.js";
 import type { Settings } from "../../shared/settings-schema.js";
 
 import { getSettingsMetadata } from "../decorators/settings.js";
@@ -21,7 +21,7 @@ export class SettingsManager {
 
     private buildDefaults(overrides: Partial<Settings> = {}) {
         const instance = new AppSettings();
-        const schema = this.getSchema() as TypedSettingDef[];
+        const schema = this.getSchema();
 
         const defaults = {} as Record<AppSettingKey, AppSettingValue>;
 

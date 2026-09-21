@@ -1,18 +1,20 @@
-import type { SettingDefinition } from "../../shared/settings-schema.js";
+import type { SettingDefinition, SettingDefinitionInput } from "../../shared/settings-schema.js";
 import type { GenericCtor } from "../types/decorator.js";
 
 import "reflect-metadata";
 
 const SETTINGS_METADATA = Symbol("settings-metadata");
 
-export function Setting(definition: Omit<SettingDefinition, "key">) {
+export function Setting(definition: SettingDefinitionInput) {
     return function (target: object, propertyKey: string) {
-        const existing: SettingDefinition[] = getSettingsMetadata(target.constructor as GenericCtor);
+        const existing = getSettingsMetadata(target.constructor as GenericCtor);
 
-        existing.push({
+        const setting = {
             ...definition,
             key: propertyKey
-        });
+        } as SettingDefinition;
+
+        existing.push(setting);
 
         Reflect.defineMetadata(SETTINGS_METADATA, existing, target.constructor);
     }

@@ -1,4 +1,4 @@
-import type { Settings } from "../../shared/settings-schema.js";
+import type { Settings, SettingsActionId } from "../../shared/settings-schema.js";
 import type { IpcInvokeMap } from "../../shared/ipc-types.js";
 import type { IpcMainInvokeEvent } from "electron";
 
@@ -12,7 +12,7 @@ import fs from "fs-extra";
 export class SettingsController {
 
     @IpcHandle("settings:get_schema")
-    getSchema() {
+    getSchema(): IpcInvokeMap["settings:get_schema"]["result"] {
         return App.settings.getSchema();
     }
 
@@ -37,7 +37,7 @@ export class SettingsController {
     }
 
     @IpcHandle("settings:action")
-    async action(_event: IpcMainInvokeEvent, actionId: string): Promise<IpcInvokeMap["settings:action"]["result"]> {
+    async action(_event: IpcMainInvokeEvent, actionId: SettingsActionId): Promise<IpcInvokeMap["settings:action"]["result"]> {
         if (actionId === "loadTagsCsv")
             return App.importTagsCsvFromDialog();
         if (actionId === "repairAutotagger")

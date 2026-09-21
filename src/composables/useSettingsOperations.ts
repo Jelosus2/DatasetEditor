@@ -1,4 +1,4 @@
-import type { SettingsDefinition, Settings } from "../../shared/settings-schema";
+import type { ActionSettingDefinition, DirectorySettingDefinition, SettingsDefinition, ValueSettingDefinition } from "../../shared/settings-schema";
 
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useAlert } from "@/composables/useAlert";
@@ -45,31 +45,35 @@ export function useSettingsOperations() {
         return [...map.entries()];
     });
 
-    function getValue(definition: SettingsDefinition) {
+    function getValue(definition: ValueSettingDefinition) {
         return settingsStore.getSetting(definition.key);
     }
 
-    function setValue(definition: SettingsDefinition, raw: unknown) {
-        const key = definition.key;
-
-        if (definition.type === "number")
-            settingsStore.setSetting(key, Number(raw));
-        else if (definition.type === "boolean")
-            settingsStore.setSetting(key, Boolean(raw));
-        else if (definition.type === "string[]")
-            settingsStore.setSetting(
-                key,
-                String(raw).split(",").map((value) => value.trim()).filter(Boolean)
-            );
-        else if (definition.type === "shortcut")
-            settingsStore.setSetting(key, String(raw));
-        else
-            settingsStore.setSetting(key, raw as Settings[keyof Settings]);
+    function setValue(definition: ValueSettingDefinition, raw: unknown) {
+        switch (definition.type) {
+            case "number":
+                settingsStore.setSetting(definition.key, Number(raw));
+                break;
+            case "boolean":
+                settingsStore.setSetting(definition.key, Boolean(raw));
+                break;
+            case "string[]":
+                settingsStore.setSetting(definition.key, String(raw).split(",").map((value) => value.trim()).filter(Boolean));
+                break;
+            default:
+                settingsStore.setSetting(definition.key, String(raw));
+        }
     }
 
-    async function runAction(definition: SettingsDefinition) {
-        if (definition.actionId === "loadTagsCsv")
-            await settingsStore.importTagsFromCsv();
+    async function runAction(definition: ActionSettingDefinition) {
+        switch (definition.actionId) {
+            case "loadTagsCsv":
+                await settingsStore.importTagsFromCsv();
+                break;
+            case "repairAutotagger":
+                await settingsStore.repairTagger();
+                break;
+        }
     }
 
     function formatShortcut(event: KeyboardEvent) {
@@ -80,7 +84,7 @@ export function useSettingsOperations() {
         return settingsStore.matchesShortcut(combo, event);
     }
 
-    async function pickDirectory(definition: SettingsDefinition) {
+    async function pickDirectory(definition: DirectorySettingDefinition) {
         const result = await settingsStore.pickDirectory();
 
         if (result.canceled) {
@@ -92,7 +96,7 @@ export function useSettingsOperations() {
         await validateDirectory(definition);
     }
 
-    async function validateDirectory(definition: SettingsDefinition) {
+    async function validateDirectory(definition: DirectorySettingDefinition) {
         const path = directoryInputs[definition.key]?.trim() ?? "";
         const currentStoreValue = settingsStore.getSetting(definition.key);
 
