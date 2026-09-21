@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import type { TagGroups } from "../../shared/tag-groups";
-
 import ExpandCollapseAllButton from "@/components/ExpandCollapseAllButton.vue";
 import AutocompletionInput from "@/components/AutocompletionInput.vue";
 
@@ -19,7 +17,6 @@ const tagInput = ref("");
 const renameInput = ref("");
 const tagGroupSearch = ref("");
 const importGroupSearch = ref("");
-const importedGroups = ref<TagGroups>(new Map());
 const expandedGroups = ref<Set<string>>(new Set());
 const importExpandedGroups = ref<Set<string>>(new Set());
 const draggingGroupTag = ref<string | null>(null);
@@ -27,6 +24,8 @@ const groupTagDropIndex = ref<number | null>(null);
 
 const tagGroupsOperations = useTagGroupsOperations();
 const tagGroupsStore = useTagGroupsStore();
+
+const importedGroups = computed(() => tagGroupsStore.importedGroups);
 
 const tagGroupsList = computed(() => {
     void tagGroupsStore.dataVersion;
@@ -93,6 +92,10 @@ function deleteGroup(mode: "selected" | "all") {
     renameInput.value = "";
 }
 
+async function saveTagGroups() {
+    await tagGroupsStore.saveTagGroups();
+}
+
 function addTag() {
     tagGroupsOperations.addTag(selectedGroup.value, tagInput.value);
 
@@ -104,11 +107,7 @@ function removeTag(tag: string, group?: string) {
 }
 
 async function importTagGroups() {
-    const result = await tagGroupsOperations.importTagGroups();
-    if (!result)
-        return;
-
-    importedGroups.value = result;
+    await tagGroupsOperations.importTagGroups();
 }
 
 async function exportGroupToJSON(mode: "one" | "all") {
@@ -160,7 +159,7 @@ function toggleImportedGroup(name: string) {
 }
 
 function clearImports() {
-    importedGroups.value = new Map();
+    tagGroupsStore.clearImportedGroups();
     importExpandedGroups.value = new Set();
     importGroupSearch.value = "";
 }
@@ -336,6 +335,13 @@ function onGroupTagDrop() {
                                 @click="deleteGroup('all')"
                             >
                                 Delete All Groups
+                            </button>
+                            <button
+                                class="btn btn-outline btn-success"
+                                type="button"
+                                @click="saveTagGroups"
+                            >
+                                Save Tag Groups
                             </button>
                         </div>
                         <div class="divider m-0 divider-horizontal not-dark:before:bg-gray-400 not-dark:after:bg-gray-400"></div>

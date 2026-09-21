@@ -1,3 +1,5 @@
+import type { TagGroups } from "../../shared/tag-groups";
+
 type AddGroupChangeRecord = {
     type: "add_group";
     group: string;
@@ -18,7 +20,7 @@ type RenameGroupChangeRecord = {
 
 type ClearGroupsChangeRecord = {
     type: "clear_groups";
-    previousGroups: Map<string, Set<string>>;
+    previousGroups: TagGroups;
 };
 
 type AddTagChangeRecord = {
@@ -42,6 +44,13 @@ type ReorderTagChangeRecord = {
     toIndex: number;
 };
 
+type ImportGroupsChangeRecord = {
+    type: "import_groups";
+    previousGroups: TagGroups;
+    nextGroups: TagGroups;
+    importedGroups: TagGroups;
+};
+
 export type TagGroupsChangeRecord =
     | AddGroupChangeRecord
     | RemoveGroupChangeRecord
@@ -49,4 +58,5 @@ export type TagGroupsChangeRecord =
     | ClearGroupsChangeRecord
     | AddTagChangeRecord
     | RemoveTagChangeRecord
-    | ReorderTagChangeRecord;
+    | ReorderTagChangeRecord
+    | ImportGroupsChangeRecord;

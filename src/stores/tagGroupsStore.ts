@@ -7,6 +7,7 @@ import { ref } from "vue";
 
 export const useTagGroupsStore = defineStore("tagGroups", () => {
     const tagGroups = ref<TagGroups>(new Map());
+    const importedGroups = ref<TagGroups>(new Map());
     const tagGroupsUndoStack = ref<TagGroupsChangeRecord[]>([]);
     const tagGroupsRedoStack = ref<TagGroupsChangeRecord[]>([]);
     const dataVersion = ref(0);
@@ -20,6 +21,48 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
     function recordHistory(change: TagGroupsChangeRecord) {
         tagGroupsUndoStack.value.push(change);
         tagGroupsRedoStack.value = [];
+    }
+
+    function cloneTagGroups(groups: TagGroups): TagGroups {
+        const clonedGroups: TagGroups = new Map();
+
+        for (const [groupName, tags] of groups)
+            clonedGroups.set(groupName, new Set(tags));
+
+        return clonedGroups;
+    }
+
+    function areTagGroupsEqual(first: TagGroups, second: TagGroups) {
+        if (first.size !== second.size)
+            return false;
+
+        const firstEntries = [...first.entries()];
+        const secondEntries = [...second.entries()];
+
+        for (let i = 0; i < firstEntries.length; i++) {
+            const [firstName, firstTags] = firstEntries[i];
+            const [secondName, secondTags] = secondEntries[i];
+
+            if (firstName !== secondName)
+                return false;
+
+            const firstTagList = [...firstTags];
+            const secondTagList = [...secondTags];
+
+            if (firstTagList.length !== secondTagList.length || firstTagList.some((tag, index) => tag !== secondTagList[index]))
+                return false
+        }
+
+        return true;
+    }
+
+    function clearImportedGroups() {
+        importedGroups.value = new Map();
+    }
+
+    function replaceTagGroups(groups: TagGroups) {
+        tagGroups.value = cloneTagGroups(groups);
+        triggerUpdate();
     }
 
     function addGroup(name: string, tags: string[], createHistory = true) {
@@ -64,7 +107,7 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         if (createHistory) {
             recordHistory({
                 type: "clear_groups",
-                previousGroups: new Map(tagGroups.value)
+                previousGroups: cloneTagGroups(tagGroups.value)
             });
         }
 
@@ -169,15 +212,32 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         triggerUpdate();
     }
 
-    function mergeTagGroups(incoming: TagGroups, override: boolean) {
-        if (override) {
-            tagGroups.value = new Map(incoming);
-            triggerUpdate();
-            return;
+    function mergeTagGroups(incoming: TagGroups, override: boolean, createHistory = true) {
+        const previousGroups = cloneTagGroups(tagGroups.value);
+        const nextGroups = override
+            ? cloneTagGroups(incoming)
+            : cloneTagGroups(previousGroups);
+
+        if (!override) {
+            for (const [groupName, tags] of incoming) {
+                nextGroups.set(groupName, new Set(tags));
+            }
         }
 
-        for (const [groupName, tags] of incoming.entries())
-            tagGroups.value.set(groupName, new Set(tags));
+        if (areTagGroupsEqual(previousGroups, nextGroups))
+            return;
+
+        tagGroups.value = nextGroups;
+
+        if (createHistory) {
+            recordHistory({
+                type: "import_groups",
+                previousGroups,
+                nextGroups: cloneTagGroups(nextGroups),
+                importedGroups: cloneTagGroups(incoming)
+            });
+        }
+
         triggerUpdate();
     }
 
@@ -242,6 +302,10 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
             case "reorder_tag":
                 reorderTagInGroup(change.group, change.tag, change.fromIndex, /* createHistory = */ false);
                 break;
+            case "import_groups":
+                replaceTagGroups(change.previousGroups);
+                importedGroups.value = cloneTagGroups(change.importedGroups);
+                break;
         }
 
         tagGroupsRedoStack.value.push(change);
@@ -274,6 +338,10 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
             case "reorder_tag":
                 reorderTagInGroup(change.group, change.tag, change.toIndex, /* createHistory = */ false);
                 break;
+            case "import_groups":
+                replaceTagGroups(change.nextGroups);
+                clearImportedGroups();
+                break;
         }
 
         tagGroupsUndoStack.value.push(change);
@@ -303,7 +371,12 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
     }
 
     async function importTagGroups() {
-        return tagGroupsService.importTagGroups();
+        const result = await tagGroupsService.importTagGroups();
+
+        if (result)
+            importedGroups.value = cloneTagGroups(result);
+
+        return result;
     }
 
     async function exportTagGroups(tagGroups: TagGroups) {
@@ -312,11 +385,13 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
 
     return {
         tagGroups,
+        importedGroups,
         dataVersion,
         recordHistory,
         addGroup,
         removeGroup,
         clearGroups,
+        clearImportedGroups,
         addTagsToGroup,
         removeTagsFromGroup,
         renameGroup,
