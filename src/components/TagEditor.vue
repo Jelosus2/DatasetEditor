@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ExpandCollapseAllButton from "@/components/ExpandCollapseAllButton.vue";
 import AutocompletionInput from "@/components/AutocompletionInput.vue";
+import EditableTagChip from "@/components/EditableTagChip.vue";
 
 import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts";
 import { useTagOperations } from "@/composables/useTagOperations";
@@ -468,6 +469,18 @@ function addTagToImageFilter(tag: string) {
     emit("append-tag-filter", tag);
     closeTagContextMenu();
 }
+
+function renameDisplayedTag(originalTag: string, newTag: string) {
+    tagOperations.replaceTag(originalTag, [newTag], new Set(props.selectedImages));
+}
+
+function renameGlobalTag(originalTag: string, newTag: string) {
+    const imagesWithTag = datasetStore.globalTags.get(originalTag);
+    if (!imagesWithTag || imagesWithTag.size === 0)
+        return;
+
+    tagOperations.replaceTag(originalTag, [newTag], new Set(imagesWithTag));
+}
 </script>
 
 <template>
@@ -595,36 +608,46 @@ function addTagToImageFilter(tag: string) {
                             >
                                 {{ draggingTag }}
                             </div>
-                            <div
-                                class="relative h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-gray-700 flex items-center"
+                            <EditableTagChip
+                                :tag="tag"
+                                class="relative h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-gray-700"
                                 :class="{
-                                    'dark:bg-warning/50': (isFiltering && filterTagsSet.has(tag.toLowerCase())) || highlightSet.has(tag),
-                                    'hover:bg-red-300 dark:hover:bg-rose-900': !draggingTag,
-
+                                    'dark:bg-warning/50':
+                                        (isFiltering && filterTagsSet.has(tag.toLowerCase()))
+                                        || highlightSet.has(tag),
+                                    'hover:bg-red-300 dark:hover:bg-rose-900': !draggingTag
                                 }"
+                                @commit="renameDisplayedTag(tag, $event)"
+                                @remove="removeTag(tag)"
                                 @contextmenu.stop.prevent="openTagContextMenu($event, tag, 'editor')"
                                 @dragover.stop.prevent="setDropIndex($event, tag, index)"
                                 @drop.stop.prevent="onTagDrop"
-                                @click="removeTag(tag)"
                             >
-                                <span
-                                    v-show="isDraggable"
-                                    class="cursor-grab select-none opacity-70 pr-2"
-                                    draggable="true"
-                                    @mousedown.stop
-                                    @click.stop
-                                    @dragstart="onTagDragStart(tag, $event)"
-                                    @dragend="onTagDragEnd"
-                                >
-                                    <HandleIcon />
-                                </span>
-                                <span>{{ tag }}</span>
-                                <StarIcon
-                                    v-if="triggerTag === tag"
-                                    class="pointer-events-none absolute -top-1.5 -right-2 h-4 w-4 text-amber-600 dark:text-amber-300"
-                                    title="Trigger"
-                                />
-                            </div>
+                                <template #prefix="{ editing }">
+                                    <span
+                                        v-show="isDraggable"
+                                        class="cursor-grab select-none pr-2"
+                                        :class="{
+                                            'opacity-70': !editing,
+                                            'pointer-events-none opacity-0': editing
+                                        }"
+                                        draggable="true"
+                                        @mousedown.stop
+                                        @click.stop
+                                        @dragstart="onTagDragStart(tag, $event)"
+                                        @dragend="onTagDragEnd"
+                                    >
+                                        <HandleIcon />
+                                    </span>
+                                </template>
+                                <template #suffix>
+                                    <StarIcon
+                                        v-if="triggerTag === tag"
+                                        class="pointer-events-none absolute -top-1.5 -right-2 h-4 w-4 text-amber-600 dark:text-amber-300"
+                                        title="Trigger"
+                                    />
+                                </template>
+                            </EditableTagChip>
                         </template>
                         <div
                             v-if="draggingTag && dropIndex === displayedTagsList.length"
@@ -704,15 +727,20 @@ function addTagToImageFilter(tag: string) {
                         </div>
                     </div>
                     <div class="mb-2 flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-auto scroll-smooth pt-1">
-                        <div
+                        <EditableTagChip
                             v-for="tag in displayedGlobalTagsList"
                             :key="tag"
-                            class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-red-300 dark:hover:bg-rose-900 dark:bg-gray-700"
-                            @click="removeGlobalTag(tag)"
+                            :tag="tag"
+                            :label="
+                                settingsStore.showTagCount
+                                    ? `${tag} | ${datasetStore.globalTags.get(tag)?.size ?? 0}`
+                                    : tag
+                            "
+                            class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-red-300 dark:bg-gray-700 dark:hover:bg-rose-900"
+                            @commit="renameGlobalTag(tag, $event)"
+                            @remove="removeGlobalTag(tag)"
                             @contextmenu.prevent="openTagContextMenu($event, tag, 'global')"
-                        >
-                            {{ settingsStore.showTagCount ? tag + " | " + datasetStore.globalTags.get(tag)!.size : tag }}
-                        </div>
+                        />
                     </div>
                     <div class="mt-auto flex flex-col gap-2 border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
                         <div class="flex gap-2">

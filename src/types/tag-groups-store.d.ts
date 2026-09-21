@@ -51,6 +51,13 @@ type ImportGroupsChangeRecord = {
     importedGroups: TagGroups;
 };
 
+type RenameTagChangeRecord = {
+    type: "rename_tag";
+    group: string;
+    previousTags: string[];
+    nextTags: string[];
+};
+
 export type TagGroupsChangeRecord =
     | AddGroupChangeRecord
     | RemoveGroupChangeRecord
@@ -58,5 +65,6 @@ export type TagGroupsChangeRecord =
     | ClearGroupsChangeRecord
     | AddTagChangeRecord
     | RemoveTagChangeRecord
+    | RenameTagChangeRecord
     | ReorderTagChangeRecord
     | ImportGroupsChangeRecord;

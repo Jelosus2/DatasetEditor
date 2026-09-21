@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ExpandCollapseAllButton from "@/components/ExpandCollapseAllButton.vue";
 import AutocompletionInput from "@/components/AutocompletionInput.vue";
+import EditableTagChip from "@/components/EditableTagChip.vue";
 
 import { useTagGroupsOperations } from "@/composables/useTagGroupsOperations";
 import { useTagGroupsStore } from "@/stores/tagGroupsStore";
@@ -241,6 +242,13 @@ function onGroupTagDrop() {
     draggingGroupTag.value = null;
     groupTagDropIndex.value = null;
 }
+
+function renameSelectedGroupTag(originalTag: string, newTag: string) {
+    if (!selectedGroup.value)
+        return;
+
+    tagGroupsOperations.renameTag(selectedGroup.value, originalTag, newTag);
+}
 </script>
 
 <template>
@@ -393,27 +401,33 @@ function onGroupTagDrop() {
                                 >
                                     {{ draggingGroupTag }}
                                 </div>
-                                <div
+                                <EditableTagChip
+                                    :tag="tag"
                                     data-role="group-tag-chip"
-                                    class="flex h-fit w-fit items-center bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-red-300 dark:bg-gray-700 dark:hover:bg-rose-900"
+                                    class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-red-300 dark:bg-gray-700 dark:hover:bg-rose-900"
+                                    @commit="renameSelectedGroupTag(tag, $event)"
+                                    @remove="removeTag(tag)"
                                     @dragover.stop.prevent="setGroupTagDropIndex($event, tag, index)"
                                     @drop.stop.prevent="onGroupTagDrop"
-                                    @click="removeTag(tag)"
                                 >
-                                    <span
-                                        v-if="canReorderSelectedGroupTags"
-                                        class="cursor-grab select-none pr-2 opacity-70"
-                                        draggable="true"
-                                        @mousedown.stop
-                                        @click.stop
-                                        @dragstart="onGroupTagDragStart(tag, $event)"
-                                        @dragend="onGroupTagDragEnd"
-                                    >
-                                        <HandleIcon />
-                                    </span>
-
-                                    <span>{{ tag }}</span>
-                                </div>
+                                    <template #prefix="{ editing }">
+                                        <span
+                                            v-if="canReorderSelectedGroupTags"
+                                            class="cursor-grab select-none pr-2"
+                                            :class="{
+                                                'opacity-70': !editing,
+                                                'pointer-events-none opacity-0': editing
+                                            }"
+                                            draggable="true"
+                                            @mousedown.stop
+                                            @click.stop
+                                            @dragstart="onGroupTagDragStart(tag, $event)"
+                                            @dragend="onGroupTagDragEnd"
+                                        >
+                                            <HandleIcon />
+                                        </span>
+                                    </template>
+                                </EditableTagChip>
                             </template>
                             <div
                                 v-if="draggingGroupTag && groupTagDropIndex === selectedGroupTags.length"

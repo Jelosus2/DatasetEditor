@@ -65,6 +65,14 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         triggerUpdate();
     }
 
+    function replaceGroupTags(group: string, tags: string[]) {
+        if (!tagGroups.value.has(group))
+            return;
+
+        tagGroups.value.set(group, new Set(tags));
+        triggerUpdate();
+    }
+
     function addGroup(name: string, tags: string[], createHistory = true) {
         if (!name || tagGroups.value.has(name))
             return;
@@ -274,6 +282,33 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         triggerUpdate();
     }
 
+    function renameTagInGroup(group: string, originalTag: string, newTagInput: string, createHistory = true) {
+        const tagGroup = tagGroups.value.get(group);
+        const newTag = newTagInput.trim();
+
+        if (!tagGroup || !newTag || newTag === originalTag || !tagGroup.has(originalTag))
+            return;
+
+        const previousTags = [...tagGroup];
+        const originalIndex = previousTags.indexOf(originalTag);
+
+        const nextTags = previousTags.filter((tag) => tag !== originalTag && tag !== newTag);
+        nextTags.splice(Math.min(originalIndex, nextTags.length), 0, newTag);
+
+        tagGroups.value.set(group, new Set(nextTags));
+
+        if (createHistory) {
+            recordHistory({
+                type: "rename_tag",
+                group,
+                previousTags,
+                nextTags: [...nextTags]
+            });
+        }
+
+        triggerUpdate();
+    }
+
     function undoTagGroupsAction() {
         const change = tagGroupsUndoStack.value.pop();
         if (!change)
@@ -305,6 +340,9 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
             case "import_groups":
                 replaceTagGroups(change.previousGroups);
                 importedGroups.value = cloneTagGroups(change.importedGroups);
+                break;
+            case "rename_tag":
+                replaceGroupTags(change.group, change.previousTags);
                 break;
         }
 
@@ -341,6 +379,9 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
             case "import_groups":
                 replaceTagGroups(change.nextGroups);
                 clearImportedGroups();
+                break;
+            case "rename_tag":
+                replaceGroupTags(change.group, change.nextTags);
                 break;
         }
 
@@ -397,6 +438,7 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         renameGroup,
         mergeTagGroups,
         reorderTagInGroup,
+        renameTagInGroup,
         undoTagGroupsAction,
         redoTagGroupsAction,
         loadTagGroups,
