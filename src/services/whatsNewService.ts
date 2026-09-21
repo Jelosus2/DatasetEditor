@@ -9,16 +9,17 @@ export class WhatsNewService {
         const result = await this.ipc.invoke("whats_new:get");
 
         if (result.error) {
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
             return null;
         }
 
-        return result.payload!;
+        return result.payload;
     }
 
     async markSeen() {
         const result = await this.ipc.invoke("whats_new:mark_seen");
+
         if (result.error)
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
     }
 }

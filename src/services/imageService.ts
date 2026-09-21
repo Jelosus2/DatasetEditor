@@ -52,23 +52,28 @@ export class ImageService {
 
         const result = await this.ipc.invoke("image:crop", image.path, cropRects, overwrite);
 
+        if (result.error) {
+            this.alert.showAlert("error", result.message);
+            return true;
+        }
+
         if (result.canceled) {
             this.alert.showAlert("info", "Saving cropped image was canceled");
             return true;
         }
 
-        if (!result.error && overwrite)
+        if (overwrite)
             image.filePath = image.filePath.split("?")[0] + `?v=${Date.now()}`;
 
-        this.alert.showAlert(result.error ? "error" : "success", result.message!);
-        return result.error;
+        this.alert.showAlert("success", result.message);
+        return false;
     }
 
     async getDuplicateGroups(imagePaths: string[], method: DuplicateMethod = "dhash", threshold: number) {
         const result = await this.ipc.invoke("image:find_duplicates", imagePaths, method, threshold);
 
         if (result.error)
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
 
         return result;
     }

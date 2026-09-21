@@ -1,3 +1,5 @@
+import type { IpcInvokeMap } from "../../shared/ipc-types.js";
+
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
 import { Utilities } from "../utils/Utilities.js";
 import { App } from "../App.js";
@@ -6,7 +8,7 @@ import { App } from "../App.js";
 export class WhatsNewController {
 
     @IpcHandle("whats_new:get")
-    async getWhatsNew() {
+    async getWhatsNew(): Promise<IpcInvokeMap["whats_new:get"]["result"]> {
         try {
             const payload = await App.whatsNew.getPayload();
             return { error: false, payload };
@@ -18,7 +20,7 @@ export class WhatsNewController {
     }
 
     @IpcHandle("whats_new:mark_seen")
-    async markSeen() {
+    async markSeen(): Promise<IpcInvokeMap["whats_new:mark_seen"]["result"]> {
         try {
             await App.whatsNew.markCurrentVersionAsSeen();
             return { error: false };

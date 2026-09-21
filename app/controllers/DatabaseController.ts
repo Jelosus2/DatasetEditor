@@ -1,3 +1,4 @@
+import type { IpcInvokeMap } from "../../shared/ipc-types.js";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
@@ -8,7 +9,7 @@ import { App } from "../App.js";
 export class DatabaseController {
 
     @IpcHandle("database:retrieve_completions")
-    retrieveTagCompletions(_event: IpcMainInvokeEvent, tagHint: string) {
+    retrieveTagCompletions(_event: IpcMainInvokeEvent, tagHint: string): IpcInvokeMap["database:retrieve_completions"]["result"] {
         try {
             const tagCompletions = App.database.retrieveTagCompletions(tagHint);
             return tagCompletions;

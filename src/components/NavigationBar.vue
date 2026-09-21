@@ -48,7 +48,7 @@ async function handleUpdateAction() {
         isChecking.value = false;
 
         if (result.error)
-            showAlert("error", result.message!);
+            showAlert("error", result.message);
         else if (!result.isUpdateAvailable)
             showAlert("info", "You're in the latest version of the app");
     } else if (updateState.value === "download") {
@@ -57,7 +57,7 @@ async function handleUpdateAction() {
 
         const result = await updateService.downloadUpdate();
         if (result.error) {
-            showAlert("error", result.message!);
+            showAlert("error", result.message);
             isDownloading.value = false;
         }
     } else {

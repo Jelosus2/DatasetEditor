@@ -1,4 +1,5 @@
-import type { Rect } from "../../shared/image.js";
+import type { Rect, DuplicateMethod } from "../../shared/image.js";
+import type { IpcInvokeMap } from "../../shared/ipc-types.js";
 import type { ImageHash } from "../types/image.js";
 import type { IpcMainInvokeEvent } from "electron";
 import type { Region } from "sharp";
@@ -15,7 +16,7 @@ import url from "node:url";
 export class ImageController {
 
     @IpcHandle("image:set_background")
-    async setBackgroundColor(_event: IpcMainInvokeEvent, images: string[], color: string) {
+    async setBackgroundColor(_event: IpcMainInvokeEvent, images: string[], color: string): Promise<IpcInvokeMap["image:set_background"]["result"]> {
         const results = await Utilities.processMap(images, async (imagePath) => {
             const tempPath = imagePath + ".tmp";
 
@@ -51,7 +52,7 @@ export class ImageController {
     }
 
     @IpcHandle("image:crop")
-    async cropImage(_event: IpcMainInvokeEvent, imagePath: string, cropRects: Rect[], overwrite: boolean) {
+    async cropImage(_event: IpcMainInvokeEvent, imagePath: string, cropRects: Rect[], overwrite: boolean): Promise<IpcInvokeMap["image:crop"]["result"]> {
         let tempPath: string | null = null;
 
         try {
@@ -114,7 +115,7 @@ export class ImageController {
     }
 
     @IpcHandle("image:dimensions")
-    async getImageDimensions(_event: IpcMainInvokeEvent, imagePath: string) {
+    async getImageDimensions(_event: IpcMainInvokeEvent, imagePath: string): Promise<IpcInvokeMap["image:dimensions"]["result"]> {
         try {
             const metadata = await sharp(imagePath).metadata();
 
@@ -130,7 +131,12 @@ export class ImageController {
     }
 
     @IpcHandle("image:find_duplicates")
-    async findDuplicates(_event: IpcMainInvokeEvent, imagePaths: string[], method: "dhash" | "phash" = "dhash", threshold = 10) {
+    async findDuplicates(
+        _event: IpcMainInvokeEvent,
+        imagePaths: string[],
+        method: DuplicateMethod = "dhash",
+        threshold = 10
+    ): Promise<IpcInvokeMap["image:find_duplicates"]["result"]> {
         const total = imagePaths.length;
         if (total === 0)
             return { error: false, groups: [] };
@@ -158,7 +164,7 @@ export class ImageController {
         } catch (error) {
             console.error(error);
             App.logger.error(`[Image Manager] Error trying to find duplicate images: ${Utilities.getErrorMessage(error)}`);
-            return { error: true, message: "Failed to find duplicates, check the logs for more information", groups: [] };
+            return { error: true, message: "Failed to find duplicates, check the logs for more information" };
         }
     }
 

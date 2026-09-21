@@ -25,11 +25,11 @@ export class TagGroupsService {
         const result = await this.ipc.invoke("tag_groups:load");
 
         if (result.error) {
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
             return null;
         }
 
-        return result.tagGroups!;
+        return result.tagGroups;
     }
 
     async saveTagGroups(tagGroups: TagGroups) {
@@ -37,7 +37,7 @@ export class TagGroupsService {
         const result = await this.ipc.invoke("tag_groups:save", rawTagGroups);
 
         if (result.error) {
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
             return;
         }
 
@@ -48,7 +48,7 @@ export class TagGroupsService {
         const result = await this.ipc.invoke("tag_groups:import");
 
         if (result.error) {
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
             return null;
         }
 
@@ -57,7 +57,7 @@ export class TagGroupsService {
             return null;
         }
 
-        return result.tagGroups!;
+        return result.tagGroups;
     }
 
     async exportTagGroups(tagGroups: TagGroups) {
@@ -65,7 +65,7 @@ export class TagGroupsService {
         const result = await this.ipc.invoke("tag_groups:export", rawTagGroups);
 
         if (result.error) {
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
             return;
         }
 

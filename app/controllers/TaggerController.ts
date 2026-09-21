@@ -1,5 +1,6 @@
 import type { DeviceWSResponse, ModelsStatusWSResponse, DeleteModelWSResponse, ModelActionWSResponse } from "../types/tagger.js";
 import type { TaggerModelConfiguration, TaggerWSPayload } from "../../shared/tagger.js";
+import type { IpcInvokeMap } from "../../shared/ipc-types.js";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
@@ -17,13 +18,16 @@ export class TaggerController {
     }
 
     @IpcHandle("tagger:load_models_config")
-    async loadModelsConfiguration() {
+    async loadModelsConfiguration(): Promise<IpcInvokeMap["tagger:load_models_config"]["result"]> {
         App.logger.info("[Tagger Model Manager] Models configuration loaded successfully");
         return App.taggerModels.loadConfiguration();
     }
 
     @IpcHandle("tagger:update_models_config")
-    async updateModelsConfiguration(_event: IpcMainInvokeEvent, config: TaggerModelConfiguration) {
+    async updateModelsConfiguration(
+        _event: IpcMainInvokeEvent,
+        config: TaggerModelConfiguration
+    ): Promise<IpcInvokeMap["tagger:update_models_config"]["result"]> {
         try {
             await App.taggerModels.updateConfiguration(config);
 
@@ -37,7 +41,7 @@ export class TaggerController {
     }
 
     @IpcHandle("tagger:install")
-    async installDependencies() {
+    async installDependencies(): Promise<IpcInvokeMap["tagger:install"]["result"]> {
         try {
             App.logger.info("[Tagger Manager] Installing dependencies...");
             const result = await App.tagger.runInstallProcess();
@@ -57,7 +61,7 @@ export class TaggerController {
     }
 
     @IpcHandle("tagger:uninstall")
-    async uninstallDependencies() {
+    async uninstallDependencies(): Promise<IpcInvokeMap["tagger:uninstall"]["result"]> {
         try {
             App.logger.info("[Tagger Manager] Uninstalling dependencies...");
             const result = await App.tagger.runUninstallProcess();
@@ -77,7 +81,7 @@ export class TaggerController {
     }
 
     @IpcHandle("tagger:start")
-    async startTagger() {
+    async startTagger(): Promise<IpcInvokeMap["tagger:start"]["result"]> {
         try {
             const settings = await App.settings.loadSettings();
 
@@ -107,7 +111,7 @@ export class TaggerController {
     }
 
     @IpcHandle("tagger:stop")
-    stopTagger() {
+    stopTagger(): IpcInvokeMap["tagger:stop"]["result"] {
         try {
             App.logger.info("[Tagger Manager] Stopping process...");
             this.port = null;
@@ -123,7 +127,7 @@ export class TaggerController {
     }
 
     @IpcHandle("tagger:get_device")
-    async getDevice() {
+    async getDevice(): Promise<IpcInvokeMap["tagger:get_device"]["result"]> {
         try {
             this.port ??= (await App.settings.loadSettings()).taggerPort;
             const response = await APIClient.sendCommandWS<DeviceWSResponse>(this.port, {
@@ -140,7 +144,11 @@ export class TaggerController {
     }
 
     @IpcHandle("tagger:tag_images")
-    async tagImages(_event: IpcMainInvokeEvent, payload: TaggerWSPayload, removeRedundantTags: boolean) {
+    async tagImages(
+        _event: IpcMainInvokeEvent,
+        payload: TaggerWSPayload,
+        removeRedundantTags: boolean
+    ): Promise<IpcInvokeMap["tagger:tag_images"]["result"]> {
         try {
             const settings = await App.settings.loadSettings();
 
@@ -164,7 +172,7 @@ export class TaggerController {
             const errorMessage = Utilities.getErrorMessage(error);
             if (errorMessage === "Tagging was aborted") {
                 App.logger.info("[Tagger Manager] Stopped the tagging process");
-                return { error: false, message: errorMessage };
+                return { error: false, aborted: true, message: errorMessage };
             }
 
             console.error(error);
@@ -174,12 +182,12 @@ export class TaggerController {
     }
 
     @IpcHandle("tagger:stop_tagging")
-    stopTagging() {
+    stopTagging(): IpcInvokeMap["tagger:stop_tagging"]["result"] {
         APIClient.cancelTagging();
     }
 
     @IpcHandle("tagger:compare_style")
-    async compareStyle(_event: IpcMainInvokeEvent, images: string[]) {
+    async compareStyle(_event: IpcMainInvokeEvent, images: string[]): Promise<IpcInvokeMap["tagger:compare_style"]["result"]> {
         try {
             this.port ??= (await App.settings.loadSettings()).taggerPort;
 
@@ -193,7 +201,7 @@ export class TaggerController {
             const errorMessage = Utilities.getErrorMessage(error);
             if (errorMessage === "Style comparison was aborted") {
                 App.logger.info("[Tagger Manager] Stopped the style comparison process");
-                return { error: false, message: errorMessage };
+                return { error: false, aborted: true, message: errorMessage };
             }
 
             console.error(error);
@@ -203,17 +211,22 @@ export class TaggerController {
     }
 
     @IpcHandle("tagger:stop_style_compare")
-    stopStyleCompare() {
+    stopStyleCompare(): IpcInvokeMap["tagger:stop_style_compare"]["result"] {
         APIClient.cancelStyleCompare();
     }
 
     @IpcHandle("tagger:resize_terminal")
-    resizeTerminal(_event: IpcMainInvokeEvent, columns: number, rows: number) {
+    resizeTerminal(_event: IpcMainInvokeEvent, columns: number, rows: number): IpcInvokeMap["tagger:resize_terminal"]["result"] {
         App.tagger.resizeTerminal(columns, rows);
     }
 
     @IpcHandle("tagger:download_model")
-    async downloadModel(_event: IpcMainInvokeEvent, modelRepo: string, modelFile: string, tagsFile: string) {
+    async downloadModel(
+        _event: IpcMainInvokeEvent,
+        modelRepo: string,
+        modelFile: string,
+        tagsFile: string
+    ): Promise<IpcInvokeMap["tagger:download_model"]["result"]> {
         try {
             this.port ??= (await App.settings.loadSettings()).taggerPort;
 
@@ -236,7 +249,7 @@ export class TaggerController {
     }
 
     @IpcHandle("tagger:models_status")
-    async getModelsStatus() {
+    async getModelsStatus(): Promise<IpcInvokeMap["tagger:models_status"]["result"]> {
         try {
             this.port ??= (await App.settings.loadSettings()).taggerPort;
             const models = await App.taggerModels.loadConfiguration();
@@ -256,7 +269,7 @@ export class TaggerController {
     }
 
     @IpcHandle("tagger:delete_model")
-    async deleteModel(_event: IpcMainInvokeEvent, modelRepo: string) {
+    async deleteModel(_event: IpcMainInvokeEvent, modelRepo: string): Promise<IpcInvokeMap["tagger:delete_model"]["result"]> {
         try {
             this.port ??= (await App.settings.loadSettings()).taggerPort;
 

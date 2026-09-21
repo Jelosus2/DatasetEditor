@@ -1,4 +1,5 @@
 import type { Dataset, DatasetPersistable, DatasetRenameOptions, GlobalTags, RenamePair, RenamePreviewItem, RenameProgressPayload } from "../../shared/dataset.js";
+import type { IpcInvokeMap } from "../../shared/ipc-types.js";
 import type { RenamePlanEntry } from "../types/dataset.js";
 import type { IpcMainInvokeEvent } from "electron";
 
@@ -23,7 +24,12 @@ export class DatasetController {
     }
 
     @IpcHandle("dataset:load")
-    async loadDataset(_event: IpcMainInvokeEvent, isAllSaved: boolean, reloadDataset = false, lastDirectory: string | null = null) {
+    async loadDataset(
+        _event: IpcMainInvokeEvent,
+        isAllSaved: boolean,
+        reloadDataset = false,
+        lastDirectory: string | null = null
+    ): Promise<IpcInvokeMap["dataset:load"]["result"]> {
         if (!isAllSaved && !await this.confirmedUnsavedChanges()) {
             App.logger.info("[Dataset Manager] Dataset load was canceled");
             return { error: false, canceled: true };
@@ -62,7 +68,7 @@ export class DatasetController {
     }
 
     @IpcHandle("dataset:save")
-    async saveDataset(_event: IpcMainInvokeEvent, dataset: DatasetPersistable) {
+    async saveDataset(_event: IpcMainInvokeEvent, dataset: DatasetPersistable): Promise<IpcInvokeMap["dataset:save"]["result"]> {
         try {
             for (const properties of dataset.values()) {
                 const tags = Array.from(properties.tags).join(", ");
@@ -77,13 +83,14 @@ export class DatasetController {
             return { error: false };
         } catch (error) {
             console.error(error);
+
             App.logger.error(`[Dataset Manager] Error while trying to save the dataset: ${Utilities.getErrorMessage(error)}`);
             return { error: true, message: "Failed to save the dataset, check the logs for more information" };
         }
     }
 
     @IpcHandle("dataset:compare")
-    compare(_event: IpcMainInvokeEvent, dataset: DatasetPersistable) {
+    compare(_event: IpcMainInvokeEvent, dataset: DatasetPersistable): IpcInvokeMap["dataset:compare"]["result"] {
         if (!this.originalDataset)
             return true;
 
@@ -107,7 +114,7 @@ export class DatasetController {
     }
 
     @IpcHandle("dataset:trash")
-    async trashDatasetPairs(_event: IpcMainInvokeEvent, filePaths: string[]) {
+    async trashDatasetPairs(_event: IpcMainInvokeEvent, filePaths: string[]): Promise<IpcInvokeMap["dataset:trash"]["result"]> {
         const results: Array<
             | { status: "fulfilled"; filePath: string }
             | { status: "rejected"; reason: unknown; path: string }
@@ -145,14 +152,18 @@ export class DatasetController {
             return { error: true, message: "Error trashing file, check the logs for more information" };
         }
 
-        const trashedImages = successes.map((entry) => entry.filePath!);
+        const trashedImages = successes.map((entry) => entry.filePath);
         this.removeImagesFromOriginalDataset(trashedImages);
 
         return { error: false, message: `Sent ${successes.length} pair of files to the trash bin` };
     }
 
     @IpcHandle("dataset:rename")
-    async renameDataset(_event: IpcMainInvokeEvent, imagePaths: string[], options: DatasetRenameOptions | number) {
+    async renameDataset(
+        _event: IpcMainInvokeEvent,
+        imagePaths: string[],
+        options: DatasetRenameOptions | number
+    ): Promise<IpcInvokeMap["dataset:rename"]["result"]> {
         if (!imagePaths.length)
             return { error: false, renamedCount: 0, preview: [], conflicts: 0 };
 
@@ -227,9 +238,11 @@ export class DatasetController {
 
             updateProgress("done");
             App.logger.info(`[Dataset Manager] Successfully renamed ${plan.length} images`);
+
             return { error: false, renamedCount: plan.length, mappings, preview, conflicts: 0 };
         } catch (error) {
             console.error(error);
+
             App.logger.error(`[Dataset Manager] Error while renaming dataset: ${Utilities.getErrorMessage(error)}`);
             App.logger.warning("[Dataset Manager] Rename failed. Reverting changes...");
 
@@ -240,6 +253,7 @@ export class DatasetController {
                 return { error: true, message: "Rename failed, but files were restored to their original names", preview, conflicts: 0 };
             } catch (rollbackError) {
                 console.error(rollbackError);
+
                 App.logger.error(`[Dataset Manager] Rename rollback failed: ${Utilities.getErrorMessage(rollbackError)}`);
                 return { error: true, message: "Critical error: rename failed and rollback could not be completed. Please check for files named .tmp", preview, conflicts: 0 };
             }
@@ -247,7 +261,7 @@ export class DatasetController {
     }
 
     @IpcHandle("dataset:open_in_explorer")
-    async openInExplorer(_event: IpcMainInvokeEvent, filePath: string) {
+    async openInExplorer(_event: IpcMainInvokeEvent, filePath: string): Promise<IpcInvokeMap["dataset:open_in_explorer"]["result"]> {
         try {
             const normalizedPath = path.normalize(filePath);
 

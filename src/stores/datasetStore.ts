@@ -712,11 +712,9 @@ export const useDatasetStore = defineStore("dataset", () => {
         if (!result)
             return;
 
-        if (result.directoryPath)
-            lastDatasetDirectory.value = result.directoryPath;
-
-        dataset.value = result.dataset!;
-        globalTags.value = result.globalTags!;
+        lastDatasetDirectory.value = result.directoryPath;
+        dataset.value = result.dataset;
+        globalTags.value = result.globalTags;
         tagDiff.value = new Map();
 
         resetSelectionState();

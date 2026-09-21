@@ -28,7 +28,7 @@ export class DatasetService {
         const result = await this.ipc.invoke("dataset:load", isAllSaved, reloadDataset, lastDirectory);
 
         if (result.error) {
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
             return null;
         }
 
@@ -45,7 +45,7 @@ export class DatasetService {
         const result = await this.ipc.invoke("dataset:save", persistableDataset);
 
         if (result.error) {
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
             return;
         }
 

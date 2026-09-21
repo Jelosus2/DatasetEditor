@@ -88,7 +88,7 @@ export function useSettingsOperations() {
             return;
         }
 
-        directoryInputs[definition.key] = result.path!;
+        directoryInputs[definition.key] = result.path;
         await validateDirectory(definition);
     }
 
@@ -106,7 +106,7 @@ export function useSettingsOperations() {
 
         const result = await settingsStore.validateDirectory(path);
         if (!result.ok) {
-            directoryErrors[definition.key] = result.message!;
+            directoryErrors[definition.key] = result.message;
             return;
         }
 

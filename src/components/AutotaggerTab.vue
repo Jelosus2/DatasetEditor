@@ -494,7 +494,7 @@ async function downloadModel(model: string) {
         return;
 
     modelsStatus.value[model] = true;
-    cacheSizeBytes.value = result.cacheSizeBytes!;
+    cacheSizeBytes.value = result.cacheSizeBytes;
 }
 
 async function deleteModel(model: string) {
@@ -510,7 +510,7 @@ async function deleteModel(model: string) {
 
     modelsStatus.value[model] = false;
     selectedModels.value.delete(model);
-    cacheSizeBytes.value = result.cacheSizeBytes!;
+    cacheSizeBytes.value = result.cacheSizeBytes;
 }
 
 async function autoTagImages(mode: "autotag" | "diff") {

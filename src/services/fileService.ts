@@ -24,6 +24,6 @@ export class FileService {
         const result = await this.ipc.invoke("dataset:open_in_explorer", filePath);
 
         if (result.error)
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
     }
 }

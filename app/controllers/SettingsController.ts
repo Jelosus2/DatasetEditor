@@ -1,4 +1,5 @@
 import type { Settings } from "../../shared/settings-schema.js";
+import type { IpcInvokeMap } from "../../shared/ipc-types.js";
 import type { IpcMainInvokeEvent } from "electron";
 
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
@@ -16,13 +17,13 @@ export class SettingsController {
     }
 
     @IpcHandle("settings:load")
-    async load() {
+    async load(): Promise<IpcInvokeMap["settings:load"]["result"]> {
         App.logger.info("[Settings Manager] Settings loaded successfully");
         return App.settings.loadSettings();
     }
 
     @IpcHandle("settings:update")
-    async update(_event: IpcMainInvokeEvent, partial: Partial<Settings>) {
+    async update(_event: IpcMainInvokeEvent, partial: Partial<Settings>): Promise<IpcInvokeMap["settings:update"]["result"]> {
         try {
             const settings = await App.settings.updatePartial(partial);
 
@@ -36,7 +37,7 @@ export class SettingsController {
     }
 
     @IpcHandle("settings:action")
-    async action(_event: IpcMainInvokeEvent, actionId: string) {
+    async action(_event: IpcMainInvokeEvent, actionId: string): Promise<IpcInvokeMap["settings:action"]["result"]> {
         if (actionId === "loadTagsCsv")
             return App.importTagsCsvFromDialog();
         if (actionId === "repairAutotagger")
@@ -46,7 +47,7 @@ export class SettingsController {
     }
 
     @IpcHandle("settings:pick_directory")
-    async pickDirectory() {
+    async pickDirectory(): Promise<IpcInvokeMap["settings:pick_directory"]["result"]> {
         const result = await App.showOpenDialog({
             title: "Select directory",
             properties: ["openDirectory"]
@@ -60,7 +61,7 @@ export class SettingsController {
     }
 
     @IpcHandle("settings:validate_directory")
-    async validateDirectory(_event: IpcMainInvokeEvent, directoryPath: string) {
+    async validateDirectory(_event: IpcMainInvokeEvent, directoryPath: string): Promise<IpcInvokeMap["settings:validate_directory"]["result"]> {
         try {
             if (directoryPath === App.paths.defaultHuggingFacePath)
                 return { ok: true };

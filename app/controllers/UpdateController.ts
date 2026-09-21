@@ -1,3 +1,5 @@
+import type { IpcInvokeMap } from "../../shared/ipc-types.js";
+
 import { IpcClass, IpcHandle } from "../decorators/ipc.js";
 import { Utilities } from "../utils/Utilities.js";
 import { App } from "../App.js";
@@ -6,7 +8,7 @@ import { App } from "../App.js";
 export class UpdateController {
 
     @IpcHandle("update:check")
-    async checkForUpdates() {
+    async checkForUpdates(): Promise<IpcInvokeMap["update:check"]["result"]> {
         try {
             App.logger.info("[Updater] Checking for updates...");
 
@@ -32,7 +34,7 @@ export class UpdateController {
     }
 
     @IpcHandle("update:download")
-    async downloadUpdate() {
+    async downloadUpdate(): Promise<IpcInvokeMap["update:download"]["result"]> {
         try {
             App.logger.info("[Updater] Attempting to download update...");
             await App.updater.downloadUpdate();
@@ -47,13 +49,13 @@ export class UpdateController {
     }
 
     @IpcHandle("update:install")
-    installUpdate() {
+    installUpdate(): IpcInvokeMap["update:install"]["result"] {
         App.logger.info("[Updater] Preparing to install the update...");
         App.updater.installUpdate();
     }
 
     @IpcHandle("update:availability")
-    async areUpdatesAvailable() {
+    async areUpdatesAvailable(): Promise<IpcInvokeMap["update:availability"]["result"]> {
         return !App.IS_DEVELOPMENT && !(await App.isPortableInstallation());
     }
 }

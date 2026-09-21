@@ -29,22 +29,22 @@ export class WikiService {
         const result = await this.ipc.invoke("danbooru:fetch_wiki", tag);
 
         if (result.error) {
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
             return null;
         }
 
-        return result.data!;
+        return result.data;
     }
 
     async fetchPosts(tag: string, rating: Rating) {
         const result = await this.ipc.invoke("danbooru:fetch_posts", tag, rating);
 
         if (result.error) {
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
             return [];
         }
 
-        return result.data!;
+        return result.data;
     }
 
     openDanbooruPostInBrowser(postUrl: string) {

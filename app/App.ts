@@ -1,4 +1,5 @@
 import type { Settings } from "../shared/settings-schema.js";
+import type { IpcInvokeMap } from "../shared/ipc-types.js";
 
 import { TaggerModelManager } from "./tagger/TaggerModelManager.js";
 import { WhatsNewManager } from "./whats-new/WhatsNewManager.js";
@@ -120,7 +121,7 @@ export class App {
         return dialog.showSaveDialog(this.window.mainWindow!, options);
     }
 
-    static async importTagsCsvFromDialog() {
+    static async importTagsCsvFromDialog(): Promise<IpcInvokeMap["settings:action"]["result"]> {
         try {
             const result = await this.showOpenDialog({
                 title: "Select the tags CSV file",
@@ -140,7 +141,7 @@ export class App {
             await this.database.loadCsv(filePath, /* resetTable = */ true);
 
             this.logger.info("[Database Manager] Successfully inserted tags into the database");
-            return { error: false };
+            return { error: false, message: "Tags imported successfully" };
         } catch (error) {
             console.error(error);
             this.logger.error(`[Database Manager] Failed to insert tags into database: ${Utilities.getErrorMessage(error)}`);
@@ -148,7 +149,7 @@ export class App {
         }
     }
 
-    static async repairTagger() {
+    static async repairTagger(): Promise<IpcInvokeMap["settings:action"]["result"]> {
         try {
             App.logger.info("[Settings Manager] Attempting to shutdown autotagger service and begin repairing autotagger...");
 

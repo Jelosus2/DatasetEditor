@@ -276,7 +276,7 @@ async function scan() {
             return;
 
         if (result.error) {
-            errorMessage.value = result.message!;
+            errorMessage.value = result.message;
             return;
         }
 

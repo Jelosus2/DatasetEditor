@@ -19,13 +19,13 @@ export class SettingsService {
         const result = await this.ipc.invoke("settings:update", partial);
 
         if (result.error) {
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
             return null;
         }
 
         this.alert.showAlert("success", "Settings saved successfully");
 
-        return result.settings!;
+        return result.settings;
     }
 
     private async runAction(actionId: string) {
@@ -36,7 +36,7 @@ export class SettingsService {
         const result = await this.runAction("loadTagsCsv");
 
         if (result.error) {
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
             return;
         }
 
@@ -46,7 +46,18 @@ export class SettingsService {
 
     async repairTagger() {
         const result = await this.runAction("repairAutotagger");
-        this.alert.showAlert(result.error ? "error" : "success", result.message!);
+
+        if (result.error) {
+            this.alert.showAlert("error", result.message);
+            return;
+        }
+
+        if (result.canceled) {
+            this.alert.showAlert("info", "Autotagger repair was canceled");
+            return;
+        }
+
+        this.alert.showAlert("success", result.message);
     }
 
     async restartApp() {

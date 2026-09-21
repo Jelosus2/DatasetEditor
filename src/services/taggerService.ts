@@ -106,7 +106,7 @@ export class TaggerService {
         if (result.stopped)
             return;
 
-        this.alert.showAlert(result.error ? "error" : "success", result.message!);
+        this.alert.showAlert(result.error ? "error" : "success", result.message);
     }
 
     async uninstallDependencies() {
@@ -115,18 +115,20 @@ export class TaggerService {
         if (result.stopped)
             return;
 
-        this.alert.showAlert(result.error ? "error" : "success", result.message!);
+        this.alert.showAlert(result.error ? "error" : "success", result.message);
     }
 
     async startService() {
         const result = await this.ipc.invoke("tagger:start");
 
-        if (result.error)
-            this.alert.showAlert("error", result.message!);
-        if (!result.error && result.port)
-            this.alert.showAlert("info", `Starting tagger service on port ${result.port}`);
+        if (result.error) {
+            this.alert.showAlert("error", result.message);
+            return;
+        }
 
-        return result.error;
+        this.alert.showAlert("info", `Starting tagger service on port ${result.port}`);
+
+        return false;
     }
 
     async resizeTerminal(columns: number, rows: number) {
@@ -143,11 +145,11 @@ export class TaggerService {
         const result = await this.ipc.invoke("tagger:get_device");
 
         if (result.error) {
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
             return "Unknown";
         }
 
-        return result.device!;
+        return result.device;
     }
 
     async downloadModel(modelRepo: string, modelFile: string, tagsFile: string) {
@@ -155,23 +157,20 @@ export class TaggerService {
 
         this.alert.showAlert(result.error ? "error" : "success", result.message);
 
-        return {
-            error: result.error,
-            cacheSizeBytes: result.cacheSizeBytes
-        };
+        return result;
     }
 
     async getModelsStatus() {
         const result = await this.ipc.invoke("tagger:models_status");
 
         if (result.error) {
-            this.alert.showAlert("error", result.message!);
+            this.alert.showAlert("error", result.message);
             return { status: {}, cacheSizeBytes: 0 };
         }
 
         return {
-            status: result.status!,
-            cacheSizeBytes: result.cacheSizeBytes!
+            status: result.status,
+            cacheSizeBytes: result.cacheSizeBytes
         };
     }
 
@@ -179,6 +178,7 @@ export class TaggerService {
         const result = await this.ipc.invoke("tagger:delete_model", modelRepo);
 
         let alertType: AlertType = "success";
+
         if (result.error)
             alertType = "error";
         else if (!result.success)
@@ -186,10 +186,7 @@ export class TaggerService {
 
         this.alert.showAlert(alertType, result.message);
 
-        return {
-            error: result.error,
-            cacheSizeBytes: result.cacheSizeBytes
-        };
+        return result;
     }
 
     async tagImages(
@@ -224,9 +221,14 @@ export class TaggerService {
             return;
         }
 
-        if (mode === "autotag" && result.results)
+        if (result.aborted) {
+            this.alert.showAlert("success", result.message);
+            return;
+        }
+
+        if (mode === "autotag")
             this.applyTaggerTagsToDataset(result.results);
-        else if (mode === "diff" && result.results)
+        else
             this.datasetStore.setTagDiffFromResults(result.results);
 
         this.alert.showAlert("success", result.message);
@@ -250,14 +252,14 @@ export class TaggerService {
             return null;
         }
 
-        if (!result.error && result.message) {
+        if (result.aborted) {
             this.alert.showAlert("success", result.message);
             return null;
         }
 
         return {
-            folderCohesion: result.folderCohesion!,
-            results: result.results!
+            folderCohesion: result.folderCohesion,
+            results: result.results
         };
     }
 

@@ -1,3 +1,4 @@
+import type { IpcInvokeMap } from "../../shared/ipc-types.js";
 import type { TagGroups } from "../../shared/tag-groups.js";
 import type { TagGroupsRaw } from "../types/tag-groups.js";
 import type { IpcMainInvokeEvent } from "electron";
@@ -17,10 +18,14 @@ export class TagGroupsController {
     }
 
     @IpcHandle("tag_groups:load")
-    async loadTagGroups() {
+    async loadTagGroups(): Promise<IpcInvokeMap["tag_groups:load"]["result"]> {
         try {
-            if (!await fs.pathExists(App.paths.tagGroupsFilePath))
-                return { error: false, tagGroups: new Map() };
+            if (!await fs.pathExists(App.paths.tagGroupsFilePath)) {
+                const tagGroups: TagGroups = new Map();
+                this.originalTagGroups = tagGroups;
+
+                return { error: false, tagGroups };
+            }
 
             const data: TagGroupsRaw = await fs.readJson(App.paths.tagGroupsFilePath);
             if (typeof data !== "object" || data === null)
@@ -45,7 +50,7 @@ export class TagGroupsController {
     }
 
     @IpcHandle("tag_groups:save")
-    async saveTagGroups(_event: IpcMainInvokeEvent, tagGroups: TagGroups) {
+    async saveTagGroups(_event: IpcMainInvokeEvent, tagGroups: TagGroups): Promise<IpcInvokeMap["tag_groups:save"]["result"]> {
         try {
             const jsonOutput: TagGroupsRaw = {};
             for (const [groupName, tagsSet] of tagGroups)
@@ -64,7 +69,7 @@ export class TagGroupsController {
     }
 
     @IpcHandle("tag_groups:import")
-    async importTagGroups() {
+    async importTagGroups(): Promise<IpcInvokeMap["tag_groups:import"]["result"]> {
         try {
             const result = await App.showOpenDialog({
                 title: "Select the tag group JSON file to load",
@@ -104,7 +109,7 @@ export class TagGroupsController {
     }
 
     @IpcHandle("tag_groups:export")
-    async exportTagGroups(_event: IpcMainInvokeEvent, tagGroups: TagGroups) {
+    async exportTagGroups(_event: IpcMainInvokeEvent, tagGroups: TagGroups): Promise<IpcInvokeMap["tag_groups:export"]["result"]> {
         try {
             const result = await App.showSaveDialog({
                 title: "Export tag groups",
@@ -137,7 +142,7 @@ export class TagGroupsController {
     }
 
     @IpcHandle("tag_groups:compare")
-    compare(_event: IpcMainInvokeEvent, tagGroups: TagGroups) {
+    compare(_event: IpcMainInvokeEvent, tagGroups: TagGroups): IpcInvokeMap["tag_groups:compare"]["result"] {
         if (!this.originalTagGroups)
             return true;
 

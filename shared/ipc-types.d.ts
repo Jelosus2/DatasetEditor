@@ -1,33 +1,28 @@
-import type { Dataset, DatasetPersistable, DatasetRenameOptions, RenameProgressPayload, RenameMapping, RenamePreviewItem, GlobalTags } from "./dataset";
-import type { TaggerModelsStatus, TaggerModelConfiguration, TaggerWSPayload, StyleCompareItem } from "./tagger";
-import type { AppCloseRequestPayload, AppCloseResponsePayload } from "./app-close";
-import type { DanbooruWikiPage, DanbooruPostPreview, Rating } from "./danbooru";
-import type { SettingsDefinition, Settings } from "./settings-schema";
-import type { CompletionItem } from "./autocompletion";
-import type { AppStatusPayload } from "./app-status";
-import type { Rect, DuplicateMethod } from "./image";
-import type { WhatsNewPayload } from "./whats-new";
-import type { TagGroups } from "./tag-groups";
-import type { LogType } from "./log";
+import type { Dataset, DatasetPersistable, DatasetRenameOptions, RenameProgressPayload, RenameMapping, RenamePreviewItem, GlobalTags } from "./dataset.js";
+import type { IpcResult, CancelableIpcResult, IpcSelectionResult, IpcValidationResult, StoppableIpcResult, AbortableIpcResult } from "./ipc-result.js";
+import type { TaggerModelsStatus, TaggerModelConfiguration, TaggerWSPayload, StyleCompareItem } from "./tagger.js";
+import type { AppCloseRequestPayload, AppCloseResponsePayload } from "./app-close.js";
+import type { DanbooruWikiPage, DanbooruPostPreview, Rating } from "./danbooru.js";
+import type { SettingsDefinition, Settings } from "./settings-schema.js";
+import type { CompletionItem } from "./autocompletion.js";
+import type { AppStatusPayload } from "./app-status.js";
+import type { Rect, DuplicateMethod } from "./image.js";
+import type { WhatsNewPayload } from "./whats-new.js";
+import type { TagGroups } from "./tag-groups.js";
+import type { LogType } from "./log.js";
 
 export type IpcInvokeMap = {
     "dataset:load": {
         args: [isAllSaved: boolean, reloadDataset: boolean, lastDirectory: string | null];
-        result: {
-            error: boolean;
-            canceled?: boolean;
-            message?: string;
-            directoryPath?: string;
-            dataset?: Dataset;
-            globalTags?: GlobalTags;
-        }
+        result: CancelableIpcResult<{
+            directoryPath: string;
+            dataset: Dataset;
+            globalTags: GlobalTags;
+        }>;
     }
     "dataset:save": {
         args: [dataset: DatasetPersistable];
-        result: {
-            error: boolean;
-            message?: string;
-        }
+        result: IpcResult;
     }
     "dataset:compare": {
         args: [dataset: DatasetPersistable];
@@ -35,60 +30,54 @@ export type IpcInvokeMap = {
     }
     "dataset:trash": {
         args: [filePaths: string[]];
-        result: {
-            error: boolean;
+        result: IpcResult<{
             message: string;
-        }
+        }>;
     }
     "dataset:rename": {
         args: [imagePaths: string[], options: DatasetRenameOptions];
-        result: {
-            error: boolean;
-            message?: string;
-            renamedCount?: number;
-            mappings?: RenameMapping[];
-            preview?: RenamePreviewItem[];
-            conflicts?: number;
-        }
+        result: IpcResult<
+            | {
+                renamedCount: 0;
+                preview: RenamePreviewItem[];
+                conflicts: number;
+                mappings?: never;
+            }
+            | {
+                renamedCount: number;
+                mappings: RenameMapping[];
+                preview: RenamePreviewItem[];
+                conflicts: 0;
+            },
+            {
+                preview: RenamePreviewItem[];
+                conflicts: number;
+            }
+        >;
     }
     "dataset:open_in_explorer": {
         args: [filePath: string];
-        result: {
-            error: boolean;
-            message?: string;
-        }
+        result: IpcResult;
     }
     "tag_groups:load": {
         args: [];
-        result: {
-            error: boolean;
-            message?: string;
-            tagGroups?: TagGroups;
-        }
+        result: IpcResult<{
+            tagGroups: TagGroups;
+        }>;
     }
     "tag_groups:save": {
         args: [tagGroups: TagGroups];
-        result: {
-            error: boolean;
-            message?: string;
-        }
+        result: IpcResult;
     }
     "tag_groups:import": {
         args: [];
-        result: {
-            error: boolean;
-            canceled?: boolean;
-            message?: string;
-            tagGroups?: TagGroups;
-        }
+        result: CancelableIpcResult<{
+            tagGroups: TagGroups;
+        }>;
     }
     "tag_groups:export": {
         args: [tagGroups: TagGroups];
-        result: {
-            error: boolean;
-            canceled?: boolean;
-            message?: string;
-        }
+        result: CancelableIpcResult;
     }
     "tag_groups:compare": {
         args: [tagGroups: TagGroups];
@@ -104,33 +93,25 @@ export type IpcInvokeMap = {
     }
     "settings:update": {
         args: [partial: Partial<Settings>];
-        result: {
-            error: boolean;
-            message?: string;
-            settings?: Settings;
-        }
+        result: IpcResult<{
+            settings: Settings;
+        }>;
     }
     "settings:action": {
         args: [actionId: string];
-        result: {
-            error: boolean;
-            canceled?: boolean;
-            message?: string;
-        }
+        result: CancelableIpcResult<{
+            message: string;
+        }>;
     }
     "settings:pick_directory": {
         args: [];
-        result: {
-            canceled?: boolean;
-            path?: string;
-        }
+        result: IpcSelectionResult<{
+            path: string;
+        }>;
     }
     "settings:validate_directory": {
         args: [path: string];
-        result: {
-            ok: boolean;
-            message?: string;
-        }
+        result: IpcValidationResult;
     }
     "utilities:open_url": {
         args: [url: string];
@@ -142,18 +123,13 @@ export type IpcInvokeMap = {
     }
     "update:check": {
         args: [];
-        result: {
-            error: boolean;
-            isUpdateAvailable?: boolean;
-            message?: string;
-        };
+        result: IpcResult<{
+            isUpdateAvailable: boolean;
+        }>;
     }
     "update:download": {
         args: [];
-        result: {
-            error: boolean;
-            message?: string;
-        };
+        result: IpcResult;
     }
     "update:install": {
         args: [];
@@ -169,41 +145,33 @@ export type IpcInvokeMap = {
     }
     "tagger:update_models_config": {
         args: [config: TaggerModelConfiguration];
-        result: {
-            error: boolean;
+        result: IpcResult<{
             message: string;
-        }
+        }>;
     }
     "tagger:install": {
         args: [];
-        result: {
-            error: boolean;
-            message?: string;
-            stopped?: boolean;
-        }
+        result: StoppableIpcResult<{
+            message: string;
+        }>;
     }
     "tagger:uninstall": {
         args: [];
-        result: {
-            error: boolean;
-            message?: string;
-            stopped?: boolean;
-        }
+        result: StoppableIpcResult<{
+            message: string;
+        }>;
     }
     "tagger:start": {
         args: [];
-        result: {
-            error: boolean;
-            message?: string;
-            port?: number;
-        }
+        result: IpcResult<{
+            port: number;
+        }>;
     }
     "tagger:stop": {
         args: [];
-        result: {
-            error: boolean;
+        result: IpcResult<{
             message: string;
-        }
+        }>;
     }
     "tagger:resize_terminal": {
         args: [columns: number, rows: number];
@@ -211,45 +179,38 @@ export type IpcInvokeMap = {
     }
     "tagger:get_device": {
         args: [];
-        result: {
-            error: boolean;
-            message?: string;
-            device?: string;
-        }
+        result: IpcResult<{
+            device: string;
+        }>;
     }
     "tagger:download_model": {
         args: [modelRepo: string, modelFile: string, tagsFile: string];
-        result: {
-            error: boolean;
+        result: IpcResult<{
             message: string;
-            cacheSizeBytes?: number;
-        }
+            cacheSizeBytes: number;
+        }>;
     }
     "tagger:models_status": {
         args: [];
-        result: {
-            error: boolean;
-            message?: string;
-            status?: TaggerModelsStatus;
-            cacheSizeBytes?: number;
-        }
+        result: IpcResult<{
+            status: TaggerModelsStatus;
+            cacheSizeBytes: number;
+        }>;
     }
     "tagger:delete_model": {
         args: [modelRepo: string];
-        result: {
-            error: boolean;
-            success?: boolean;
+        result: IpcResult<{
+            success: boolean;
             message: string;
-            cacheSizeBytes?: number;
-        }
+            cacheSizeBytes: number;
+        }>;
     }
     "tagger:tag_images": {
         args: [payload: TaggerWSPayload, removeRedundantTags: boolean];
-        result: {
-            error: boolean;
+        result: AbortableIpcResult<{
             message: string;
-            results?: Map<string, string[]>;
-        }
+            results: Map<string, string[]>;
+        }>;
     }
     "tagger:stop_tagging": {
         args: [];
@@ -257,12 +218,10 @@ export type IpcInvokeMap = {
     }
     "tagger:compare_style": {
         args: [images: string[]];
-        result: {
-            error: boolean;
-            message?: string;
-            folderCohesion?: number;
-            results?: StyleCompareItem[];
-        }
+        result: AbortableIpcResult<{
+            folderCohesion: number;
+            results: StyleCompareItem[];
+        }>;
     }
     "tagger:stop_style_compare": {
         args: [];
@@ -274,34 +233,27 @@ export type IpcInvokeMap = {
     }
     "danbooru:fetch_wiki": {
         args: [tag: string];
-        result: {
-            error: boolean;
-            message?: string;
-            data?: DanbooruWikiPage;
-        }
+        result: IpcResult<{
+            data: DanbooruWikiPage;
+        }>;
     }
     "danbooru:fetch_posts": {
         args: [tag: string, rating: Rating];
-        result: {
-            error: boolean;
-            message?: string;
-            data?: DanbooruPostPreview[];
-        }
+        result: IpcResult<{
+            data: DanbooruPostPreview[];
+        }>;
     }
     "image:set_background": {
         args: [images: string[], color: string];
-        result: {
-            error: boolean;
+        result: IpcResult<{
             message: string;
-        }
+        }>;
     }
     "image:crop": {
         args: [imagePath: string, cropRects: Rect[], overwrite: boolean];
-        result: {
-            error: boolean;
-            canceled?: boolean;
-            message?: string;
-        }
+        result: CancelableIpcResult<{
+            message: string;
+        }>;
     }
     "image:dimensions": {
         args: [imagePath: string];
@@ -312,26 +264,19 @@ export type IpcInvokeMap = {
     }
     "image:find_duplicates": {
         args: [imagePaths: string[], method: DuplicateMethod, threshold: number];
-        result: {
-            error: boolean;
-            message?: string;
+        result: IpcResult<{
             groups: string[][];
-        }
+        }>;
     }
     "whats_new:get": {
         args: [];
-        result: {
-            error: boolean;
-            message?: string;
-            payload?: WhatsNewPayload;
-        }
+        result: IpcResult<{
+            payload: WhatsNewPayload;
+        }>;
     }
     "whats_new:mark_seen": {
         args: [];
-        result: {
-            error: boolean;
-            message?: string;
-        }
+        result: IpcResult;
     }
 }
 

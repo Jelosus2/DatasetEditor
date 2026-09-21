@@ -131,12 +131,13 @@ async function generatePreview() {
 
     const result = await fileService.renameFiles(files, buildOptions(true));
 
-    preview.value = result.preview ?? [];
-    conflicts.value = result.conflicts ?? 0;
+    preview.value = result.preview;
+    conflicts.value = result.conflicts;
     previewStale.value = false;
 
     if (result.error)
-        showAlert("error", result.message!);
+        showAlert("error", result.message);
+
     previewLoading.value = false;
 }
 
@@ -157,13 +158,15 @@ async function renameFiles() {
     currentPath.value = "";
 
     const result = await fileService.renameFiles(files, buildOptions(false));
-    if (result.mappings && result.mappings.length > 0)
-        datasetStore.renameImages(result.mappings);
 
-    if (result.error)
-        showAlert("error", result.message!);
-    else
-        showAlert("success", `Renamed ${result.renamedCount ?? 0} file(s)`);
+    if (result.error) {
+        showAlert("error", result.message);
+    } else {
+        if (result.mappings?.length)
+            datasetStore.renameImages(result.mappings);
+
+        showAlert("success", `Renamed ${result.renamedCount} file(s)`);
+    }
 
     preview.value = [];
     conflicts.value = 0;
