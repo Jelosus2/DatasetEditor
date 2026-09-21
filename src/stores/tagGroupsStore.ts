@@ -100,21 +100,53 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         if (!tagGroup || tags.length === 0)
             return;
 
-        const tagsToRemove = tags.filter((tag) => tagGroup.has(tag));
+        const tagsToRemove = [...new Set(tags.filter((tag) => tagGroup.has(tag)))];
         if (tagsToRemove.length === 0)
             return;
 
-        for (const tag of tagsToRemove)
+        const currentTags = [...tagGroup];
+        const tagPositions = new Map<string, number>();
+
+        for (const tag of tagsToRemove) {
+            tagPositions.set(tag, currentTags.indexOf(tag));
             tagGroup.delete(tag);
+        }
 
         if (createHistory) {
             recordHistory({
                 type: "remove_tag",
                 group,
-                tags: tagsToRemove
+                tags: tagsToRemove,
+                tagPositions
             });
         }
 
+        triggerUpdate();
+    }
+
+    function restoreTagsToGroup(group: string, tagPositions: Map<string, number>) {
+        const tagGroup = tagGroups.value.get(group);
+        if (!tagGroup || tagPositions.size === 0)
+            return;
+
+        const tags = [...tagGroup];
+        const orderedTags = [...tagPositions.entries()].sort((first, second) => first[1] - second[1]);
+        let changed = false;
+
+        for (const [tag, originalIndex] of orderedTags) {
+            if (tagGroup.has(tag))
+                return;
+
+            const insertIndex = Math.max(0, Math.min(originalIndex, tags.length));
+
+            tags.splice(insertIndex, 0, tag);
+            changed = true;
+        }
+
+        if (!changed)
+            return;
+
+        tagGroups.value.set(group, new Set(tags));
         triggerUpdate();
     }
 
@@ -189,27 +221,26 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
 
         switch (change.type) {
             case "add_group":
-                removeGroup(change.group!, /* createHistory = */ false);
+                removeGroup(change.group, /* createHistory = */ false);
                 break;
             case "remove_group":
-                addGroup(change.group!, change.tags ?? [], /* createHistory = */ false);
+                addGroup(change.group, change.tags, /* createHistory = */ false);
                 break;
             case "rename_group":
-                renameGroup(change.to!, change.from!, /* createHistory = */ false);
+                renameGroup(change.to, change.from, /* createHistory = */ false);
                 break;
             case "clear_groups":
                 tagGroups.value = new Map(change.previousGroups);
                 triggerUpdate();
                 break;
             case "add_tag":
-                removeTagsFromGroup(change.group!, change.tags ?? [], /* createHistory = */ false);
+                removeTagsFromGroup(change.group, change.tags, /* createHistory = */ false);
                 break;
             case "remove_tag":
-                addTagsToGroup(change.group!, change.tags ?? [], /* createHistory = */ false);
+                restoreTagsToGroup(change.group, change.tagPositions);
                 break;
             case "reorder_tag":
-                if (change.group !== undefined && change.tag !== undefined && change.fromIndex !== undefined)
-                    reorderTagInGroup(change.group, change.tag, change.fromIndex, /* createHistory = */ false);
+                reorderTagInGroup(change.group, change.tag, change.fromIndex, /* createHistory = */ false);
                 break;
         }
 
@@ -223,26 +254,25 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
 
         switch (change.type) {
             case "add_group":
-                addGroup(change.group!, change.tags ?? [], /* createHistory = */ false);
+                addGroup(change.group, change.tags, /* createHistory = */ false);
                 break;
             case "remove_group":
-                removeGroup(change.group!, /* createHistory = */ false);
+                removeGroup(change.group, /* createHistory = */ false);
                 break;
             case "rename_group":
-                renameGroup(change.from!, change.to!, /* createHistory = */ false);
+                renameGroup(change.from, change.to, /* createHistory = */ false);
                 break;
             case "clear_groups":
                 clearGroups(/* createHistory = */ false);
                 break;
             case "add_tag":
-                addTagsToGroup(change.group!, change.tags ?? [], /* createHistory = */ false);
+                addTagsToGroup(change.group, change.tags, /* createHistory = */ false);
                 break;
             case "remove_tag":
-                removeTagsFromGroup(change.group!, change.tags ?? [], /* createHistory = */ false);
+                removeTagsFromGroup(change.group, change.tags, /* createHistory = */ false);
                 break;
             case "reorder_tag":
-                if (change.group !== undefined && change.tag !== undefined && change.toIndex !== undefined)
-                    reorderTagInGroup(change.group, change.tag, change.toIndex, /* createHistory = */ false);
+                reorderTagInGroup(change.group, change.tag, change.toIndex, /* createHistory = */ false);
                 break;
         }
 

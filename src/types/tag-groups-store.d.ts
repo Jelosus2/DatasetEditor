@@ -1,11 +1,52 @@
-export type TagGroupsChangeRecord = {
-    type: "add_group" | "remove_group" | "rename_group" | "clear_groups" | "add_tag" | "remove_tag" | "reorder_tag";
-    group?: string;
-    tags?: string[];
-    tag?: string;
-    previousGroups?: Map<string, Set<string>>;
-    from?: string;
-    to?: string;
-    fromIndex?: number;
-    toIndex?: number;
-}
+type AddGroupChangeRecord = {
+    type: "add_group";
+    group: string;
+    tags: string[];
+};
+
+type RemoveGroupChangeRecord = {
+    type: "remove_group";
+    group: string;
+    tags: string[];
+};
+
+type RenameGroupChangeRecord = {
+    type: "rename_group";
+    from: string;
+    to: string;
+};
+
+type ClearGroupsChangeRecord = {
+    type: "clear_groups";
+    previousGroups: Map<string, Set<string>>;
+};
+
+type AddTagChangeRecord = {
+    type: "add_tag";
+    group: string;
+    tags: string[];
+};
+
+type RemoveTagChangeRecord = {
+    type: "remove_tag";
+    group: string;
+    tags: string[];
+    tagPositions: Map<string, number>;
+};
+
+type ReorderTagChangeRecord = {
+    type: "reorder_tag";
+    group: string;
+    tag: string;
+    fromIndex: number;
+    toIndex: number;
+};
+
+export type TagGroupsChangeRecord =
+    | AddGroupChangeRecord
+    | RemoveGroupChangeRecord
+    | RenameGroupChangeRecord
+    | ClearGroupsChangeRecord
+    | AddTagChangeRecord
+    | RemoveTagChangeRecord
+    | ReorderTagChangeRecord;

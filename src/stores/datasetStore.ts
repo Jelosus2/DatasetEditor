@@ -445,22 +445,15 @@ export const useDatasetStore = defineStore("dataset", () => {
 
         switch (change.type) {
             case "add_tag":
-                removeTagsFromImages(change.images, change.tags!, /* createHistory = */ false);
+                removeTagsFromImages(change.images, change.tags, /* createHistory = */ false);
                 break;
             case "remove_tag":
-                if (change.tagPositions && change.tagPositions.size > 0)
-                    restoreTagsWithPositions(change.tagPositions);
-                else
-                    addTagsToImages(change.images, change.tags!, -1, /* createHistory = */ false);
+                restoreTagsWithPositions(change.tagPositions);
                 break;
             case "replace_tag":
-                if (change.replaceBefore && change.replaceBefore.size > 0)
-                    restoreReplaceSnapshot(change.replaceBefore);
+                restoreReplaceSnapshot(change.replaceBefore);
                 break;
             case "reorder_tag":
-                if (!change.tag || !change.reorderPositions || change.reorderPositions.size === 0)
-                    break;
-
                 for (const [imageKey, positions] of change.reorderPositions)
                     reorderTagInImage(imageKey, change.tag, positions.fromIndex, /* createHistory = */ false);
                 break;
@@ -476,19 +469,15 @@ export const useDatasetStore = defineStore("dataset", () => {
 
         switch (change.type) {
             case "add_tag":
-                addTagsToImages(change.images, change.tags!, change.tagPosition, /* createHistory = */ false);
+                addTagsToImages(change.images, change.tags, change.tagPosition, /* createHistory = */ false);
                 break;
             case "remove_tag":
-                removeTagsFromImages(change.images, change.tags!, /* createHistory = */ false);
+                removeTagsFromImages(change.images, change.tags, /* createHistory = */ false);
                 break;
             case "replace_tag":
-                if (change.originalTags && change.newTags)
-                    replaceTagForImages(change.images, change.originalTags, change.newTags, /* createHistory = */ false);
+                replaceTagForImages(change.images, change.originalTags, change.newTags, /* createHistory = */ false);
                 break;
             case "reorder_tag":
-                if (!change.tag || !change.reorderPositions || change.reorderPositions.size === 0)
-                    break;
-
                 for (const [imageKey, positions] of change.reorderPositions)
                     reorderTagInImage(imageKey, change.tag, positions.toIndex, /* createHistory = */ false);
                 break;
