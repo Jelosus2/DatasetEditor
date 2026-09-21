@@ -10,6 +10,7 @@ import { ref, computed } from "vue";
 
 import ExportIcon from "@/assets/icons/export.svg";
 import ImportIcon from "@/assets/icons/import.svg";
+import HandleIcon from "@/assets/icons/handle.svg";
 
 const selectedGroup = ref("");
 const groupNameInput = ref("");
@@ -21,6 +22,8 @@ const importGroupSearch = ref("");
 const importedGroups = ref<TagGroups>(new Map());
 const expandedGroups = ref<Set<string>>(new Set());
 const importExpandedGroups = ref<Set<string>>(new Set());
+const draggingGroupTag = ref<string | null>(null);
+const groupTagDropIndex = ref<number | null>(null);
 
 const tagGroupsOperations = useTagGroupsOperations();
 const tagGroupsStore = useTagGroupsStore();
@@ -38,7 +41,12 @@ const importedGroupNames = computed(() => importedGroupsList.value.map(([name]) 
 const selectedGroupTags = computed(() => {
     void tagGroupsStore.dataVersion;
 
-    return Array.from(tagGroupsStore.tagGroups.get(selectedGroup.value) ?? []);
+    const tags = Array.from(tagGroupsStore.tagGroups.get(selectedGroup.value) ?? []);
+
+    if (!draggingGroupTag.value)
+        return tags;
+
+    return tags.filter((tag) => tag !== draggingGroupTag.value);
 });
 
 const filteredTagGroups = computed(() => {
@@ -55,6 +63,13 @@ const filteredImportedGroups = computed(() => {
         return importedGroupsList.value;
 
     return importedGroupsList.value.filter(([name]) => filterMatchesAny(name, parts));
+});
+
+const canReorderSelectedGroupTags = computed(() => {
+    if (!selectedGroup.value)
+        return false;
+
+    return (tagGroupsStore.tagGroups.get(selectedGroup.value)?.size ?? 0) > 1;
 });
 
 function createGroup() {
@@ -160,6 +175,72 @@ function parseFilterInput(input: string) {
 function filterMatchesAny(name: string, parts: string[]) {
     const lower = name.toLowerCase();
     return parts.some((part) => lower.includes(part));
+}
+
+function onGroupTagListDragOver(event: DragEvent) {
+    if (!canReorderSelectedGroupTags.value)
+        return;
+
+    if (event.dataTransfer)
+        event.dataTransfer.dropEffect = "move";
+}
+
+function onGroupTagDragStart(tag: string, event: DragEvent) {
+    if (!canReorderSelectedGroupTags.value)
+        return;
+
+    if (event.dataTransfer && event.currentTarget instanceof HTMLElement) {
+        const chip = event.currentTarget.closest("[data-role='group-tag-chip']");
+
+        if (chip instanceof HTMLElement)
+            event.dataTransfer.setDragImage(chip, 0, 0);
+
+        event.dataTransfer.setData("text/plain", tag);
+        event.dataTransfer.effectAllowed = "move";
+    }
+
+    requestAnimationFrame(() => {
+        draggingGroupTag.value = tag;
+        groupTagDropIndex.value = null;
+    });
+}
+
+function onGroupTagDragEnd() {
+    draggingGroupTag.value = null;
+    groupTagDropIndex.value = null;
+}
+
+function setGroupTagDropIndex(event: DragEvent, tag: string, index: number) {
+    if (!canReorderSelectedGroupTags.value || draggingGroupTag.value === tag)
+        return;
+
+    const element = event.currentTarget;
+    if (!(element instanceof HTMLElement))
+        return;
+
+    const bounds = element.getBoundingClientRect();
+    const after = event.clientX >= bounds.left + bounds.width / 2;
+    const nextIndex = after ? index + 1 : index;
+
+    if (nextIndex !== groupTagDropIndex.value)
+        groupTagDropIndex.value = nextIndex;
+}
+
+function setGroupTagDropIndexToEnd() {
+    if (!canReorderSelectedGroupTags.value)
+        return;
+
+    groupTagDropIndex.value = selectedGroupTags.value.length;
+}
+
+function onGroupTagDrop() {
+    if (!canReorderSelectedGroupTags.value || !selectedGroup.value || !draggingGroupTag.value || groupTagDropIndex.value === null)
+        return;
+
+    tagGroupsOperations.reorderTag(selectedGroup.value, draggingGroupTag.value, groupTagDropIndex.value);
+
+    draggingGroupTag.value = null;
+    groupTagDropIndex.value = null;
 }
 </script>
 
@@ -293,16 +374,54 @@ function filterMatchesAny(name: string, parts: string[]) {
                         </div>
                     </div>
                     <div class="flex h-[50%] flex-col border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
-                        <div class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth">
+                        <div
+                            class="mb-2 flex h-fit flex-wrap gap-2 overflow-auto scroll-smooth"
+                            data-role="group-tag-list"
+                            @dragover.prevent="onGroupTagListDragOver"
+                            @drop.prevent="onGroupTagDrop"
+                        >
+                            <template v-for="(tag, index) in selectedGroupTags" :key="tag">
+                                <div
+                                    v-if="draggingGroupTag && groupTagDropIndex === index"
+                                    class="pointer-events-none h-fit w-fit rounded border border-success bg-success/20 px-1.5 text-success"
+                                >
+                                    {{ draggingGroupTag }}
+                                </div>
+                                <div
+                                    data-role="group-tag-chip"
+                                    class="flex h-fit w-fit items-center bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-red-300 dark:bg-gray-700 dark:hover:bg-rose-900"
+                                    @dragover.stop.prevent="setGroupTagDropIndex($event, tag, index)"
+                                    @drop.stop.prevent="onGroupTagDrop"
+                                    @click="removeTag(tag)"
+                                >
+                                    <span
+                                        v-if="canReorderSelectedGroupTags"
+                                        class="cursor-grab select-none pr-2 opacity-70"
+                                        draggable="true"
+                                        @mousedown.stop
+                                        @click.stop
+                                        @dragstart="onGroupTagDragStart(tag, $event)"
+                                        @dragend="onGroupTagDragEnd"
+                                    >
+                                        <HandleIcon />
+                                    </span>
+
+                                    <span>{{ tag }}</span>
+                                </div>
+                            </template>
                             <div
-                                v-for="tag in selectedGroupTags"
-                                v-memo="[tag]"
-                                :key="tag"
-                                class="h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer hover:bg-red-300 dark:hover:bg-rose-900 dark:bg-gray-700"
-                                @click="removeTag(tag)"
+                                v-if="draggingGroupTag && groupTagDropIndex === selectedGroupTags.length"
+                                class="pointer-events-none h-fit w-fit rounded border border-success bg-success/20 px-1.5 text-success"
                             >
-                                {{ tag }}
+                                {{ draggingGroupTag }}
                             </div>
+                            <div
+                                v-if="canReorderSelectedGroupTags"
+                                class="h-6 w-full"
+                                @dragenter.prevent="setGroupTagDropIndexToEnd"
+                                @dragover.prevent="setGroupTagDropIndexToEnd"
+                                @drop.prevent="onGroupTagDrop"
+                            ></div>
                         </div>
                         <div class="mt-auto border-t-2 border-gray-400 pt-1 dark:border-base-content/10">
                             <label class="input w-full px-1 outline-none!">

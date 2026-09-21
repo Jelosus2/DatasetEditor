@@ -143,15 +143,10 @@ export class TagGroupsController {
 
         return _.isEqualWith(this.originalTagGroups, tagGroups, (val1, val2) => {
             if (val1 instanceof Set && val2 instanceof Set) {
-                if (val1.size !== val2.size)
-                    return false;
+                const first = Array.from(val1);
+                const second = Array.from(val2);
 
-                for (const tag of val1) {
-                    if (!val2.has(tag)) {
-                        return false;
-                    }
-                }
-                return true;
+                return first.length === second.length && first.every((tag, index) => tag === second[index]);
             }
 
             return undefined;

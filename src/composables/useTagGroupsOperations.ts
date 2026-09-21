@@ -55,6 +55,13 @@ export function useTagGroupsOperations() {
         tagGroupsStore.removeTagsFromGroup(group, [tag]);
     }
 
+    function reorderTag(group: string, tag: string, toIndex: number) {
+        if (!group || !tag)
+            return;
+
+        tagGroupsStore.reorderTagInGroup(group, tag, toIndex);
+    }
+
     function mergeTagGroups(incoming: TagGroups, override: boolean) {
         tagGroupsStore.mergeTagGroups(incoming, override);
     }
@@ -93,6 +100,7 @@ export function useTagGroupsOperations() {
         clearGroups,
         addTag,
         removeTag,
+        reorderTag,
         mergeTagGroups,
         importTagGroups,
         exportTagGroups

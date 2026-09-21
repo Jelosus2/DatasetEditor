@@ -149,6 +149,39 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         triggerUpdate();
     }
 
+    function reorderTagInGroup(group: string, tag: string, toIndex: number, createHistory = true) {
+        const tagGroup = tagGroups.value.get(group);
+        if (!tagGroup)
+            return;
+
+        const tags = [...tagGroup];
+        const fromIndex = tags.indexOf(tag);
+
+        if (fromIndex === -1)
+            return;
+
+        const insertIndex = Math.max(0, Math.min(toIndex, tags.length - 1));
+        if (insertIndex === fromIndex)
+            return;
+
+        tags.splice(fromIndex, 1);
+        tags.splice(insertIndex, 0, tag);
+
+        tagGroups.value.set(group, new Set(tags));
+
+        if (createHistory) {
+            recordHistory({
+                type: "reorder_tag",
+                group,
+                tag,
+                fromIndex,
+                toIndex: insertIndex
+            });
+        }
+
+        triggerUpdate();
+    }
+
     function undoTagGroupsAction() {
         const change = tagGroupsUndoStack.value.pop();
         if (!change)
@@ -173,6 +206,10 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
                 break;
             case "remove_tag":
                 addTagsToGroup(change.group!, change.tags ?? [], /* createHistory = */ false);
+                break;
+            case "reorder_tag":
+                if (change.group !== undefined && change.tag !== undefined && change.fromIndex !== undefined)
+                    reorderTagInGroup(change.group, change.tag, change.fromIndex, /* createHistory = */ false);
                 break;
         }
 
@@ -202,6 +239,10 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
                 break;
             case "remove_tag":
                 removeTagsFromGroup(change.group!, change.tags ?? [], /* createHistory = */ false);
+                break;
+            case "reorder_tag":
+                if (change.group !== undefined && change.tag !== undefined && change.toIndex !== undefined)
+                    reorderTagInGroup(change.group, change.tag, change.toIndex, /* createHistory = */ false);
                 break;
         }
 
@@ -250,6 +291,7 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         removeTagsFromGroup,
         renameGroup,
         mergeTagGroups,
+        reorderTagInGroup,
         undoTagGroupsAction,
         redoTagGroupsAction,
         loadTagGroups,
