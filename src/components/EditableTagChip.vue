@@ -3,14 +3,20 @@ import { computed, nextTick, ref, watch } from "vue";
 
 import EditIcon from "@/assets/icons/edit.svg";
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     tag: string;
     label?: string;
-}>();
+    selectable?: boolean;
+    selected?: boolean;
+}>(), {
+    selectable: false,
+    selected: false
+});
 
 const emit = defineEmits<{
     commit: [newTag: string];
     remove: [];
+    "toggle-selection": [];
 }>();
 
 const editing = ref(false);
@@ -64,14 +70,24 @@ function handleChipClick() {
         emit("remove");
 }
 
-async function handleShiftClick(event: MouseEvent) {
-    if (!event.shiftKey || editing.value)
+async function handleModifiedClick(event: MouseEvent) {
+    if (editing.value)
         return;
 
-    event.preventDefault();
-    event.stopPropagation();
+    if (event.shiftKey) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
 
-    await startEditing();
+        await startEditing();
+        return;
+    }
+
+    if (event.ctrlKey && props.selectable) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        emit("toggle-selection");
+    }
 }
 
 function handleDragStart(event: DragEvent) {
@@ -86,7 +102,11 @@ function handleDragStart(event: DragEvent) {
 <template>
     <div
         class="group relative flex h-fit w-fit items-center"
-        @click.capture="handleShiftClick"
+        :class="{
+            'ring-2 ring-primary ring-inset': selected
+        }"
+        :aria-selected="selectable ? selected : undefined"
+        @click.capture="handleModifiedClick"
         @click="handleChipClick"
         @dragstart.capture="handleDragStart"
     >

@@ -24,9 +24,8 @@ type ReplaceTagChangeRecord = {
 
 type ReorderTagChangeRecord = {
     type: "reorder_tag";
-    images: Set<string>;
-    tag: string;
-    reorderPositions: Map<string, ReorderPositions>;
+    previousTags: Map<string, string[]>;
+    nextTags: Map<string, string[]>;
 };
 
 export type DatasetChangeRecord =
@@ -38,9 +37,4 @@ export type DatasetChangeRecord =
 export type TagDiff = {
     tagger: Set<string>;
     original: Set<string>;
-};
-
-export type ReorderPositions = {
-    fromIndex: number;
-    toIndex: number;
 };

@@ -73,6 +73,10 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         triggerUpdate();
     }
 
+    function haveSameTagOrder(first: string[], second: string[]) {
+        return first.length === second.length && first.every((tag, index) => tag === second[index]);
+    }
+
     function addGroup(name: string, tags: string[], createHistory = true) {
         if (!name || tagGroups.value.has(name))
             return;
@@ -249,37 +253,46 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         triggerUpdate();
     }
 
-    function reorderTagInGroup(group: string, tag: string, toIndex: number, createHistory = true) {
+    function reorderTagsInGroup(group: string, tags: Iterable<string>, toIndex: number, createHistory = true) {
         const tagGroup = tagGroups.value.get(group);
         if (!tagGroup)
             return;
 
-        const tags = [...tagGroup];
-        const fromIndex = tags.indexOf(tag);
-
-        if (fromIndex === -1)
+        const tagsToMove = new Set(tags);
+        if (tagsToMove.size === 0)
             return;
 
-        const insertIndex = Math.max(0, Math.min(toIndex, tags.length - 1));
-        if (insertIndex === fromIndex)
+        const previousTags = [...tagGroup];
+        const movingTags = previousTags.filter((tag) => tagsToMove.has(tag));
+
+        if (movingTags.length === 0)
             return;
 
-        tags.splice(fromIndex, 1);
-        tags.splice(insertIndex, 0, tag);
+        const remainingTags = previousTags.filter((tag) => !tagsToMove.has(tag));
+        const insertIndex = Math.max(0, Math.min(toIndex, remainingTags.length));
+        const nextTags = [...remainingTags];
 
-        tagGroups.value.set(group, new Set(tags));
+        nextTags.splice(insertIndex, 0, ...movingTags);
+
+        if (haveSameTagOrder(previousTags, nextTags))
+            return;
+
+        tagGroups.value.set(group, new Set(nextTags));
 
         if (createHistory) {
             recordHistory({
-                type: "reorder_tag",
+                type: "reorder_tags",
                 group,
-                tag,
-                fromIndex,
-                toIndex: insertIndex
+                previousTags,
+                nextTags: [...nextTags]
             });
         }
 
         triggerUpdate();
+    }
+
+    function reorderTagInGroup(group: string, tag: string, toIndex: number, createHistory = true) {
+        reorderTagsInGroup(group, [tag], toIndex, createHistory);
     }
 
     function renameTagInGroup(group: string, originalTag: string, newTagInput: string, createHistory = true) {
@@ -334,8 +347,8 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
             case "remove_tag":
                 restoreTagsToGroup(change.group, change.tagPositions);
                 break;
-            case "reorder_tag":
-                reorderTagInGroup(change.group, change.tag, change.fromIndex, /* createHistory = */ false);
+            case "reorder_tags":
+                replaceGroupTags(change.group, change.previousTags);
                 break;
             case "import_groups":
                 replaceTagGroups(change.previousGroups);
@@ -373,8 +386,8 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
             case "remove_tag":
                 removeTagsFromGroup(change.group, change.tags, /* createHistory = */ false);
                 break;
-            case "reorder_tag":
-                reorderTagInGroup(change.group, change.tag, change.toIndex, /* createHistory = */ false);
+            case "reorder_tags":
+                replaceGroupTags(change.group, change.nextTags);
                 break;
             case "import_groups":
                 replaceTagGroups(change.nextGroups);
@@ -437,6 +450,7 @@ export const useTagGroupsStore = defineStore("tagGroups", () => {
         removeTagsFromGroup,
         renameGroup,
         mergeTagGroups,
+        reorderTagsInGroup,
         reorderTagInGroup,
         renameTagInGroup,
         undoTagGroupsAction,

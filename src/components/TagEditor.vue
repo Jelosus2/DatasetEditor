@@ -3,13 +3,14 @@ import ExpandCollapseAllButton from "@/components/ExpandCollapseAllButton.vue";
 import AutocompletionInput from "@/components/AutocompletionInput.vue";
 import EditableTagChip from "@/components/EditableTagChip.vue";
 
+import { useDismissTagSelection } from "@/composables/useDismissTagSelection";
 import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts";
 import { useTagOperations } from "@/composables/useTagOperations";
 import { useTagGroupsStore } from "@/stores/tagGroupsStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useAppStatus } from "@/composables/useAppStatus";
 import { useDatasetStore } from "@/stores/datasetStore";
-import { ref, shallowRef, computed, toRaw } from "vue";
+import { ref, shallowRef, computed, toRaw, watch } from "vue";
 
 import CopyIcon from "@/assets/icons/copy.svg";
 import SortArrowIcon from "@/assets/icons/sort-arrow.svg";
@@ -46,7 +47,8 @@ const mainSectionContainer = shallowRef<HTMLDivElement | null>(null);
 const topSectionHeight = ref(50);
 const tagGroupWidth = ref(30);
 const areTagsCopied = ref(false);
-const draggingTag = ref<string | null>(null);
+const draggingTags = ref<string[]>([]);
+const selectedReorderTags = ref<Set<string>>(new Set());
 const dropIndex = ref<number | null>(null);
 const tagContextMenu = ref({
     open: false,
@@ -111,11 +113,19 @@ const filteredTagGroups = computed(() => {
 });
 
 const displayedTagsList = computed(() => {
-    const list = Array.from(props.displayedTags);
-    if (draggingTag.value)
-        return list.filter(t => t !== draggingTag.value);
+    const tags = Array.from(props.displayedTags);
+    if (draggingTags.value.length === 0)
+        return tags;
 
-    return list;
+    const draggedTagSet = new Set(draggingTags.value);
+    return tags.filter((tag) => !draggedTagSet.has(tag));
+});
+
+const draggingTagsLabel = computed(() => {
+    if (draggingTags.value.length === 1)
+        return draggingTags.value[0];
+
+    return `${draggingTags.value.length} tags`;
 });
 
 const displayedGlobalTagsList = computed(() => Array.from(props.displayedGlobalTags));
@@ -136,7 +146,11 @@ const groupsWithMatches = computed(() => {
     return matches;
 });
 
-const isDraggable = computed(() => editMode.value === "individual" && hasSingleSelection.value);
+const isDraggable = computed(() =>
+    editMode.value === "individual" &&
+    hasSingleSelection.value &&
+    datasetStore.sortMode === "none"
+);
 
 const tagEditorMainWidth = computed(() =>
     settingsStore.showTagGroups ? 70 - tagGroupWidth.value : 100
@@ -172,7 +186,7 @@ const canSetAsTrigger = computed(() =>
     props.selectedImages.size > 0
 );
 
-const triggerTag = computed(() => displayedTagsList.value[0] ?? null);
+const triggerTag = computed(() => Array.from(props.displayedTags)[0] ?? null);
 
 const datasetStore = useDatasetStore();
 const tagGroupsStore = useTagGroupsStore();
@@ -187,6 +201,25 @@ useKeyboardShortcuts(
     ],
     { isEnabled: () => !appStatus.active.value }
 );
+
+useDismissTagSelection(selectedReorderTags, "dataset-tags");
+
+watch(() => [editMode.value, ...props.selectedImages], () => {
+    selectedReorderTags.value = new Set();
+});
+
+watch(() => [...props.displayedTags], (tags) => {
+    const existingTags = new Set(tags);
+    const nextSelection = new Set([...selectedReorderTags.value].filter((tag) => existingTags.has(tag)));
+
+    if (nextSelection.size !== selectedReorderTags.value.size)
+        selectedReorderTags.value = nextSelection;
+});
+
+watch(isDraggable, (draggable) => {
+    if (!draggable)
+        selectedReorderTags.value = new Set();
+});
 
 function escapeRegExp(str: string) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -359,35 +392,55 @@ function onTagListDrop() {
 }
 
 function onTagDragStart(tag: string, event: DragEvent) {
-    if (event.dataTransfer && event.target instanceof HTMLElement) {
-        const chip = event.target.closest(".h-fit.w-fit");
-        if (chip)
+    if (!isDraggable.value)
+        return;
+
+    const sourceOrder = Array.from(props.displayedTags);
+    const isPartOfSelection = selectedReorderTags.value.has(tag);
+
+    const tagsToDrag = isPartOfSelection && selectedReorderTags.value.size > 1
+        ? sourceOrder.filter((candidate) => selectedReorderTags.value.has(candidate))
+        : [tag];
+
+    if (!isPartOfSelection)
+        selectedReorderTags.value = new Set([tag]);
+
+    if (event.dataTransfer && event.currentTarget instanceof HTMLElement) {
+        const chip = event.currentTarget.closest(".h-fit.w-fit");
+        if (chip instanceof HTMLElement)
             event.dataTransfer.setDragImage(chip, 0, 0);
 
-        event.dataTransfer.setData("text/plain", tag);
+        event.dataTransfer.setData("text/plain", tagsToDrag.join(", "));
         event.dataTransfer.effectAllowed = "move";
     }
 
     requestAnimationFrame(() => {
-        draggingTag.value = tag;
+        draggingTags.value = tagsToDrag;
         dropIndex.value = null;
     });
 }
 
-function onTagDragEnd() {
-    draggingTag.value = null;
+function resetTagDrag() {
+    draggingTags.value = [];
     dropIndex.value = null;
 }
 
-function setDropIndex(event: DragEvent, tag: string, index: number) {
-    if (!isDraggable.value || draggingTag.value === tag)
+function onTagDragEnd() {
+    resetTagDrag();
+}
+
+function setDropIndex(event: DragEvent, index: number) {
+    if (!isDraggable.value)
         return;
 
-    const element = event.currentTarget as HTMLElement;
+    const element = event.currentTarget;
+    if (!(element instanceof HTMLElement))
+        return;
+
     const bounds = element.getBoundingClientRect();
     const after = event.clientX >= bounds.left + bounds.width / 2;
-
     const nextIndex = after ? index + 1 : index;
+
     if (nextIndex !== dropIndex.value)
         dropIndex.value = nextIndex;
 }
@@ -400,12 +453,11 @@ function setDropIndexToEnd() {
 }
 
 function onTagDrop() {
-    if (!isDraggable.value || !draggingTag.value || !selectedImageKey.value || dropIndex.value === null)
+    if (!isDraggable.value || draggingTags.value.length === 0 || !selectedImageKey.value || dropIndex.value === null)
         return;
 
-    tagOperations.reorderTag(new Set([selectedImageKey.value]), draggingTag.value, dropIndex.value);
-    draggingTag.value = null;
-    dropIndex.value = null;
+    tagOperations.reorderTags(new Set([selectedImageKey.value]), new Set(draggingTags.value), dropIndex.value);
+    resetTagDrag();
 }
 
 function toggleEditMode() {
@@ -480,6 +532,20 @@ function renameGlobalTag(originalTag: string, newTag: string) {
         return;
 
     tagOperations.replaceTag(originalTag, [newTag], new Set(imagesWithTag));
+}
+
+function toggleReorderTagSelection(tag: string) {
+    if (!isDraggable.value)
+        return;
+
+    const nextSelection = new Set(selectedReorderTags.value);
+
+    if (nextSelection.has(tag))
+        nextSelection.delete(tag);
+    else
+        nextSelection.add(tag);
+
+    selectedReorderTags.value = nextSelection;
 }
 </script>
 
@@ -603,24 +669,29 @@ function renameGlobalTag(originalTag: string, newTag: string) {
                     >
                         <template v-for="(tag, index) in displayedTagsList" :key="tag">
                             <div
-                                v-if="draggingTag && dropIndex === index"
-                                class="h-fit w-fit rounded px-1.5 border border-success text-success bg-success/20 pointer-events-none"
+                                v-if="draggingTags.length > 0 && dropIndex === index"
+                                class="pointer-events-none h-fit w-fit rounded border border-success bg-success/20 px-1.5 text-success"
                             >
-                                {{ draggingTag }}
+                                {{ draggingTagsLabel }}
                             </div>
                             <EditableTagChip
                                 :tag="tag"
+                                :selectable="isDraggable"
+                                :selected="selectedReorderTags.has(tag)"
+                                :data-tag="tag"
+                                data-reorder-selection="dataset-tags"
                                 class="relative h-fit w-fit bg-[#a6d9e2] px-1.5 hover:cursor-pointer dark:bg-gray-700"
                                 :class="{
                                     'dark:bg-warning/50':
                                         (isFiltering && filterTagsSet.has(tag.toLowerCase()))
                                         || highlightSet.has(tag),
-                                    'hover:bg-red-300 dark:hover:bg-rose-900': !draggingTag
+                                    'hover:bg-red-300 dark:hover:bg-rose-900': draggingTags.length === 0
                                 }"
+                                @toggle-selection="toggleReorderTagSelection(tag)"
                                 @commit="renameDisplayedTag(tag, $event)"
                                 @remove="removeTag(tag)"
                                 @contextmenu.stop.prevent="openTagContextMenu($event, tag, 'editor')"
-                                @dragover.stop.prevent="setDropIndex($event, tag, index)"
+                                @dragover.stop.prevent="setDropIndex($event, index)"
                                 @drop.stop.prevent="onTagDrop"
                             >
                                 <template #prefix="{ editing }">
@@ -650,10 +721,10 @@ function renameGlobalTag(originalTag: string, newTag: string) {
                             </EditableTagChip>
                         </template>
                         <div
-                            v-if="draggingTag && dropIndex === displayedTagsList.length"
-                            class="h-fit w-fit rounded px-1.5 border border-success text-success bg-success/20 pointer-events-none"
+                            v-if="draggingTags.length > 0 && dropIndex === displayedTagsList.length"
+                            class="pointer-events-none h-fit w-fit rounded border border-success bg-success/20 px-1.5 text-success"
                         >
-                            {{ draggingTag }}
+                            {{ draggingTagsLabel }}
                         </div>
                         <div
                             class="h-6 w-full"

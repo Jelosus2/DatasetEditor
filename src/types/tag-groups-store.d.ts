@@ -36,12 +36,11 @@ type RemoveTagChangeRecord = {
     tagPositions: Map<string, number>;
 };
 
-type ReorderTagChangeRecord = {
-    type: "reorder_tag";
+type ReorderTagsChangeRecord = {
+    type: "reorder_tags";
     group: string;
-    tag: string;
-    fromIndex: number;
-    toIndex: number;
+    previousTags: string[];
+    nextTags: string[];
 };
 
 type ImportGroupsChangeRecord = {
@@ -66,5 +65,5 @@ export type TagGroupsChangeRecord =
     | AddTagChangeRecord
     | RemoveTagChangeRecord
     | RenameTagChangeRecord
-    | ReorderTagChangeRecord
+    | ReorderTagsChangeRecord
     | ImportGroupsChangeRecord;

@@ -62,6 +62,13 @@ export function useTagGroupsOperations() {
         tagGroupsStore.reorderTagInGroup(group, tag, toIndex);
     }
 
+    function reorderTags(group: string, tags: Set<string>, toIndex: number) {
+        if (!group || tags.size === 0)
+            return;
+
+        tagGroupsStore.reorderTagsInGroup(group, tags, toIndex);
+    }
+
     function renameTag(group: string, originalTag: string, newTag: string) {
         if (!group || !originalTag || !newTag)
             return;
@@ -108,6 +115,7 @@ export function useTagGroupsOperations() {
         addTag,
         removeTag,
         renameTag,
+        reorderTags,
         reorderTag,
         mergeTagGroups,
         importTagGroups,

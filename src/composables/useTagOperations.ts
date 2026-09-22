@@ -56,6 +56,13 @@ export function useTagOperations() {
         datasetStore.reorderTagInImages(images, tag, toIndex);
     }
 
+    function reorderTags(images: Set<string>, tags: Set<string>, toIndex: number) {
+        if (images.size === 0 || tags.size === 0)
+            return;
+
+        datasetStore.reorderTagsInImages(images, tags, toIndex);
+    }
+
     return {
         addTag,
         removeTag,
@@ -63,6 +70,7 @@ export function useTagOperations() {
         removeGlobalTag,
         replaceTag,
         reorderTag,
+        reorderTags,
         validateTagPosition,
     };
 }
