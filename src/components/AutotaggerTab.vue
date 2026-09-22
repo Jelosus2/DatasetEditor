@@ -364,27 +364,36 @@ function closeRemoveModelModal() {
 }
 
 async function removeModel() {
-    modelsDeleting.value.add(modelToBeRemoved.value);
-
-    const updatedMap = new Map(models.value);
-    updatedMap.delete(modelToBeRemoved.value);
-
-    const result = await taggerService.updateModelsConfiguration(updatedMap);
-    if (result.error)
+    const model = modelToBeRemoved.value;
+    if (!model)
         return;
 
-    models.value = updatedMap;
-    modelsDeleting.value.delete(modelToBeRemoved.value);
-    selectedModels.value.delete(modelToBeRemoved.value);
+    const wasDownloaded = !!modelsStatus.value[model];
+    modelsDeleting.value.add(model);
 
-    closeRemoveModelModal();
+    try {
+        const updatedMap = new Map(models.value);
+        updatedMap.delete(model);
 
-    if (modelsStatus.value[modelToBeRemoved.value])
-        openDeleteModelModal();
-    else
-        modelToBeRemoved.value = "";
+        const result = await taggerService.updateModelsConfiguration(updatedMap);
+        if (result.error)
+            return;
 
-    delete modelsStatus.value[modelToBeRemoved.value];
+        models.value = updatedMap;
+        selectedModels.value.delete(model);
+        delete modelsStatus.value[model];
+
+        closeRemoveModelModal();
+
+        if (wasDownloaded) {
+            modelToBeRemoved.value = model;
+            openDeleteModelModal();
+        } else {
+            modelToBeRemoved.value = "";
+        }
+    } finally {
+        modelsDeleting.value.delete(model);
+    }
 }
 
 function openDeleteModelModal() {
@@ -508,7 +517,11 @@ async function deleteModel(model: string) {
     if (result.error)
         return;
 
-    modelsStatus.value[model] = false;
+    if (models.value.has(model))
+        modelsStatus.value[model] = false;
+    else
+        delete modelsStatus.value[model];
+
     selectedModels.value.delete(model);
     cacheSizeBytes.value = result.cacheSizeBytes;
 }
@@ -895,7 +908,7 @@ onMounted(async () => {
                 <div class="flex items-center justify-between pt-2">
                     <button
                         class="btn btn-error btn-outline gap-2"
-                        :disabled="!isEditModelCustom || isTagging"
+                        :disabled="isTagging || modelsDeleting.has(editModel)"
                         @click="removeModelFromList"
                     >
                         Remove
