@@ -53,12 +53,12 @@ export class TaggerManager {
         });
     }
 
-    runTaggerProcess(port: number) {
+    runTaggerProcess(port: number, env: NodeJS.ProcessEnv) {
         if (this.process && !this.process.hasEnded())
             throw new Error("A process is still running");
 
         const args = ["-u", App.paths.taggerScriptPath, port.toString()];
-        this.process.runTask(App.paths.pythonExecutablePath, args, "tagger:output", { cwd: App.paths.taggerPath })
+        this.process.runTask(App.paths.pythonExecutablePath, args, "tagger:output", { cwd: App.paths.taggerPath, env })
             .then(({ exitCode, isManualKilling }) => {
                 if (!isManualKilling && exitCode !== 0)
                     App.logger.error(`[Tagger Manager] Tagger server stopped with code ${exitCode}`);

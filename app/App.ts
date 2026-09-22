@@ -60,7 +60,7 @@ export class App {
             await this.settings.initializeWithDefaults(isDarkThemeDefault);
             await this.taggerModels.initializeWithDefaults();
 
-            const settings = await this.settings.loadSettings();
+            const settings = await this.settings.loadSettings({ decryptEncrypted: false });
             if (!settings.enableHardwareAcceleration)
                 app.disableHardwareAcceleration();
 

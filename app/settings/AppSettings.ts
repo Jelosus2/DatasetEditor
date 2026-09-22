@@ -95,6 +95,17 @@ export class AppSettings implements Settings {
 
     @Setting({
         section: "Autotagger",
+        label: "HuggingFace access token",
+        type: "string",
+        description: "Optional access token used to download private or gated Hugging Face models.",
+        inputType: "password",
+        storage: "encrypted",
+        defaultValue: ""
+    })
+    huggingFaceToken = "";
+
+    @Setting({
+        section: "Autotagger",
         label: "Service port",
         type: "number",
         description: "The port number where the tagger service will listen.",

@@ -41,7 +41,8 @@ export const useSettingsStore = defineStore("settings", () => {
         shortcutNavigationUp: "ArrowUp",
         shortcutNavigationDown: "ArrowDown",
         shortcutToggleTagEditMode: "Ctrl+E",
-        huggingFaceCacheDirectory: ""
+        huggingFaceCacheDirectory: "",
+        huggingFaceToken: ""
     });
 
     const settingsUndoStack = ref<SettingsChangeRecord[]>([]);
@@ -231,6 +232,9 @@ export const useSettingsStore = defineStore("settings", () => {
             return unique as Settings[K];
         }
 
+        if (key === "huggingFaceToken")
+            return String(value).trim() as Settings[K];
+
         if (key.startsWith("shortcut"))
             return normalizeShortcut(String(value)) as Settings[K];
 
@@ -288,6 +292,7 @@ export const useSettingsStore = defineStore("settings", () => {
     const autoCheckUpdates = useSettingField("autoCheckUpdates");
     const sortImagesAlphabetically = useSettingField("sortImagesAlphabetically");
     const enableHardwareAcceleration = useSettingField("enableHardwareAcceleration");
+    const huggingFaceToken = useSettingField("huggingFaceToken");
 
     function buildSettings(snapshot = false) {
         return {
@@ -424,6 +429,7 @@ export const useSettingsStore = defineStore("settings", () => {
         autoCheckUpdates,
         sortImagesAlphabetically,
         enableHardwareAcceleration,
+        huggingFaceToken,
         schema,
         hasChanges,
         restartRequired,

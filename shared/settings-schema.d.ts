@@ -23,10 +23,12 @@ export type Settings = {
     shortcutNavigationDown: string;
     shortcutToggleTagEditMode: string;
     huggingFaceCacheDirectory: string;
+    huggingFaceToken: string;
 };
 
 export type SettingType =
     | "boolean"
+    | "string"
     | "string[]"
     | "number"
     | "select"
@@ -34,7 +36,14 @@ export type SettingType =
     | "shortcut"
     | "directory";
 
-export type SettingInputType = "textarea";
+export type SettingInputType =
+    | "text"
+    | "password"
+    | "textarea";
+
+export type StringSettingStorage =
+    | "plain"
+    | "encrypted";
 
 export type SettingOption = {
     label: string;
@@ -58,7 +67,12 @@ type NumberSettingKey = KeysMatching<Settings, number>;
 type StringArraySettingKey = KeysMatching<Settings, string[]>;
 type ShortcutSettingKey = Extract<keyof Settings, `shortcut${string}`>;
 type DirectorySettingKey = "huggingFaceCacheDirectory";
-type SelectSettingKey = Exclude<KeysMatching<Settings, string>, ShortcutSettingKey | DirectorySettingKey>;
+type SelectSettingKey = "theme";
+
+type StringSettingKey = Exclude<
+    KeysMatching<Settings, string>,
+    ShortcutSettingKey | DirectorySettingKey | SelectSettingKey
+>;
 
 type SettingDefinitionBase<K extends string, T extends SettingType> = {
     key: K;
@@ -78,8 +92,13 @@ export type BooleanSettingDefinition = ValueSettingDefinitionBase<BooleanSetting
 
 export type NumberSettingDefinition = ValueSettingDefinitionBase<NumberSettingKey, "number">;
 
+export type StringSettingDefinition = ValueSettingDefinitionBase<StringSettingKey, "string"> & {
+    inputType?: "text" | "password";
+    storage: StringSettingStorage;
+};
+
 export type StringArraySettingDefinition = ValueSettingDefinitionBase<StringArraySettingKey, "string[]"> & {
-    inputType?: SettingInputType;
+    inputType?: "textarea";
 };
 
 export type SelectSettingDefinition = ValueSettingDefinitionBase<SelectSettingKey, "select"> & {
@@ -96,6 +115,7 @@ export type ActionSettingDefinition = {
 
 export type ValueSettingDefinition =
     | BooleanSettingDefinition
+    | StringSettingDefinition
     | NumberSettingDefinition
     | StringArraySettingDefinition
     | SelectSettingDefinition

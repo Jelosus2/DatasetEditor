@@ -84,9 +84,15 @@ export class TaggerController {
     async startTagger(): Promise<IpcInvokeMap["tagger:start"]["result"]> {
         try {
             const settings = await App.settings.loadSettings();
+            const taggerEnvironment: NodeJS.ProcessEnv = {
+                ...process.env,
+                HF_HUB_CACHE: settings.huggingFaceCacheDirectory,
+                HF_HUB_DISABLE_SYMLINKS_WARNING: "1"
+            };
 
-            process.env["HF_HUB_CACHE"] = settings.huggingFaceCacheDirectory;
-            process.env["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1";
+            const huggingFaceToken = settings.huggingFaceToken.trim();
+            if (huggingFaceToken)
+                taggerEnvironment.HF_TOKEN = huggingFaceToken;
 
             if (process.platform !== "win32" && !await App.tagger.hasVirtualEnv())
                 return { error: true, message: "Install the tagger dependencies first" };
@@ -96,7 +102,7 @@ export class TaggerController {
                  App.logger.info(`[Tagger Manager] Preferred port ${settings.taggerPort} is in use, using ${port} instead`);
 
             App.logger.info(`[Tagger Manager] Starting server on port ${port}...`);
-            App.tagger.runTaggerProcess(port);
+            App.tagger.runTaggerProcess(port, taggerEnvironment);
 
             this.port = port;
 

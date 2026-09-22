@@ -7,12 +7,16 @@ import ConfirmationAlert from "@/components/ConfirmationAlert.vue";
 import { useSettingsOperations } from "@/composables/useSettingsOperations";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useAlert } from "@/composables/useAlert";
-import { reactive, ref, computed, watchEffect, watch, onMounted } from "vue";
+import { reactive, ref, computed, watchEffect, watch, onMounted, onDeactivated } from "vue";
+
+import EyeIcon from "@/assets/icons/eye.svg";
+import EyeOffIcon from "@/assets/icons/eye-off.svg";
 
 const activeSection = ref("");
 const isRepairAutotaggerModalOpen = ref(false);
 
 const stringInputs = reactive<Record<string, string>>({});
+const visiblePasswordFields = reactive(new Set<string>());
 
 const settingsStore = useSettingsStore();
 const settingsOperations = useSettingsOperations();
@@ -93,6 +97,17 @@ function closeRepairAutotaggerModal() {
     isRepairAutotaggerModalOpen.value = false;
 }
 
+function isPasswordVisible(key: string) {
+    return visiblePasswordFields.has(key);
+}
+
+function togglePasswordVisibility(key: string) {
+    if (visiblePasswordFields.has(key))
+        visiblePasswordFields.delete(key);
+    else
+        visiblePasswordFields.add(key);
+}
+
 async function confirmRepairAutotagger() {
     closeRepairAutotaggerModal();
     await settingsStore.repairTagger();
@@ -116,6 +131,10 @@ onMounted(() => {
         if (definition.type === "directory" && settingsOperations.directoryInputs[definition.key] === undefined)
             settingsOperations.directoryInputs[definition.key] = String(settingsStore.getSetting(definition.key) ?? "");
     });
+});
+
+onDeactivated(() => {
+    visiblePasswordFields.clear();
 });
 </script>
 
@@ -190,6 +209,49 @@ onMounted(() => {
                                             @change="settingsOperations.setValue(field, ($event.target as HTMLInputElement).checked)"
                                         />
                                     </label>
+
+                                    <!-- string -->
+                                    <div v-else-if="field.type === 'string'" class="w-110">
+                                        <div class="relative">
+                                            <input
+                                                class="input w-full outline-none!"
+                                                :class="{ 'pr-12': field.inputType === 'password' }"
+                                                :type="
+                                                    field.inputType === 'password' && !isPasswordVisible(field.key)
+                                                        ? 'password'
+                                                        : 'text'
+                                                "
+                                                :value="settingsOperations.getValue(field)"
+                                                :autocomplete="
+                                                    field.inputType === 'password'
+                                                        ? 'new-password'
+                                                        : 'off'
+                                                "
+                                                :spellcheck="false"
+                                                @input="settingsOperations.setValue(field, ($event.target as HTMLInputElement).value)"
+                                            />
+                                            <button
+                                                v-if="field.inputType === 'password'"
+                                                type="button"
+                                                class="btn btn-ghost btn-xs absolute right-2 top-1/2 -translate-y-1/2 p-1"
+                                                :title="
+                                                    isPasswordVisible(field.key)
+                                                        ? 'Hide value'
+                                                        : 'Show value'
+                                                "
+                                                :aria-label="
+                                                    isPasswordVisible(field.key)
+                                                        ? `Hide ${field.label}`
+                                                        : `Show ${field.label}`
+                                                "
+                                                @mousedown.prevent
+                                                @click="togglePasswordVisibility(field.key)"
+                                            >
+                                                <EyeOffIcon v-if="isPasswordVisible(field.key)" class="h-5 w-5" />
+                                                <EyeIcon v-else class="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    </div>
 
                                     <!-- select -->
                                     <div v-else-if="field.type === 'select'" class="w-64">
