@@ -626,6 +626,7 @@ function toggleReorderTagSelection(tag: string) {
                                 :disabled="datasetStore.dataset.size === 0"
                                 :custom-list="displayedGlobalTagsList"
                                 :dropdown-below="true"
+                                :contains-mode="true"
                             />
                         </label>
                         <label class="input z-2 w-full outline-none!">
@@ -636,6 +637,7 @@ function toggleReorderTagSelection(tag: string) {
                                 :disabled="datasetStore.dataset.size === 0"
                                 :multiple="true"
                                 :dropdown-below="true"
+                                :contains-mode="true"
                             />
                         </label>
                     </div>
