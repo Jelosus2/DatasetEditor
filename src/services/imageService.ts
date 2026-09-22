@@ -26,7 +26,7 @@ export class ImageService {
             return true;
         }
 
-        const result = await this.ipc.invoke("image:set_background", images, color);
+        const result = await this.ipc.invoke("image:set_background", paths, color);
 
         const processed = new Set(paths);
         const timestamp = Date.now();
