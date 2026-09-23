@@ -25,8 +25,21 @@ export class TaggerManager {
         if (!await fs.pathExists(requirementsPath))
             throw new Error(`Couldn't find the requirements.txt file at ${requirementsPath}`);
 
-        const args = ["-u", "-m", "pip", "install", "--no-warn-script-location", "--disable-pip-version-check", "-r", requirementsPath];
-        return this.process.runTask(App.paths.pythonExecutablePath, args, "tagger:output", {
+        const pythonVersion = this.getPythonVersion(App.paths.pythonExecutablePath);
+        if (!pythonVersion || !this.isSupportedPythonVersion(pythonVersion))
+            throw new Error(`Unsupported autotagger Python version: ${pythonVersion ?? "unknown"}`);
+
+        const minor = Number(pythonVersion.split(".")[1]);
+        const torchBackend = minor === 14 ? "cu126" : "cu124";
+
+        const args = [
+            "pip", "install",
+            "--python", App.paths.pythonExecutablePath,
+            "--torch-backend", torchBackend,
+            "-r", requirementsPath
+        ];
+
+        return this.process.runTask(App.paths.uvExecutablePath, args, "tagger:output", {
             cwd: App.paths.taggerPath
         });
     }
@@ -47,8 +60,9 @@ export class TaggerManager {
         if (!await fs.pathExists(requirementsPath))
             throw new Error(`Couldn't find the requirements.txt file at ${requirementsPath}`);
 
-        const args = ["-u", "-m", "pip", "uninstall", "-y", "-r", requirementsPath];
-        return this.process.runTask(App.paths.pythonExecutablePath, args, "tagger:output", {
+        const args = ["pip", "uninstall", "--python", App.paths.pythonExecutablePath, "-r", requirementsPath];
+
+        return this.process.runTask(App.paths.uvExecutablePath, args, "tagger:output", {
             cwd: App.paths.taggerPath
         });
     }
@@ -94,14 +108,17 @@ export class TaggerManager {
         const { python, version } = this.resolveLinuxSystemPython();
         App.logger.info(`[Tagger Manager] Using Linux Python interpreter '${python}' (${version})`);
 
-        const result = await this.process.runTask(python, ["-u", "-m", "venv", App.paths.venvPath], "tagger:output");
+        const args = ["venv", "--python", python, "--no-managed-python", "--no-python-downloads", App.paths.venvPath];
 
-        if (result.isManualKilling)
-            throw new Error("Virtual environment creation was cancelled");
+        const result = await this.process.runTask(App.paths.uvExecutablePath, args, "tagger:output", {
+            cwd: App.paths.taggerPath
+        });
 
-        if (result.exitCode !== 0) {
+        if (result.isManualKilling || result.exitCode !== 0) {
             await fs.remove(App.paths.venvPath);
-            throw new Error(`Virtual environment creation failed with exit code ${result.exitCode}. Do you have the venv module installed?`);
+            throw new Error(result.isManualKilling
+                ? "Virtual environment creation was cancelled"
+                : `Virtual environment creation failed with exit code ${result.exitCode}.`);
         }
     }
 

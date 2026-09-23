@@ -29,6 +29,7 @@ export class PathsBuilder {
     readonly taggerPath: string;
     readonly pythonPath: string;
     readonly pythonExecutablePath: string;
+    readonly uvExecutablePath: string;
     readonly venvPath: string;
     readonly databasePath: string;
     readonly settingsPath: string;
@@ -61,6 +62,9 @@ export class PathsBuilder {
         this.pythonExecutablePath = process.platform === "win32"
             ? path.join(this.pythonPath, "python.exe")
             : path.join(this.venvPath, "bin", "python");
+        this.uvExecutablePath = process.platform === "win32"
+            ? path.join(this.pythonPath, "uv.exe")
+            : path.join(this.taggerPath, "uv");
         this.databasePath = path.join(this.tagAutocompletionsPath, "tags.db");
         this.settingsPath = path.join(this.dataPath, "settings.json");
         this.bundledTagAutocompletionFilePath = installScope === "dev"

@@ -23,14 +23,14 @@ For Linux, use the package format that best matches your distribution, or use th
 
 You will need:
 
-- **Node.js 22 or newer**
-- **pnpm 10 or newer**
+- **Node.js 24 or newer**
+- **pnpm 11.13.1**
 - For **Windows packaging**: a prepared `embedded_python` directory in the repository root
 
 If you are preparing the embedded Python bundle yourself:
 
-- add `pip` with [get-pip.py](https://bootstrap.pypa.io/get-pip.py)
-- uncomment the `import site` line in the `.pth` file
+- Add the `uv.exe` binary inside the embedded python folder.
+- Uncomment the `import site` line in the `.pth` file and below it add `..`.
 
 If you want to test the autotagger in development on Windows, also copy the `embedded_python` directory into `tagger/embedded_python`.
 

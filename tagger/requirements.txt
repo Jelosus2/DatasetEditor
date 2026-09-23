@@ -5,7 +5,5 @@ pillow==12.1.0
 huggingface_hub==1.3.3
 websockets==16.0
 
---extra-index-url https://download.pytorch.org/whl/cu124
---extra-index-url https://download.pytorch.org/whl/cu126
 torch==2.9.1 ; python_version == "3.14"
 torch==2.5.1 ; python_version <= "3.13"

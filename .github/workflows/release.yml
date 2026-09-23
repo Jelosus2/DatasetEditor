@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
@@ -32,24 +32,39 @@ jobs:
           sudo apt-get install -y rpm
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
-          version: 10
+          version: 11.13.1
 
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
+
+      - name: Set up uv
+        id: setup-uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          version: "0.12.17"
+          enable-cache: false
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Bundle uv
+        shell: bash
+        env:
+          UV_BINARY: ${{ steps.setup-uv.outputs.uv-path }}
+        run: |
+          install -m 755 "$UV_BINARY" tagger/uv
+          tagger/uv --version
 
       - name: Build Linux packages
         run: pnpm package:linux
 
       - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-artifacts
           path: |
@@ -68,20 +83,27 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
-          version: 10
+          version: 11.13.1
 
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
+
+      - name: Set up uv
+        id: setup-uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          version: "0.12.17"
+          enable-cache: false
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -105,11 +127,19 @@ jobs:
             throw "embedded_python/python.exe not found after extraction."
           }
 
+      - name: Bundle uv
+        shell: pwsh
+        env:
+          UV_BINARY: ${{ steps.setup-uv.outputs.uv-path }}
+        run: |
+          Copy-Item -LiteralPath $env:UV_BINARY -Destination 'embedded_python\uv.exe'
+          & '.\embedded_python\uv.exe' --version
+
       - name: Build Windows packages
         run: pnpm package:win
 
       - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-artifacts
           path: |
@@ -129,19 +159,19 @@ jobs:
 
     steps:
       - name: Download Linux Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: linux-artifacts
           path: release-assets/linux
 
       - name: Download Windows artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: windows-artifacts
           path: release-assets/win
 
       - name: Upload merged release payload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-assets
           path: release-assets/**
@@ -156,12 +186,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Download prepared release assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-assets
           path: release-assets
@@ -183,7 +213,7 @@ jobs:
           echo "path=$OUTPUT_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: ${{ github.event.inputs.tag || github.ref_name }}

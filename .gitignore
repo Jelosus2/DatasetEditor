@@ -20,6 +20,7 @@ tagger/__pycache__
 embedded_python
 dist_app
 build/release-notes.json
+tagger/uv
 
 /cypress/videos/
 /cypress/screenshots/
