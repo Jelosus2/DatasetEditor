@@ -1,4 +1,4 @@
-import type { TaggerModelConfiguration } from "../../shared/tagger.js";
+import type { TaggerModelConfiguration, TimmExtraFile } from "../../shared/tagger.js";
 
 import { Utilities } from "../utils/Utilities.js";
 import { App } from "../App.js";
@@ -6,6 +6,11 @@ import fs from "fs-extra";
 import _ from "lodash";
 
 const MODEL_CONFIGURATION_SCHEMA_VERSION = 1;
+
+const TIMM_EXTRA_FILES: readonly TimmExtraFile[] = [
+    "preprocess.json",
+    "thresholds.csv"
+];
 
 type StoredTaggerModelConfiguration = {
     schemaVersion: typeof MODEL_CONFIGURATION_SCHEMA_VERSION;
@@ -59,23 +64,45 @@ export class TaggerModelManager {
 
         for (const name of allNames) {
             const override = overrides[name];
-            const isCustomModel = !defaultNameSet.has(name);
+            const isCustomModel = !defaultNameSet.has(name) || (removedDefaultModels.has(name) && override?.isCustomModel === true);
 
-            const modelFile = isCustomModel
-                ? override?.modelFile || ""
-                : "model.onnx";
+            const backend = isCustomModel && override?.backend === "timm"
+                ? "timm"
+                : "onnx";
 
-            const tagsFile = isCustomModel
-                ? override?.tagsFile || ""
-                : "selected_tags.csv";
+            const modelFile = !isCustomModel
+                ? "model.onnx"
+                : override?.modelFile || (backend === "timm" ? "model.safetensors" : "");
+
+            const tagsFile = !isCustomModel
+                ? "selected_tags.csv"
+                : override?.tagsFile || "selected_tags.csv";
+
+            const savedExtraFiles = Array.isArray(override?.extraFiles)
+                ? override.extraFiles
+                : [];
+
+            const extraFiles = backend === "timm"
+                ? TIMM_EXTRA_FILES.filter((file) => savedExtraFiles.includes(file))
+                : [];
+
+            const savedThresholdSource = override?.thresholdSource;
+            const thresholdSource =
+                savedThresholdSource === "tags_file"
+                || (savedThresholdSource === "thresholds_file" && backend === "timm" && extraFiles.includes("thresholds.csv"))
+                    ? savedThresholdSource
+                    : "manual";
 
             configuration[name] = {
                 generalThreshold: 0.25,
                 characterThreshold: 0.35,
                 ...(override || {}),
                 isCustomModel,
+                backend,
                 modelFile,
-                tagsFile
+                tagsFile,
+                extraFiles,
+                thresholdSource
             };
         }
 
@@ -83,7 +110,7 @@ export class TaggerModelManager {
     }
 
     private createStoredConfiguration(configuration: TaggerModelConfiguration): StoredTaggerModelConfiguration {
-        const removedDefaultModels = this.getDefaultModelNames().filter((name) => !Object.hasOwn(configuration, name));
+        const removedDefaultModels = this.getDefaultModelNames().filter((name) => !Object.hasOwn(configuration, name) || configuration[name].isCustomModel);
         const models = this.buildConfiguration(configuration, new Set(removedDefaultModels));
 
         return {

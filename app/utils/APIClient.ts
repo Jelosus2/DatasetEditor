@@ -43,6 +43,13 @@ export class APIClient {
             this.taggerWebsocket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
 
+                if (data.error && data.type !== "error") {
+                    reject(new Error(`${data.error}: ${data.details || "No details"}`));
+                    this.closeWSConnectionSafely(this.taggerWebsocket);
+                    this.taggerWebsocket = null;
+                    return;
+                }
+
                 if (data.type === "result") {
                     const file: string = data.file;
                     const tags: string[] = data.tags;

@@ -1,6 +1,6 @@
 import type { Dataset, DatasetPersistable, DatasetRenameOptions, RenameProgressPayload, RenameMapping, RenamePreviewItem, GlobalTags } from "./dataset.js";
 import type { IpcResult, CancelableIpcResult, IpcSelectionResult, IpcValidationResult, StoppableIpcResult, AbortableIpcResult } from "./ipc-result.js";
-import type { TaggerModelsStatus, TaggerModelConfiguration, TaggerWSPayload, StyleCompareItem } from "./tagger.js";
+import type { TaggerModelsStatus, TaggerModelConfiguration, TaggerWSPayload, StyleCompareItem, TaggerBackend, TimmExtraFile } from "./tagger.js";
 import type { SettingsDefinition, SettingsActionId, Settings } from "./settings-schema.js";
 import type { AppCloseRequestPayload, AppCloseResponsePayload } from "./app-close.js";
 import type { DanbooruWikiPage, DanbooruPostPreview, Rating } from "./danbooru.js";
@@ -184,7 +184,7 @@ export type IpcInvokeMap = {
         }>;
     }
     "tagger:download_model": {
-        args: [modelRepo: string, modelFile: string, tagsFile: string];
+        args: [modelRepo: string, modelFile: string, tagsFile: string, extraFiles: TimmExtraFile[], backend: TaggerBackend];
         result: IpcResult<{
             message: string;
             cacheSizeBytes: number;

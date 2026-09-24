@@ -1,5 +1,5 @@
 import type { DeviceWSResponse, ModelsStatusWSResponse, DeleteModelWSResponse, ModelActionWSResponse } from "../types/tagger.js";
-import type { TaggerModelConfiguration, TaggerWSPayload } from "../../shared/tagger.js";
+import type { TaggerModelConfiguration, TaggerWSPayload, TaggerBackend, TimmExtraFile } from "../../shared/tagger.js";
 import type { IpcInvokeMap } from "../../shared/ipc-types.js";
 import type { IpcMainInvokeEvent } from "electron";
 
@@ -231,7 +231,9 @@ export class TaggerController {
         _event: IpcMainInvokeEvent,
         modelRepo: string,
         modelFile: string,
-        tagsFile: string
+        tagsFile: string,
+        extraFiles: TimmExtraFile[],
+        backend: TaggerBackend
     ): Promise<IpcInvokeMap["tagger:download_model"]["result"]> {
         try {
             this.port ??= (await App.settings.loadSettings()).taggerPort;
@@ -241,7 +243,9 @@ export class TaggerController {
                 command: "download_model",
                 model: modelRepo,
                 model_file: modelFile,
-                tags_file: tagsFile
+                tags_file: tagsFile,
+                extra_files: extraFiles,
+                backend
             });
             App.logger.info(`[Tagger Manager] Downloaded ${modelRepo} successfully`);
 

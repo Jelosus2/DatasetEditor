@@ -1,4 +1,4 @@
-import type { TaggerModelConfiguration, TaggerModelConfigurationProperties, TaggerWSPayloadModel } from "../../shared/tagger";
+import type { TaggerModelConfiguration, TaggerModelConfigurationProperties, TaggerWSPayloadModel, TaggerBackend, TimmExtraFile } from "../../shared/tagger";
 import type { AlertType } from "@/types/alert";
 
 import { useIpcRenderer } from "@/composables/useIpcRenderer";
@@ -66,13 +66,17 @@ export class TaggerService {
 
     private configurationMapToPayload(configurationMap: Map<string, TaggerModelConfigurationProperties>) {
         const resultArr: TaggerWSPayloadModel[] = [];
+
         for (const [name, properties] of configurationMap) {
             resultArr.push({
                 repo_id: name,
+                backend: properties.backend,
                 general_threshold: properties.generalThreshold,
                 character_threshold: properties.characterThreshold,
+                threshold_source: properties.thresholdSource,
                 model_file: properties.modelFile,
-                tags_file: properties.tagsFile
+                tags_file: properties.tagsFile,
+                extra_files: [...properties.extraFiles]
             });
         }
 
@@ -152,8 +156,8 @@ export class TaggerService {
         return result.device;
     }
 
-    async downloadModel(modelRepo: string, modelFile: string, tagsFile: string) {
-        const result = await this.ipc.invoke("tagger:download_model", modelRepo, modelFile, tagsFile);
+    async downloadModel(modelRepo: string, modelFile: string, tagsFile: string, extraFiles: TimmExtraFile[], backend: TaggerBackend) {
+        const result = await this.ipc.invoke("tagger:download_model", modelRepo, modelFile, tagsFile, [...extraFiles], backend);
 
         this.alert.showAlert(result.error ? "error" : "success", result.message);
 

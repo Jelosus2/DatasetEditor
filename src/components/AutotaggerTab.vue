@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { TaggerModelsStatus, TaggerModelConfigurationProperties, StyleCompareItem } from "../../shared/tagger";
+import type { TaggerModelsStatus, TaggerModelConfigurationProperties, StyleCompareItem, TaggerBackend, TimmExtraFile, TaggerThresholdSource } from "../../shared/tagger";
 
 import AutotaggerConsole from "@/components/AutotaggerConsole.vue";
 import ConfirmationAlert from "@/components/ConfirmationAlert.vue";
 
+import { UtilitiesService } from "@/services/utilitiesService";
 import { useDatasetStore } from "@/stores/datasetStore";
 import { useUiStateStore } from "@/stores/uiStateStore";
 import { TaggerService } from "@/services/taggerService";
@@ -21,6 +22,7 @@ import CaretDownIcon from "@/assets/icons/caret-down.svg";
 const STYLE_COMPARE_ROW_HEIGHT = 56;
 const STYLE_COMPARE_BUFFER = 8;
 const STYLE_COMPARE_WARNING_SEEN_KEY = "style-compare-kaloscope-warning-seen";
+const MODEL_ISSUES_URL = "https://github.com/Jelosus2/DatasetEditor/issues";
 
 const consoleRef = ref<InstanceType<typeof AutotaggerConsole> | null>(null);
 const isInstalling = ref(false);
@@ -35,7 +37,7 @@ const modelsDownloading = ref<Set<string>>(new Set());
 const modelsDeleting = ref<Set<string>>(new Set());
 const isAddModelModalOpen = ref(false);
 const addModelRepositoryId = ref("");
-const modelOnnxFile = ref("");
+const modelFile = ref("");
 const modelCsvTagsFile = ref("");
 const addModelTriedSave = ref(false);
 const isEditModelModalOpen = ref(false);
@@ -56,6 +58,10 @@ const styleCompareScrollTop = ref(0);
 const isStyleCompareDownloadWarningOpen = ref(false);
 const selectedDependencyAction = ref<"install" | "uninstall">("install");
 const isUninstallDependenciesModalOpen = ref(false);
+const addBackend = ref<TaggerBackend>("onnx");
+const editBackend = ref<TaggerBackend>("onnx");
+const extraFiles = ref<TimmExtraFile[]>([]);
+const editThresholdSource = ref<TaggerThresholdSource>("manual");
 
 const datasetStore = useDatasetStore();
 const uiStateStore = useUiStateStore();
@@ -84,30 +90,35 @@ const repositoryIdError = computed(() => {
     return "";
 });
 
-const onnxFileError = computed(() => {
-    const value = modelOnnxFile.value.trim();
+const activeBackend = computed(() => isEditModelModalOpen.value ? editBackend.value : addBackend.value);
 
+const modelFileError = computed(() => {
+    const value = modelFile.value.trim();
     if (!value)
-        return "ONNX model file is required";
-    if (!value.toLowerCase().endsWith(".onnx"))
-        return "File must end in .onnx";
+        return "A model file is required";
 
-    return "";
+    if (activeBackend.value === "timm")
+        return value.toLowerCase().endsWith(".safetensors")
+            ? ""
+            : "File must end in .safetensors";
+
+    return value.toLowerCase().endsWith(".onnx")
+        ? ""
+        : "File must end in .onnx";
 });
 
 const csvTagsFileError = computed(() => {
     const value = modelCsvTagsFile.value.trim();
-
     if (!value)
         return "CSV tags file is required";
-    if (!value.toLowerCase().endsWith(".csv"))
-        return "File must end in .csv";
 
-    return "";
+    return value.toLowerCase().endsWith(".csv")
+        ? ""
+        : "File must end in .csv";
 });
 
 const isAddModelFormValid = computed(() =>
-    !repositoryIdError.value && !onnxFileError.value && !csvTagsFileError.value
+    !repositoryIdError.value && !modelFileError.value && !csvTagsFileError.value
 );
 
 const isEditModelCustom = computed(() => {
@@ -116,7 +127,7 @@ const isEditModelCustom = computed(() => {
 });
 
 const isEditModelFormValid = computed(() =>
-    !onnxFileError.value && !csvTagsFileError.value
+    !modelFileError.value && !csvTagsFileError.value
 );
 
 const shouldDisableTagButtons = computed(() => {
@@ -199,6 +210,7 @@ const styleCompareVirtualState = computed(() => {
 
 const { showAlert } = useAlert();
 const taggerService = new TaggerService();
+const utilitiesService = new UtilitiesService();
 
 taggerService.onData = (line) => consoleRef.value?.write(line);
 taggerService.onServiceStarted = async () => {
@@ -266,10 +278,12 @@ function getFileName(filePath: string) {
 
 function openAddModelModal() {
     addModelRepositoryId.value = "";
-    modelOnnxFile.value = "";
+    modelFile.value = "";
     modelCsvTagsFile.value = "";
     addModelTriedSave.value = false;
     isAddModelModalOpen.value = true;
+    addBackend.value = "onnx";
+    extraFiles.value = [];
 }
 
 function closeAddModelModal() {
@@ -281,19 +295,28 @@ async function saveAddModelModal() {
     if (!isAddModelFormValid.value)
         return;
 
+    const model = addModelRepositoryId.value.trim();
+    const backend = addBackend.value;
     const updatedMap = new Map(models.value);
-    updatedMap.set(addModelRepositoryId.value, {
+
+    updatedMap.set(model, {
         isCustomModel: true,
+        backend,
         generalThreshold: 0.25,
         characterThreshold: 0.35,
-        modelFile: lowerFileExtension(modelOnnxFile.value),
-        tagsFile: lowerFileExtension(modelCsvTagsFile.value)
+        modelFile: lowerFileExtension(modelFile.value),
+        tagsFile: lowerFileExtension(modelCsvTagsFile.value),
+        extraFiles: backend === "timm" ? [...extraFiles.value] : [],
+        thresholdSource: "manual"
     });
 
     const result = await taggerService.updateModelsConfiguration(updatedMap);
-    if (!result.error)
-        models.value = updatedMap;
+    if (result.error)
+        return;
 
+    models.value = updatedMap;
+
+    await refreshModelStatus(model);
     closeAddModelModal();
 }
 
@@ -311,10 +334,13 @@ function openEditModelModal(model: string) {
     const properties = models.value.get(model)!;
 
     editModel.value = model;
-    modelOnnxFile.value = properties.modelFile;
+    editBackend.value = properties.backend;
+    modelFile.value = properties.modelFile;
     modelCsvTagsFile.value = properties.tagsFile;
     editGeneralThreshold.value = normalizeThreshold(properties.generalThreshold);
     editCharacterThreshold.value = normalizeThreshold(properties.characterThreshold);
+    editThresholdSource.value = properties.thresholdSource;
+    extraFiles.value = properties.extraFiles;
 
     editModelTriedSave.value = false;
     isEditModelModalOpen.value = true;
@@ -331,19 +357,45 @@ async function saveEditModelModal() {
 
     const model = editModel.value;
     const previous = models.value.get(model)!;
+    const backend = previous.isCustomModel ? editBackend.value : "onnx";
 
-    const updatedMap = new Map(models.value);
-    updatedMap.set(model, {
+    const updatedProperties: TaggerModelConfigurationProperties = {
         ...previous,
+        backend,
         generalThreshold: normalizeThreshold(editGeneralThreshold.value),
         characterThreshold: normalizeThreshold(editCharacterThreshold.value),
-        modelFile: lowerFileExtension(modelOnnxFile.value),
-        tagsFile: lowerFileExtension(modelCsvTagsFile.value)
-    });
+        modelFile: previous.isCustomModel
+            ? lowerFileExtension(modelFile.value)
+            : "model.onnx",
+        tagsFile: previous.isCustomModel
+            ? lowerFileExtension(modelCsvTagsFile.value)
+            : "selected_tags.csv",
+        extraFiles: backend === "timm" ? [...extraFiles.value] : [],
+        thresholdSource: editThresholdSource.value === "thresholds_file" && (backend !== "timm" || !extraFiles.value.includes("thresholds.csv"))
+            ? "manual"
+            : editThresholdSource.value
+    };
+
+    const filesChanged =
+        previous.backend !== updatedProperties.backend ||
+        previous.modelFile !== updatedProperties.modelFile ||
+        previous.tagsFile !== updatedProperties.tagsFile ||
+        previous.extraFiles.length !== updatedProperties.extraFiles.length ||
+        previous.extraFiles.some((file) => !updatedProperties.extraFiles.includes(file));
+
+    const updatedMap = new Map(models.value);
+    updatedMap.set(model, updatedProperties);
 
     const result = await taggerService.updateModelsConfiguration(updatedMap);
-    if (!result.error)
-        models.value = updatedMap;
+    if (result.error)
+        return;
+
+    models.value = updatedMap;
+
+    if (filesChanged) {
+        modelsStatus.value[model] = false;
+        await refreshModelStatus(model);
+    }
 
     closeEditModelModal();
 }
@@ -495,15 +547,20 @@ async function stopProcess() {
 
 async function downloadModel(model: string) {
     modelsDownloading.value.add(model);
-    const properties = models.value.get(model)!;
-    const result = await taggerService.downloadModel(model, properties.modelFile, properties.tagsFile);
-    modelsDownloading.value.delete(model);
 
-    if (result.error)
-        return;
+    try {
+        const properties = models.value.get(model)!;
+        const result = await taggerService.downloadModel(model, properties.modelFile, properties.tagsFile, properties.extraFiles, properties.backend);
+        modelsDownloading.value.delete(model);
 
-    modelsStatus.value[model] = true;
-    cacheSizeBytes.value = result.cacheSizeBytes;
+        if (result.error)
+            return;
+
+        modelsStatus.value[model] = true;
+        cacheSizeBytes.value = result.cacheSizeBytes;
+    } finally {
+        modelsDownloading.value.delete(model);
+    }
 }
 
 async function deleteModel(model: string) {
@@ -534,8 +591,12 @@ async function autoTagImages(mode: "autotag" | "diff") {
     }
 
     isTagging.value = true;
-    await taggerService.tagImages(selectedModelsMap, removeUnderscores.value, removeRedundantTags.value, disableCharacterThreshold.value, mode);
-    isTagging.value = false;
+
+    try {
+        await taggerService.tagImages(selectedModelsMap, removeUnderscores.value, removeRedundantTags.value, disableCharacterThreshold.value, mode);
+    } finally {
+        isTagging.value = false;
+    }
 }
 
 async function stopTagger() {
@@ -566,6 +627,44 @@ async function compareDatasetStyle() {
 
 async function stopStyleComparison() {
     await taggerService.stopStyleCompare();
+}
+
+function setModelFilesForBackend(backend: TaggerBackend) {
+    modelFile.value = backend === "timm"
+        ? "model.safetensors"
+        : "model.onnx";
+    modelCsvTagsFile.value = "selected_tags.csv";
+
+    if (isEditModelModalOpen.value && backend !== "timm" && editThresholdSource.value === "thresholds_file")
+        editThresholdSource.value = "manual";
+}
+
+async function refreshModelStatus(model: string) {
+    if (!isServiceRunning.value)
+        return;
+
+    const result = await taggerService.getModelsStatus();
+    if (!Object.hasOwn(result.status, model))
+        return;
+
+    modelsStatus.value[model] = result.status[model];
+    cacheSizeBytes.value = result.cacheSizeBytes;
+
+    if (!result.status[model])
+        selectedModels.value.delete(model);
+}
+
+function toggleExtraFile(file: TimmExtraFile) {
+    extraFiles.value = extraFiles.value.includes(file)
+        ? extraFiles.value.filter((selected) => selected !== file)
+        : [...extraFiles.value, file];
+
+    if (file === "thresholds.csv" && !extraFiles.value.includes(file) && editThresholdSource.value === "thresholds_file")
+        editThresholdSource.value = "manual";
+}
+
+function openModelIssues() {
+    utilitiesService.openUrlInBrowser(MODEL_ISSUES_URL);
 }
 
 onMounted(async () => {
@@ -769,7 +868,7 @@ onMounted(async () => {
             </div>
         </div>
         <div class="modal z-50" :class="{ 'modal-open': isAddModelModalOpen }">
-            <div class="modal-box w-11/12 max-w-md">
+            <div class="modal-box w-11/12 max-w-2xl">
                 <div class="flex items-center justify-between border-b-2 pb-2 dark:border-base-content/10">
                     <div class="text-lg font-semibold">Add model</div>
                     <button class="btn btn-ghost btn-sm" @click="closeAddModelModal">
@@ -781,42 +880,90 @@ onMounted(async () => {
                         <span>
                             Custom models are not guaranteed to be fully compatible. Some models may require different
                             preprocessing, thresholds, or output formats and can produce poor results or fail to tag.
+                            If a custom model isn't working, see the
+                            <a
+                                :href="MODEL_ISSUES_URL"
+                                class="link font-semibold"
+                                @click.prevent="openModelIssues"
+                                @keyup.enter.stop
+                            >GitHub issues</a>
+                            for support.
                         </span>
                     </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="opacity-80">Repository Id</label>
-                        <input
-                            v-model="addModelRepositoryId"
-                            type="text"
-                            class="input border border-base-content/30 w-full outline-none!"
-                            placeholder="Username/RepoName"
-                        />
-                        <div v-if="addModelTriedSave && repositoryIdError" class="text-sm text-error">
-                            {{ repositoryIdError }}
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div class="flex flex-col gap-1">
+                            <label class="opacity-80">Repository Id</label>
+                            <input
+                                v-model="addModelRepositoryId"
+                                type="text"
+                                class="input border border-base-content/30 w-full outline-none!"
+                                placeholder="Username/RepoName"
+                            />
+                            <div v-if="addModelTriedSave && repositoryIdError" class="text-sm text-error">
+                                {{ repositoryIdError }}
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="opacity-80">Backend</label>
+                            <select
+                                v-model="addBackend"
+                                class="select border border-base-content/30 w-full"
+                                @change="setModelFilesForBackend(addBackend)"
+                            >
+                                <option value="onnx">ONNX</option>
+                                <option value="timm">timm / safetensors</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="opacity-80">
+                                {{ activeBackend === "timm" ? "Safetensors model file" : "ONNX model file" }}
+                            </label>
+                            <input
+                                v-model="modelFile"
+                                type="text"
+                                class="input border border-base-content/30 w-full outline-none!"
+                                placeholder="model.onnx"
+                            />
+                            <div v-if="addModelTriedSave && modelFileError" class="text-sm text-error">
+                                {{ modelFileError }}
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="opacity-80">CSV tags file</label>
+                            <input
+                                v-model="modelCsvTagsFile"
+                                type="text"
+                                class="input border border-base-content/30 w-full outline-none!"
+                                placeholder="selected_tags.csv"
+                            />
+                            <div v-if="addModelTriedSave && csvTagsFileError" class="text-sm text-error">
+                                {{ csvTagsFileError }}
+                            </div>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="opacity-80">ONNX model file</label>
-                        <input
-                            v-model="modelOnnxFile"
-                            type="text"
-                            class="input border border-base-content/30 w-full outline-none!"
-                            placeholder="model.onnx"
-                        />
-                        <div v-if="addModelTriedSave && onnxFileError" class="text-sm text-error">
-                            {{ onnxFileError }}
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="opacity-80">CSV tags file</label>
-                        <input
-                            v-model="modelCsvTagsFile"
-                            type="text"
-                            class="input border border-base-content/30 w-full outline-none!"
-                            placeholder="selected_tags.csv"
-                        />
-                        <div v-if="addModelTriedSave && csvTagsFileError" class="text-sm text-error">
-                            {{ csvTagsFileError }}
+                    <div v-if="activeBackend === 'timm'" class="flex flex-col gap-2">
+                        <span class="opacity-80">Additional files</span>
+                        <div class="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                class="btn btn-sm"
+                                :class="extraFiles.includes('preprocess.json') ? 'btn-info' : 'btn-outline'"
+                                :aria-pressed="extraFiles.includes('preprocess.json')"
+                                @click="toggleExtraFile('preprocess.json')"
+                                @keyup.enter.stop
+                            >
+                                preprocess.json · use for preprocessing
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-sm"
+                                :class="extraFiles.includes('thresholds.csv') ? 'btn-info' : 'btn-outline'"
+                                :aria-pressed="extraFiles.includes('thresholds.csv')"
+                                @click="toggleExtraFile('thresholds.csv')"
+                                @keyup.enter.stop
+                            >
+                                thresholds.csv · per-category thresholds
+                            </button>
                         </div>
                     </div>
                     <div class="flex items-center justify-end gap-2 pt-2">
@@ -834,96 +981,160 @@ onMounted(async () => {
             <div class="modal-backdrop" @click="closeAddModelModal"></div>
         </div>
         <div class="modal z-50" :class="{ 'modal-open': isEditModelModalOpen }">
-            <div class="modal-box w-11/12 max-w-md">
+            <div class="modal-box w-11/12 max-w-2xl">
                 <div class="flex items-center justify-between border-b-2 pb-2 dark:border-base-content/10">
                     <div class="text-lg font-semibold">Edit model options</div>
                     <button class="btn btn-ghost btn-sm" @click="closeEditModelModal">X</button>
                 </div>
                 <div class="mt-4 flex flex-col gap-4" @keyup.enter="saveEditModelModal">
-                <div class="text-base-content/60">
-                    {{ editModel }}
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="opacity-80">ONNX model file</label>
-                    <input
-                        v-model="modelOnnxFile"
-                        type="text"
-                        class="input border border-base-content/30 w-full outline-none!"
-                        placeholder="model.onnx"
-                        :title="!isEditModelCustom ? 'You cannot edit the model file of a default model' : ''"
-                        :disabled="!isEditModelCustom"
-                    />
-                    <div v-if="editModelTriedSave && onnxFileError" class="text-sm text-error">
-                        {{ onnxFileError }}
+                    <div class="text-base-content/60 break-all">
+                        {{ editModel }}
                     </div>
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="opacity-80">CSV tags file</label>
-                    <input
-                        v-model="modelCsvTagsFile"
-                        type="text"
-                        class="input border border-base-content/30 w-full outline-none!"
-                        placeholder="selected_tags.csv"
-                        :title="!isEditModelCustom ? 'You cannot edit the tags file of a default model' : ''"
-                        :disabled="!isEditModelCustom"
-                    />
-                    <div v-if="editModelTriedSave && csvTagsFileError" class="text-sm text-error">
-                        {{ csvTagsFileError }}
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div v-if="isEditModelCustom" class="flex flex-col gap-1">
+                            <label class="opacity-80">Backend</label>
+                            <select
+                                v-model="editBackend"
+                                class="select border border-base-content/30 w-full"
+                                :disabled="isTagging || modelsDownloading.has(editModel)"
+                                @change="setModelFilesForBackend(editBackend)"
+                            >
+                                <option value="onnx">ONNX</option>
+                                <option value="timm">timm / safetensors</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1" :class="{ 'md:col-span-2': !isEditModelCustom }">
+                            <label class="opacity-80">Threshold source</label>
+                            <select
+                                v-model="editThresholdSource"
+                                class="select border border-base-content/30 w-full"
+                            >
+                                <option value="manual">Manual sliders</option>
+                                <option value="tags_file">Tags CSV · per-tag best_threshold</option>
+                                <option
+                                    v-if="editBackend === 'timm' && extraFiles.includes('thresholds.csv')"
+                                    value="thresholds_file"
+                                >
+                                    thresholds.csv · per-category threshold
+                                </option>
+                            </select>
+                            <span class="text-xs opacity-60">
+                                Manual values are used wherever the selected CSV has no threshold.
+                            </span>
+                        </div>
                     </div>
-                </div>
-                <div class="flex flex-col gap-2">
-                    <div class="flex items-center gap-2">
-                        <span class="opacity-80">General threshold:</span>
-                        <span class="font-semibold tabular-nums">{{ editGeneralThreshold.toFixed(2) }}</span>
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div class="flex flex-col gap-1">
+                            <label class="opacity-80">
+                                {{ activeBackend === "timm" ? "Safetensors model file" : "ONNX model file" }}
+                            </label>
+                            <input
+                                v-model="modelFile"
+                                type="text"
+                                class="input border border-base-content/30 w-full outline-none!"
+                                placeholder="model.onnx"
+                                :title="!isEditModelCustom ? 'You cannot edit the model file of a default model' : ''"
+                                :disabled="!isEditModelCustom"
+                            />
+                            <div v-if="editModelTriedSave && modelFileError" class="text-sm text-error">
+                                {{ modelFileError }}
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label class="opacity-80">CSV tags file</label>
+                            <input
+                                v-model="modelCsvTagsFile"
+                                type="text"
+                                class="input border border-base-content/30 w-full outline-none!"
+                                placeholder="selected_tags.csv"
+                                :title="!isEditModelCustom ? 'You cannot edit the tags file of a default model' : ''"
+                                :disabled="!isEditModelCustom"
+                            />
+                            <div v-if="editModelTriedSave && csvTagsFileError" class="text-sm text-error">
+                                {{ csvTagsFileError }}
+                            </div>
+                        </div>
                     </div>
-                    <input
-                        v-model.number="editGeneralThreshold"
-                        type="range"
-                        min="0.01"
-                        max="1"
-                        step="0.01"
-                        class="range w-full [--range-fill:0] [--range-thumb:var(--color-base-100)] range-sm"
-                    />
-                    <div class="flex justify-between text-sm opacity-60">
-                        <span>0.01</span><span>1.00</span>
+                    <div v-if="activeBackend === 'timm'" class="flex flex-col gap-2">
+                        <span class="opacity-80">Additional files</span>
+                        <div class="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                class="btn btn-sm"
+                                :class="extraFiles.includes('preprocess.json') ? 'btn-info' : 'btn-outline'"
+                                :aria-pressed="extraFiles.includes('preprocess.json')"
+                                @click="toggleExtraFile('preprocess.json')"
+                                @keyup.enter.stop
+                            >
+                                preprocess.json · use for preprocessing
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-sm"
+                                :class="extraFiles.includes('thresholds.csv') ? 'btn-info' : 'btn-outline'"
+                                :aria-pressed="extraFiles.includes('thresholds.csv')"
+                                @click="toggleExtraFile('thresholds.csv')"
+                                @keyup.enter.stop
+                            >
+                                thresholds.csv · per-category thresholds
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div class="flex flex-col gap-2">
-                    <div class="flex items-center gap-2">
-                        <span class="opacity-80">Character threshold:</span>
-                        <span class="font-semibold tabular-nums">{{ editCharacterThreshold.toFixed(2) }}</span>
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div class="flex flex-col gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="opacity-80">General threshold:</span>
+                                <span class="font-semibold tabular-nums">{{ editGeneralThreshold.toFixed(2) }}</span>
+                            </div>
+                            <input
+                                v-model.number="editGeneralThreshold"
+                                type="range"
+                                min="0.01"
+                                max="1"
+                                step="0.01"
+                                class="range w-full [--range-fill:0] [--range-thumb:var(--color-base-100)] range-sm"
+                            />
+                            <div class="flex justify-between text-sm opacity-60">
+                                <span>0.01</span><span>1.00</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="opacity-80">Character threshold:</span>
+                                <span class="font-semibold tabular-nums">{{ editCharacterThreshold.toFixed(2) }}</span>
+                            </div>
+                            <input
+                                v-model.number="editCharacterThreshold"
+                                type="range"
+                                min="0.01"
+                                max="1"
+                                step="0.01"
+                                class="range w-full [--range-fill:0] [--range-thumb:var(--color-base-100)] range-sm"
+                            />
+                            <div class="flex justify-between text-sm opacity-60">
+                                <span>0.01</span><span>1.00</span>
+                            </div>
+                        </div>
                     </div>
-                    <input
-                        v-model.number="editCharacterThreshold"
-                        type="range"
-                        min="0.01"
-                        max="1"
-                        step="0.01"
-                        class="range w-full [--range-fill:0] [--range-thumb:var(--color-base-100)] range-sm"
-                    />
-                    <div class="flex justify-between text-sm opacity-60">
-                        <span>0.01</span><span>1.00</span>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between pt-2">
-                    <button
-                        class="btn btn-error btn-outline gap-2"
-                        :disabled="isTagging || modelsDeleting.has(editModel)"
-                        @click="removeModelFromList"
-                    >
-                        Remove
-                    </button>
-                    <div class="ml-auto flex gap-2">
-                        <button class="btn btn-outline" @click="closeEditModelModal">Cancel</button>
+                    <div class="flex items-center justify-between pt-2">
                         <button
-                            class="btn btn-primary"
-                            :disabled="editModelTriedSave && !isEditModelFormValid"
-                            @click="saveEditModelModal"
+                            class="btn btn-error btn-outline gap-2"
+                            :disabled="isTagging || modelsDeleting.has(editModel)"
+                            @click="removeModelFromList"
                         >
-                            Save
+                            Remove
                         </button>
+                        <div class="ml-auto flex gap-2">
+                            <button class="btn btn-outline" @click="closeEditModelModal">Cancel</button>
+                            <button
+                                class="btn btn-primary"
+                                :disabled="editModelTriedSave && !isEditModelFormValid"
+                                @click="saveEditModelModal"
+                            >
+                                Save
+                            </button>
+                        </div>
                     </div>
-                </div>
                 </div>
             </div>
             <div class="modal-backdrop" @click="closeEditModelModal"></div>

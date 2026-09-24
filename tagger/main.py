@@ -26,9 +26,9 @@ async def process_style_compare(websocket: websockets.ServerConnection, data):
     images: list[str] = data.get("images", [])
     await compare_style(websocket, images)
 
-async def handle_model_download(model: str, model_file: str, tags_file: str, websocket: websockets.ServerConnection):
+async def handle_model_download(model: str, model_file: str, tags_file: str, extra_files: list[str], backend: str, websocket: websockets.ServerConnection):
     try:
-        await asyncio.to_thread(download_model, model, model_file, tags_file)
+        await asyncio.to_thread(download_model, model, model_file, tags_file, extra_files, backend)
         payload = get_model_action_payload()
         await ws_safe_send(websocket, payload)
     except Exception as e:
@@ -61,7 +61,9 @@ async def handler(websocket: websockets.ServerConnection):
                     model = data.get("model")
                     model_file = data.get("model_file")
                     tags_file = data.get("tags_file")
-                    asyncio.create_task(handle_model_download(model, model_file, tags_file, websocket))
+                    extra_files = data.get("extra_files", [])
+                    backend = data.get("backend", "onnx")
+                    asyncio.create_task(handle_model_download(model, model_file, tags_file, extra_files, backend, websocket))
                 elif command == "models_status":
                     models = data.get("models")
                     payload = get_info_payload(models)
