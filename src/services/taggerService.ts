@@ -40,7 +40,7 @@ export class TaggerService {
                     this.onServiceStopped?.();
                 }
             }
-        ]);
+        ], { keepWhenDeactivated: true });
     }
 
     private getRawConfiguration(configurationMap: Map<string, TaggerModelConfigurationProperties>) {
@@ -127,12 +127,12 @@ export class TaggerService {
 
         if (result.error) {
             this.alert.showAlert("error", result.message);
-            return;
+            return false;
         }
 
         this.alert.showAlert("info", `Starting tagger service on port ${result.port}`);
 
-        return false;
+        return true;
     }
 
     async resizeTerminal(columns: number, rows: number) {

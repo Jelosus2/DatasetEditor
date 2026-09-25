@@ -217,14 +217,18 @@ taggerService.onServiceStarted = async () => {
     if (isServiceRunning.value)
         return;
 
-    const result = await taggerService.getModelsStatus();
-
-    device.value = await taggerService.getDevice();
-    modelsStatus.value = result.status;
-    cacheSizeBytes.value = result.cacheSizeBytes;
-
     isServiceStarting.value = false;
     isServiceRunning.value = true;
+
+    const result = await taggerService.getModelsStatus();
+    const nextDevice = await taggerService.getDevice();
+
+    if (!isServiceRunning.value)
+        return;
+
+    modelsStatus.value = result.status;
+    cacheSizeBytes.value = result.cacheSizeBytes;
+    device.value = nextDevice;
 }
 taggerService.onServiceStopped = () => {
     device.value = "?";
@@ -535,10 +539,15 @@ async function confirmStyleCompareDownloadWarning() {
 
 async function startService() {
     isServiceStarting.value = true;
-    const error = await taggerService.startService();
 
-    if (error)
+    try {
+        const started = await taggerService.startService();
+        if (!started)
+            isServiceStarting.value = false;
+    } catch (error) {
         isServiceStarting.value = false;
+        showAlert("error", error instanceof Error ? error.message : String(error));
+    }
 }
 
 async function stopProcess() {

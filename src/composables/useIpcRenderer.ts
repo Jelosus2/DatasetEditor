@@ -6,7 +6,7 @@ import { onMounted, onUnmounted, onActivated, onDeactivated } from "vue";
 
 let logUnsubscribe: (() => void) | null = null;
 
-export function useIpcRenderer(listeners: IpcListener[]) {
+export function useIpcRenderer(listeners: IpcListener[], { keepWhenDeactivated = false } = {}) {
     const logStore = useLogStore();
     const unsubscribes: Array<() => void> = [];
     let subscribed = false;
@@ -44,7 +44,10 @@ export function useIpcRenderer(listeners: IpcListener[]) {
 
     onMounted(subscribeAll);
     onActivated(subscribeAll);
-    onDeactivated(unsubscribeAll);
+    onDeactivated(() => {
+        if (!keepWhenDeactivated)
+            unsubscribeAll();
+    });
     onUnmounted(unsubscribeAll);
 
     const invoke = async <K extends keyof IpcInvokeMap>(channel: K, ...args: IpcInvokeMap[K]["args"]): Promise<IpcInvokeMap[K]["result"]> => {
