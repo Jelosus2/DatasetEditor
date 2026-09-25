@@ -23,6 +23,7 @@ export type Settings = {
     shortcutNavigationDown: string;
     shortcutToggleTagEditMode: string;
     huggingFaceCacheDirectory: string;
+    highPerformanceModelDownloads: boolean;
     huggingFaceToken: string;
 };
 

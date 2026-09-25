@@ -42,6 +42,7 @@ export const useSettingsStore = defineStore("settings", () => {
         shortcutNavigationDown: "ArrowDown",
         shortcutToggleTagEditMode: "Ctrl+E",
         huggingFaceCacheDirectory: "",
+        highPerformanceModelDownloads: false,
         huggingFaceToken: ""
     });
 

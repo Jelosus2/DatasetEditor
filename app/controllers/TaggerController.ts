@@ -87,7 +87,8 @@ export class TaggerController {
             const taggerEnvironment: NodeJS.ProcessEnv = {
                 ...process.env,
                 HF_HUB_CACHE: settings.huggingFaceCacheDirectory,
-                HF_HUB_DISABLE_SYMLINKS_WARNING: "1"
+                HF_HUB_DISABLE_SYMLINKS_WARNING: "1",
+                HF_XET_HIGH_PERFORMANCE: settings.highPerformanceModelDownloads ? "1" : "0"
             };
 
             const huggingFaceToken = settings.huggingFaceToken.trim();

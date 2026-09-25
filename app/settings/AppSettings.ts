@@ -95,6 +95,15 @@ export class AppSettings implements Settings {
 
     @Setting({
         section: "Autotagger",
+        label: "High-performance model downloads",
+        type: "boolean",
+        description: "Use more CPU, network, and disk resources to download Hugging Face models faster.",
+        defaultValue: false
+    })
+    highPerformanceModelDownloads = false;
+
+    @Setting({
+        section: "Autotagger",
         label: "HuggingFace access token",
         type: "string",
         description: "Optional access token used to download private or gated Hugging Face models.",
