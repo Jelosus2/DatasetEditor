@@ -1,7 +1,7 @@
 {
   "name": "dataset-editor",
   "desktopName": "com.jelosus1.dataset-editor.desktop",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "main": "dist_app/main.js",
   "description": "A dataset editor",

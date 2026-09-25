@@ -132,7 +132,7 @@ jobs:
         env:
           UV_BINARY: ${{ steps.setup-uv.outputs.uv-path }}
         run: |
-          Copy-Item -LiteralPath $env:UV_BINARY -Destination 'embedded_python\uv.exe'
+          Copy-Item -LiteralPath "$($env:UV_BINARY).exe" -Destination 'embedded_python\uv.exe'
           & '.\embedded_python\uv.exe' --version
 
       - name: Build Windows packages
